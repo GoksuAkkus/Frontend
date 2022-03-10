@@ -1,0 +1,154 @@
+diff --git a/src/app/dialog-info/dialog-info.component.scss b/src/app/dialog-info/dialog-info.component.scss
+index d776446969e35f71cc762119bd0e1ab029553411..662a595834071c9b6bf67bd1484f35ceb78f3236 100644
+--- a/src/app/dialog-info/dialog-info.component.scss
++++ b/src/app/dialog-info/dialog-info.component.scss
+@@ -1,11 +1,37 @@
+ @import '../../global.scss';
+-.modal-content{
+-    display: flex;
+-    flex-direction: column;
+-    justify-content: flex-start;
+-    margin: 10px 10px 15px 15px;
+-    width: 229px; 
+-    min-height:25px; 
+-    min-width: 230px;
+-    color: $primaryColor;
+-}
+\ No newline at end of file
++
++.modal-content {
++  display: flex;
++  flex-direction: column;
++  justify-content: flex-start;
++  margin: 10px 10px 15px 15px;
++  width: 229px;
++  min-height: 25px;
++  min-width: 230px;
++  color: $primaryColor;
++  width: 100%;
++  height: 100%;
++
++  >.table-container {
++    width: 100%;
++    height: 100%;
++  }
++}
++
++table {
++  width: 92%;
++  height: 100%;
++}
++
++tr {
++  padding: 10px;
++  text-align: center;
++}
++
++th {
++  padding: 10px;
++}
++
++td {
++  padding: 10px;
++}
+diff --git a/src/app/dialog/dialogComponent/dialog.component.scss b/src/app/dialog/dialogComponent/dialog.component.scss
+index 624951bd2b73f15cb78999484fab4aebcfc18a02..0c2aa34c47dcde91c06cbbf7515df3a7cf03a50d 100644
+--- a/src/app/dialog/dialogComponent/dialog.component.scss
++++ b/src/app/dialog/dialogComponent/dialog.component.scss
+@@ -16,16 +16,19 @@ $background_color_3: transparent;
+   animation: fadeIn 0.5s;
+   border-radius: 12px;
+   box-shadow: 0px 0px 10px 0px rgba($color: #000000, $alpha: 0.3);
++
+   &.minified {
+     position: relative;
+     left: auto !important;
+     bottom: auto !important;
+     top: auto !important;
+     right: auto !important;
++
+     .dialog-body {
+       display: none;
+-    } 
++    }
+   }
++
+   >.modal-lines {
+     position: absolute;
+ 
+@@ -150,11 +153,15 @@ $background_color_3: transparent;
+     justify-content: space-between;
+     padding: 10px 8px;
+     cursor: all-scroll;
++    width: 97%;
++    height: 100%;
++
+     .header {
+       color: $primaryColor;
+       min-width: 200px;
+       pointer-events: none;
+     }
++
+     >input {
+       color: $color_1;
+     }
+@@ -187,35 +194,43 @@ $background_color_3: transparent;
+   border-radius: 5px;
+   color: $secondaryColor;
+ }
++
+ .modal-buttons {
+   svg {
+     .fill {
+       fill: $primaryColor !important;
+     }
++
+     .stroke {
+       stroke: $primaryColor !important;
+     }
+   }
+ }
++
+ .red-to-light-theme {
+   background-color: $secondaryColor;
+   border-radius: $dialogRadiusValue;
+   color: $primaryColor;
++
+   .modal-header {
+-    color:  $secondaryColor;
++    color: $secondaryColor;
+     border-top-left-radius: $dialogRadiusValue;
+     border-top-right-radius: $dialogRadiusValue;
++
+     .header {
+-      color:  inherit;
++      color: inherit;
+       margin-left: 24px;
+     }
++
+     background-color: $primaryColor;
+   }
++
+   .modal-buttons {
+     svg {
+       .fill {
+         fill: $secondaryColor !important;
+       }
++
+       .stroke {
+         stroke: $secondaryColor !important;
+       }
+@@ -230,4 +245,11 @@ $background_color_3: transparent;
+ 
+ .modal-transform {
+   transform: translate(-50%, -50%);
+-}
+\ No newline at end of file
++}
++
++.modal {
++  &.red-to-light-theme {
++    width: 490px;
++  }
++
++}
