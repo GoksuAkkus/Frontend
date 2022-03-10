@@ -1,0 +1,106 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index de70a53bbec9dfa91de808a64d835e90a58f98c7..b587a707084912a599c75cd3dc538d7b660aeba8 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -182,6 +182,10 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             if (infoFeature['islem_turu'] === 10 && foundHareketDomain) {
+               if (foundHareketDomain === 39) {
+                 lead = 7;
++              } else  if (foundHareketDomain === 40) {
++                this.moduleData = moduleForm;
++                this.moduleFormData = moduleForm.formData[lead];
++                lead = this.recursiveFormObject(moduleForm.formData[lead], 0, infoFeature);
+               } else {
+                 lead = 0;
+               }
+@@ -1916,17 +1920,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         if (this.moduleData.value === 14 && (formControlName === 'esas_no' || formControlName === 'karar_no')) {
+           tbaDotMethodUygulamaState = true;
+         }
+-
+-        // GAGA UCRET FIELDI ARTIK NUMBER OLDUĞU İÇİN NOKTALAMA İÇİN LOCALE METODU KULLANILACAK
+-        // if (formControlName === 'ucret') {
+-        //   ucretFieldDotMethodUygState = true;
+-        // }
+-        // if (tbaDotMethodUygulamaState || ucretFieldDotMethodUygState) {
+-        //   if (this.processState === 0 && value !== null) {
+-        //     const commaValue = value.replace('.', ',');
+-        //     value = this.dotMethod(commaValue);
+-        //   }
+-        // }
+       }
+ 
+       const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
+@@ -1942,28 +1935,19 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+       this.formGroup.addControl(formControlName, createdFormControl);
+ 
+-      // if (this.moduleData.value === 10 && formControlName === 'dosya_no') {
+-      //   if (this.processState !== -1) {
+-      //     const objectId = this.islemObjectId;
+-      //     this.infoAttributes['dosya_no'] = objectId;
+-      //     this.formGroup.controls[formControlName].setValue(objectId);
+-      //     this.formGroup.controls[formControlName].disable();
+-      //   } else {
+-      //     if (this.infoAttributes !== undefined) {
+-      //       this.formGroup.controls[formControlName].setValue(this.infoAttributes['dosya_no']);
+-      //     }
+-      //     this.formGroup.controls[formControlName].disable();
+-      //   }
+-      // }
+-
+       if (this.moduleData.value === 10 && formControlName === 'dosya_no') {
+         if (this.infoAttributes !== undefined) {
+           this.formGroup.controls[formControlName].setValue(this.infoAttributes['dosya_no']);
+         }
+-        // else {
+-        //   const objectId = this.islemObjectId;
+-        //   this.formGroup.controls[formControlName].setValue(objectId);
+-        // }
++        this.formGroup.controls[formControlName].disable();
++      }
++
++      // YENİ ESAS SEÇİLMİŞSE TALEP TÜRÜ O İŞLEMİN TALEP TÜRÜNE GÖRE AÇILIP DEĞİŞTİRİLEMEZ OLACAKMIŞ
++      const durumu = this.dialogConfig.data['formValues']['durumu'];
++      if(durumu === 40 && formControlName === 'talep_turu') {
++        if (this.infoAttributes !== undefined) {
++          this.formGroup.controls[formControlName].setValue(this.infoAttributes[formControlName]);
++        }
+         this.formGroup.controls[formControlName].disable();
+       }
+ 
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 4ced5b15216ac5501f546a7aae59d3957a23373b..1409463ec7690fa986adaac08924431816c91132 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -531,14 +531,6 @@ export class MovementCreateComponent implements OnInit {
+         for (let i = 0; i < fileList.length; i++) {
+           this.attachmentDataArray.push(fileList[i]);
+         }
+-        // const file = fileList.item(0);
+-        // reader.readAsDataURL(file);
+-
+-        // reader.onload = () => {
+-        //   this.formGroup.patchValue({
+-        //     attachment: (<HTMLInputElement>formElement).files
+-        //   });
+-        // };
+       }
+     } else if (formElement.type === 'number') {
+       const formValue = formElement.value;
+@@ -546,7 +538,6 @@ export class MovementCreateComponent implements OnInit {
+         this.formGroup.controls[formElement.name].patchValue(Number(formValue));
+       }
+     } else if (formElement.getAttribute('realType') === 'numberText') {
+-
+       // GAGA TODO
+       // TODO ONSUBMİTTE ARCGİSE BU STRİNG VERİ DOUBLE FİELDA ATILACAK
+       // O YÜZDEN DE NOKTALARI SİLİP VİRGÜLÜ NOKTAYA ÇEVİRİP ATCAN
+@@ -604,6 +595,7 @@ export class MovementCreateComponent implements OnInit {
+     if (this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] == 26) {
+       formObject['aciklama'] = this.dotMethod(formElement.value);
+     }
++    
+     if (formElement.name === 'ucret') {  // UCRET FIELDI ARTIK TEXT OLDU BURAYA DA DOT METHOD EKLENİYOR
+       formObject['ucret'] = this.dotMethod(formElement.value);
+     }
