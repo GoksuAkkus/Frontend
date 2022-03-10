@@ -1,0 +1,735 @@
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index a3d4beb48db31b36e22f901d83ec925754bc6120..62edb7911ce8c103f1df2063d0c66224b6440202 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -1739,7 +1739,8 @@
+     "type": "Plan",
+     "value": 5,
+     "formData": [
+-      [{
++      [
++        {
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -1810,7 +1811,8 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -1923,7 +1925,8 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -2043,7 +2046,8 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -2132,7 +2136,8 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -2239,8 +2244,7 @@
+                 "not_values": [4, 5]
+               }]
+             ],
+-            "movements_todelete": [9, 36, 37],
+-            "numberof_deletedmovements": 0
++            "movements_todelete": [9, 36, 37]
+           }]
+         ]
+       }],
+@@ -2255,8 +2259,7 @@
+                 "not_values": []
+               }]
+             ],
+-            "movements_todelete": [9, 36],
+-            "numberof_deletedmovements": 0
++            "movements_todelete": [9, 36]
+           }]
+         ]
+       }]
+@@ -3328,8 +3331,9 @@
+     "type": "Kamulaştırma",
+     "value": 8,
+     "formData": [
+-      [{
+-          "alias": "Gelen Tarih",
++      [
++        {
++          "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+           "required": true,
+@@ -3337,7 +3341,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Sayı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
+@@ -3378,8 +3382,9 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
+-          "alias": "Gelen Tarih",
++      [
++        {
++          "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+           "required": true,
+@@ -3387,7 +3392,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Sayı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
+@@ -3440,8 +3445,8 @@
+         },
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+-          "name": "ucret",
+-          "type": "text",
++          "name": "depo_bedeli",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3455,8 +3460,9 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
+-          "alias": "Gelen Tarih",
++      [
++        {
++          "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+           "required": true,
+@@ -3464,7 +3470,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Sayı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
+@@ -3549,8 +3555,8 @@
+         },
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+-          "name": "ucret",
+-          "type": "text",
++          "name": "depo_bedeli",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3562,7 +3568,7 @@
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+-          "calculateFunction": "ucret/alan"
++          "calculateFunction": "depo_bedeli/alan"
+         },
+         {
+           "alias": "Üzerinde Muhdesat (bina, ağaç vb.) Var Mı?",
+@@ -3613,8 +3619,9 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
+-          "alias": "Gelen Tarih",
++      [
++        {
++          "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+           "required": true,
+@@ -3622,7 +3629,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Sayı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
+@@ -3707,8 +3714,8 @@
+         },
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+-          "name": "ucret",
+-          "type": "text",
++          "name": "depo_bedeli",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3720,7 +3727,7 @@
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+-          "calculateFunction": "ucret/alan"
++          "calculateFunction": "depo_bedeli/alan"
+         },
+         {
+           "alias": "Üzerinde Muhdesat (bina, ağaç vb.) Var Mı?",
+@@ -3784,12 +3791,12 @@
+         },
+         {
+           "alias": "Toplam Kamulaştırma Bedeli (₺)",
+-          "name": "depo_bedeli",
++          "name": "ucret",
+           "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+-          "calculateFunction": "ucret+icra_bedeli"
++          "calculateFunction": "depo_bedeli+icra_bedeli"
+         },
+         {
+           "alias": "Açıklama",
+@@ -3808,7 +3815,8 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -3903,7 +3911,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "text",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4075,7 +4083,16 @@
+     "type": "Kamulaştırma Davaları",
+     "value": 10,
+     "formData": [
+-      [{
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -4138,8 +4155,17 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
+-          "alias": "Gelen Tarih",
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Resmi Yazı Tarihi",
+           "name": "islem_tarihi",
+           "type": "date",
+           "required": true,
+@@ -4147,7 +4173,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Yazı Sayısı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
+@@ -4250,6 +4276,30 @@
+             }
+           ]
+         },
++        {
++          "alias": "Mahkeme Adı",
++          "name": "detay",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Esas No",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Avukat Adı",
++          "name": "avukat_adi",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
+         {
+           "alias": "Açıklama",
+           "name": "aciklama",
+@@ -4257,9 +4307,42 @@
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
++        },
++        {
++          "alias": "Malik Listesi",
++          "name": "?",
++          "type": "malik",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Davalık YüzÖlçüm",
++          "name": "alan",
++          "type": "numberText",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "İzbedel",
++          "name": "ucret",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -4364,7 +4447,7 @@
+         {
+           "alias": "Davalık YüzÖlçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4378,7 +4461,16 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -4467,7 +4559,7 @@
+         {
+           "alias": "Davalık YüzÖlçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4481,7 +4573,16 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -4620,7 +4721,7 @@
+         {
+           "alias": "Dava Bedeli",
+           "name": "ucret",
+-          "type": "text",
++          "type": "number",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4636,7 +4737,7 @@
+         {
+           "alias": "Davalık YüzÖlçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4667,7 +4768,16 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -4834,7 +4944,7 @@
+         {
+           "alias": "Davalık YüzÖlçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4848,7 +4958,16 @@
+           "chosen_values": []
+         }
+       ],
+-      [{
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
+           "alias": "Gelen Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+@@ -5003,11 +5122,93 @@
+         {
+           "alias": "Davalık YüzÖlçüm",
+           "name": "alan",
++          "type": "numberText",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Açıklama",
++          "name": "aciklama",
++          "type": "text",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        }
++      ],
++      [
++        {
++          "alias": "Dosya No",
++          "name": "dosya_no",
++          "type": "number",
++          "required": false,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Birim Adı",
++          "name": "detay",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Birim Esası",
++          "name": "esas_no",
+           "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+         },
++        {
++          "alias": "Resmi Yazı Tarihi",
++          "name": "islem_tarihi",
++          "type": "date",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Yazı Sayısı",
++          "name": "sayi",
++          "type": "number",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "İcrası Talep Edilen Malik",
++          "name": "?",
++          "type": "malik",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Talep Edilen Bedel",
++          "name": "ucret",
++          "type": "number",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tebliğ Tarihi",
++          "name": "bitis_tarihi",
++          "type": "date",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Avukat Adı",
++          "name": "avukat_adi",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
+         {
+           "alias": "Açıklama",
+           "name": "aciklama",
+@@ -5016,7 +5217,63 @@
+           "domain_values": [],
+           "chosen_values": []
+         }
++
+       ]
++    ],
++    "processMovementRel": [
++      [{
++        "islem_turu": 10,
++        "field_values": [
++          [{
++            "field_value": [
++              [{
++                "name": "karar_turu",
++                "values": [],
++                "not_values": [null]
++              }]
++            ],
++            "movements_todelete": [42]
++          }]
++        ]
++      }],
++      [{
++        "islem_turu": 5,
++        "field_values": [
++          [{
++            "field_value": [
++              [{
++                "name": "talep_turu",
++                "values": [6],
++                "not_values": []
++              }]
++            ],
++            "movements_todelete": [9, 36]
++          }]
++        ]
++      }]
++    ],
++    "movementRel": [
++      [{
++        "islem_turu": 10,
++        "movement_values": [
++          [{
++            "if_has": [38],
++            "if_not_have": [],
++            "movements_todelete": [38]
++          }], 
++          [{
++            "if_has": [],
++            "if_not_have": [38],
++            "movements_todelete": [39, 40]
++          }],
++          [{
++            "if_has": [38, 40],
++            "if_not_have": [],
++            "movements_todelete": [38, 40]
++          }]
++          
++        ]
++      }]
+     ]
+   },
+   {
+@@ -5073,8 +5330,8 @@
+         },
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+-          "name": "ucret",
+-          "type": "text",
++          "name": "depo_bedeli",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5198,8 +5455,8 @@
+         },
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+-          "name": "ucret",
+-          "type": "text",
++          "name": "depo_bedeli",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5323,8 +5580,8 @@
+         },
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+-          "name": "ucret",
+-          "type": "text",
++          "name": "depo_bedeli",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5410,13 +5667,13 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Toplam Kamulaştırma Bedeli",
+-          "name": "depo_bedeli",
++          "alias": "Toplam Kamulaştırma Bedeli (₺)",
++          "name": "ucret",
+           "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+-          "calculateFunction": "ucret+icra_bedeli"
++          "calculateFunction": "depo_bedeli+icra_bedeli"
+         },
+         {
+           "alias": "Açıklama",
+@@ -5530,7 +5787,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "text",
++          "type": "number",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5633,7 +5890,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "text",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5744,7 +6001,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "text",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5855,7 +6112,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "text",
++          "type": "number",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5915,7 +6172,7 @@
+           "alias": "Tahmini Maaliyet(₺)",
+           "name": "ucret",
+           "required": "true",
+-          "type": "text",
++          "type": "number",
+           "domain_values": [],
+           "chosen_values": []
+         },
