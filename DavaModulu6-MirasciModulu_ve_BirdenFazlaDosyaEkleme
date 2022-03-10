@@ -1,0 +1,70 @@
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index fc5e6225647475aead892597487ed4c22f1e8522..42a9cc838f9f1a911f72c702a69cb9ef87388c26 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -1,9 +1,7 @@
+-import { group } from '@angular/animations';
+ import { Component } from '@angular/core';
+ import { ICellRendererAngularComp } from 'ag-grid-angular';
+ import { IAfterGuiAttachedParams, ICellRendererParams } from 'ag-grid-community';
+ import { HttpClient } from '@angular/common/http';
+-import { environment } from 'src/environments/environment';
+ import esri = __esri;
+ import { ModuleOperations } from 'src/app/models/Info/modules-model';
+ @Component({
+@@ -128,7 +126,10 @@ export class RendererComponent implements ICellRendererAngularComp {
+ 
+             // Önceden sadece Gerçekleşti Hareketinde Belge Vardı. Artık Bina Değişiklik Olumlu Hareketinden Sonra da Olacak.
+             if (ifAttachment !== undefined || binaDegisiklikOlumluDurumu) {
+-                const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson` +
++                // GAGA BURASI AÇILACAK
++                // const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson` +
++                //     `&token=${sessionStorage.getItem('CBSArcToken')}`;
++                const url = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectId}/attachments?f=pjson` +
+                     `&token=${sessionStorage.getItem('CBSArcToken')}`;
+                 this.http.get(url).subscribe(res => {
+                     const attachmentInfos = <Array<esri.AttachmentInfo>>res['attachmentInfos'];
+@@ -180,6 +181,10 @@ export class RendererComponent implements ICellRendererAngularComp {
+             this.params.context.componentParent.onGetMalikSBIByHisseId(this.params.data);
+         } else if (this.params.title === 'Hareket Detay') {
+             this.params.context.componentParent.openMovementDetail(this.params.data);
++        } else if (this.params.title === 'Mirasçı Ekle') {
++            this.params.Component.onOpenAddMirasci(this.params.data);
++        } else if (this.params.title === 'Mirasçı Detay') {
++            this.params.Component.onOpenMirasciDetail(this.params.data);
+         }
+     }
+ 
+@@ -198,18 +203,23 @@ export class RendererComponent implements ICellRendererAngularComp {
+         const attachmentId = attachment.id;
+         const contentType = attachment.contentType;
+ 
+-        const url = `${environment.arcgisMEBURL}FeatureServer/${id}/${objectId}/attachments/${attachmentId}` +
++        // GAGA BURASI AÇILACAK
++        // const url = `${environment.arcgisMEBURL}FeatureServer/${id}/${objectId}/attachments/${attachmentId}` +
++        //     `?token=${sessionStorage.getItem('CBSArcToken')}`;
++        const url = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectId}/attachments/${attachmentId}` +
+             `?token=${sessionStorage.getItem('CBSArcToken')}`;
+ 
+         this.http.get(url, { responseType: 'blob' }).subscribe((data: Blob) => {
+-
+-            const downloadURL = window.URL.createObjectURL(data);
+-            const anchor = document.createElement('a');
+-            anchor.href = downloadURL;
+-            anchor.target = '_blank';
+-            anchor.download = attachmentName;
+-
+-            anchor.click();
++            for (let i = 0; i < attachmentInfos.length; i++) {
++                const attachment = attachmentInfos[i];
++                const downloadURL = window.URL.createObjectURL(data);
++                const anchor = document.createElement('a');
++                anchor.href = downloadURL;
++                anchor.target = '_blank';
++                anchor.download = attachment.name;
++
++                anchor.click();
++            }
+         });
+     }
+ }
