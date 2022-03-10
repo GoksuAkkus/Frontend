@@ -1,0 +1,262 @@
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+index 81cac4f0a1df427929127b0515bf48926c979622..2fa67775b5895e8f503986439e332aaf723282f3 100644
+--- a/src/app/models/MaksData.ts
++++ b/src/app/models/MaksData.ts
+@@ -11,6 +11,19 @@ export class MaksData {
+     error: Error;
+ }
+ 
++export class MaksData2 {
++    iller: Array<Il>;
++    ilceler: Array<IlIlce>;
++    mahalleler: Array<Mahalle>;
++    csbmler: Array<Csbm>;
++    binalar: Array<Bina>;
++    bucaklar: Array<Bucak>;
++    acikAdresWithAdresNo: string;
++    acikAdresWithBinaKoduArray: Array<BagimsizBolumBina>;
++    geometry: MaksGeometry;
++    error: Error;
++}
++
+ export class BagimsizBolumBina {
+     adresNo: number;
+     binaNo: number;
+@@ -28,6 +41,13 @@ export interface IcKapiNo {
+ export class IlClass {
+     ad: string;
+     uavtil: number;
++    ilce: Array<IlIlce>;
++}
++
++export interface IlIlce {
++    uavtil: number;
++    uavtilce: number;
++    ad: string;
+ }
+ 
+ export interface Il {
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+index e98ef973582144aa57a8884c57c8658601576339..d1d06f610ade8c2456968cc0dc59421ca6fc08a8 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -34,7 +34,7 @@
+         <img src="assets/img/arrow.png" alt="" class="arrow-down">
+       </div>
+       <div class="select-options">
+-        <span class="option" id="{{ilce.kod}}" *ngFor="let ilce of filterArray[0].ilceler"
++        <span class="option" id="{{ilce.uavtilce}}" *ngFor="let ilce of filterArray[0].ilceler"
+           (mousedown)="onSelect($event)">{{ilce.ad}}</span>
+       </div>
+       <div class="form-group">
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index 03a4c9db016aeabecb36673597ce8ae579106056..d89eac04d41f6586589c8a8ad0efb681d2c06903 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -4,7 +4,7 @@ import { loadModules } from 'esri-loader';
+ import { DialogService } from 'src/app/dialog/dialog.service';
+ import { MapService } from 'src/app/mapUtils/map.service';
+ import { DistrictPermTKGM, UserPermission } from 'src/app/models/Login/user-permission';
+-import { MaksData, Ilce, UavtIlIlce, IlClass, Bina, Bucak, Mahalle } from 'src/app/models/MAKSData';
++import { IlClass, Bina, Bucak, Mahalle, IlIlce, MaksData2 } from 'src/app/models/MAKSData';
+ import { SearchFilterObject } from 'src/app/models/TKGM/tkgm-search-data';
+ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AuthService } from 'src/app/services/auth.service';
+@@ -28,15 +28,14 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+     return this._mapView;
+   }
+ 
+-  filterArray: Array<MaksData> = [new MaksData()];
+-  dataArray: Array<MaksData> = [new MaksData()];
++  filterArray: Array<MaksData2> = [new MaksData2()];
++  dataArray: Array<MaksData2> = [new MaksData2()];
+   selectedDiskapiNoIndex = '';
+   _mapView: esri.MapView;
+   ilArray: Array<IlClass> = [];
+   permittedCities: Array<string> = [];
+-  permittedDistricts: Array<Array<string>> = [];
+-  addedDistricts: Array<number> = [];
+-  cityCodesOfPermittedDistricts: Array<UavtIlIlce> = [];
++  permittedDistricts: Array<IlIlce> = [];
++  permittedCitiesOfAllDistricts = '';
+   userPerm: UserPermission;
+   districtPerm: Array<DistrictPermTKGM> = [];
+   pointModule: esri.PointConstructor;
+@@ -77,39 +76,70 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+           const il = new IlClass();
+           il.ad = features[i].attributes['ad'].toLocaleUpperCase();
+           il.uavtil = features[i].attributes['uavtil'];
++          il.ilce = [];
+           this.ilArray.push(il);
+         }
+       }).then(x => {
+-        if (permZones !== undefined || permZones.length > 0) {
+-          permZones.forEach(permZone => {
+-            const zone = permZone.zone;
+-            if (zone.includes(',')) { // , içerenler izin verilen 1 ilin ilçe listesi demek
+-              this.permittedDistricts.push(zone.split(','));
+-            } else {
+-              this.permittedCities.push(zone);
+-            }
++        const ilceLayer: esri.FeatureLayer = <esri.FeatureLayer>mapView.map.allLayers.find(layer => layer.title === 'İlçe');
++        const ilceLayerQuery: esri.QueryProperties = {
++          where: '1=1',
++          orderByFields: ['ad asc'],
++          outFields: ['ad', 'uavtil', 'uavtilce', 'kodilce'],
++          groupByFieldsForStatistics: ['ad', 'uavtil'],
++          returnGeometry: false,
++        };
++
++        ilceLayer.queryFeatures(ilceLayerQuery).then(ilceRes => {
++          const features = ilceRes.features;
++
++          features.forEach(feature => {
++            const ilceAd = feature.attributes['ad'].toLocaleUpperCase();
++            const ilceKodu = feature.attributes['kodilce'];
++            const uavtilce = feature.attributes['uavtilce'];
++            const uavtil = feature.attributes['uavtil'];
++
++            const ilce: IlIlce = { ad: ilceAd, uavtil: uavtil, uavtilce: uavtilce };
++            const foundIlIndex = this.ilArray.findIndex(il => il.uavtil === uavtil);
++            this.ilArray[foundIlIndex].ilce.push(ilce);
+           });
+-        }
+-        // ilçe sınırlı yetkilerin illerini permittedCities e eklemek için
+-        // tslint:disable-next-line:max-line-length
+-        if (this.permittedDistricts.length > 0) { // ilçe yetkisi varsa o ilin de select de gözükmesi için il listesine bu ilçenin ilinin bulunup eklenmesi lazım.
+-          this.permittedDistricts.forEach(districtArray => {
+-            const cityCode = this.findCityCode(districtArray[0]);
+-            this.addedDistricts.push(Number(cityCode));
+-            this.permittedCities.push(cityCode);
++
++          const permittedCities = this.userPerm.permZoneCityTKGM;
++          const permittedDistricts = this.userPerm.permZoneDistrictTKGM;
++
++          permittedCities.forEach(permittedCity => {
++            // İl Katmanındaki İllerin İsimleri Tamamen Büyük Harfle Geldiği İçin İl Katmanında İl Adıyla İlgili Arama Yapılırken
++            // TOLOCALEUPPERCASE KULLANILMASI GEREKİYOR.
++            const foundIl = this.ilArray.find(il => il.ad === permittedCity.toLocaleUpperCase());
++            this.permittedCities.push(foundIl.uavtil.toString());
++            this.permittedCitiesOfAllDistricts += foundIl.uavtil + ',';
+           });
+-        }
+ 
+-        // Hiç İl Yetkisi Olmayan Durum
+-        if (this.permittedCities.length === 0) {
+-          this.ilArray = [];
+-        }
+-        // Tüm Türkiye Yetkisi
+-        if (this.permittedCities[0] !== '*') {
+-          this.ilArray = this.ilArray.filter(il => this.permittedCities.find(city => Number(city) === il.uavtil));
+-        }
+-        this.dataArray[0].iller = this.ilArray;
+-        this.filterArray[0].iller = this.ilArray;
++          permittedDistricts.forEach(permittedDistrict => {
++            const foundIl = this.ilArray.find(il => il.ad === permittedDistrict.city.toLocaleUpperCase());
++            const uavtilString = foundIl.uavtil.toString();
++
++            const foundIlce = foundIl.ilce.find(ilce => ilce.ad === permittedDistrict.district.toLocaleUpperCase());
++            const ilIlce: IlIlce = { uavtil: foundIl.uavtil, uavtilce: foundIlce.uavtilce, ad: foundIlce.ad };
++
++            this.permittedDistricts.push(ilIlce);
++
++            if (!this.permittedCities.includes(uavtilString)) {
++              this.permittedCities.push(uavtilString);
++            }
++          });
++
++          // Tüm Türkiye Yetkisi
++          if (permZones[0].zone === '*') {
++            this.ilArray.forEach(il => {
++              this.permittedCities.push(il.ad);
++              this.permittedCitiesOfAllDistricts += il.uavtil + ',';
++            });
++          } else {
++            this.ilArray = this.ilArray.filter(il => this.permittedCities.find(city => Number(city) === il.uavtil));
++          }
++          this.dataArray[0].iller = this.ilArray;
++          this.filterArray[0].iller = this.ilArray;
++        });
+       });
+     }
+   }
+@@ -186,20 +216,6 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+     this.filterArray[0][index] = this.filterSearchData(searchFilterObject, index);
+   }
+ 
+-  async getUavtIlceCodes(cityCodeObject, ilceLayer, ilceLayerQuery) {
+-    return ilceLayer.queryFeatures(ilceLayerQuery).then(ilceRes => {
+-      const features = ilceRes.features;
+-      for (let i = 0; i < features.length; i++) {
+-        const kodilce = Number(features[i].attributes['kodilce']);
+-        if (kodilce === cityCodeObject.kodilce) {
+-          cityCodeObject.uavtilce = features[i].attributes['uavtilce'];
+-
+-          this.cityCodesOfPermittedDistricts.push(cityCodeObject);
+-        }
+-      }
+-    });
+-  }
+-  // SADECE İLÇE YETKİLİ OLAN İL 2. KEZ TIKLANINCA İLÇELER GELİYOR PROBLEMİ ÇÖZÜLECEK PROMISE ALL İLE ÇÖZÜLDÜ.
+   onSelect(event: Event) {
+     this.mapService.clearSelectedGraphics('type', 'BinaKoduSorgula');
+     this.selectedDiskapiNoIndex = '';
+@@ -229,45 +245,21 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+ 
+     switch (selectName) {
+       case 'iller': {
+-        this.cityCodesOfPermittedDistricts = [];
+         inputArray[0] = kod;
+         const kodNumber = Number(kod);
+-        dataService.getIlcelerFromMAKS(inputArray[0]).subscribe(res => {
+-
+-          let ilceler: Array<Ilce> = res['ilceler'];
+-          const promises = [] as Array<any>;
+-
+-          if (this.addedDistricts.includes(kodNumber)) {
+-            if (this.permittedDistricts.length > 0) {
+-              this.permittedDistricts.forEach(districtArray => {
+-                districtArray.forEach(district => { // buradaki ilcekodları aslında kodilce ye takbül ediyor. bize uavtilce lazım
+-                  const cityCodeObject = new UavtIlIlce();
+-                  cityCodeObject.kodilce = Number(district);
+-                  cityCodeObject.uavtil = Number(this.findCityCode(district));
+-
+-                  const ilceLayer: esri.FeatureLayer = <esri.FeatureLayer>this._mapView.map.allLayers.find(layer => layer.title === 'İlçe');
+-                  const ilceLayerQuery: esri.QueryProperties = {
+-                    where: `uavtil=${cityCodeObject.uavtil}`,
+-                    outFields: ['kodilce,uavtil,uavtilce'],
+-                    returnGeometry: false,
+-                  };
+-                  const ilcePromises = this.getUavtIlceCodes(cityCodeObject, ilceLayer, ilceLayerQuery);
+-                  promises.push(ilcePromises);
+-                });
+-              });
+-            }
+-            Promise.all(promises).then(x => {
+-              ilceler = ilceler.filter(ilce => this.cityCodesOfPermittedDistricts.find(district => district.uavtilce === ilce.kod));
+-              this.dataArray[0].ilceler = ilceler;
+-              this.filterArray[0].ilceler = ilceler;
+-              this.emptyArrays(selectName);
+-            });
+-          } else {
+-            this.dataArray[0].ilceler = ilceler;
+-            this.filterArray[0].ilceler = ilceler;
+-            this.emptyArrays(selectName);
+-          }
+-        });
++        let districts;
++
++        // Tüm İlçe Yetkisi
++        if (this.permittedCitiesOfAllDistricts.includes(kod)) {
++          districts = this.ilArray.find(il => il.uavtil === kodNumber).ilce;
++        } else {
++          districts = this.permittedDistricts.filter(permittedDistrict => permittedDistrict.uavtil === kodNumber);
++        }
++
++        this.dataArray[0].ilceler = districts;
++        this.filterArray[0].ilceler = districts;
++        this.emptyArrays(selectName);
++
+         break;
+       }
+       case 'ilceler': {
