@@ -1,0 +1,193 @@
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.html b/src/app/search/acikadressorgulama/acikadressorgulama.component.html
+index b5aee8e1fb5215bc4aa99be0a55c0def63776ac2..4bc3bf56e3689fd9de19ebadf08d34efa5a03196 100644
+--- a/src/app/search/acikadressorgulama/acikadressorgulama.component.html
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.html
+@@ -21,7 +21,7 @@
+       <form #adresNo="ngForm" (ngSubmit)="getAcikAdresFromAdresNo(adresNo.value['adresNo'])"
+         style="position: relative;width: 100%;">
+         <div class="form-group">
+-          <input id="adresNo" class="form-input" type="text" name="adresNo" autocomplete="off" ngModel required>
++          <input id="adresNo" class="form-input" type="text" name="adresNo" autocomplete="off" ngModel (input)="onInput($event)" required>
+           <label for="adresNo" class="form-label">Adres No</label>
+         </div>
+ 
+@@ -34,10 +34,10 @@
+       </form>
+     </div>
+     <div class="binakodu-container" style="position: relative; width: 100%; padding-left: 5px;">
+-      <form #binaKodu="ngForm" (ngSubmit)="getAcikAdresFromBinaKodu(binaKodu.value)"
++      <form #binaKodu="ngForm" (ngSubmit)="getAcikAdresFromBinaKodu(binaKodu.value['binaKodu'])"
+         style="position: relative;width: 100%;">
+         <div class="form-group">
+-          <input id="binaKodu" class="form-input" type="text" name="binaKodu" ngModel autocomplete="off" required>
++          <input id="binaKodu" class="form-input" type="text" name="binaKodu" ngModel autocomplete="off"  (input)="onInput($event)" required>
+           <label for="binaKodu" class="form-label">Bina Kodu</label>
+         </div>
+         <div class="btn-container">
+@@ -46,7 +46,7 @@
+         <div class="form-group" *ngIf="binaArray.length > 0">
+           <input id="icKapiNolar" class="form-input" type="select" name="binaArray" autocomplete="off"
+             style="font-size:14px;" (blur)="onToggleDropdown($event)" (focus)="onToggleDropdown($event)"
+-            (input)="onInput($event)" required>
++            (input)="onInputIcKapiNo($event)" required>
+           <label for="icKapiNolar" class="form-label">İç Kapı No Seçiniz</label>
+           <img src="assets/img/arrow.png" alt="" class="arrow-down">
+         </div>
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.ts b/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
+index 4231af2bf68b81a4e2067ae60538860250480ee1..9456bcb693ac8ff46b4c46c7a9dd907a05586bdd 100644
+--- a/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
+@@ -41,8 +41,11 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+     this.resetGlobalVariablesForAdresNo();
+   }
+ 
+-  getAcikAdresFromAdresNo(adresNo) {
++  getAcikAdresFromAdresNo(adresNo: string) {
+     this.resetGlobalVariablesForAdresNo();
++    if (adresNo.length > 10) {
++      adresNo = adresNo.slice(0, adresNo.length - 1);
++    }
+ 
+     this.webDataService.getMaksAcikAdresWithAdresNo(adresNo).subscribe(res => {
+       if (res !== null && res !== undefined) {
+@@ -63,51 +66,63 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
+-  getAcikAdresFromBinaKodu(binaKodu: any) {
++  getAcikAdresFromBinaKodu(binaKodu: string) {
+     this.resetGlobalVariablesForBinaKodu();
++    if (binaKodu.length > 10) {
++      binaKodu = binaKodu.slice(0, binaKodu.length - 1);
++    }
+ 
+     const formContainer = <HTMLDivElement>document.getElementById('form-container');
+     if (formContainer.classList.contains('binakodu-adreslabel')) {
+       formContainer.classList.remove('binakodu-adreslabel');
+     }
++
+     // Getir diyince binaalr arayi setlencek
+     this.webDataService.getBinaNoFromBinaKodu(binaKodu).subscribe(binaNo => {
+       if (binaNo === '') {
+-        this.errorMessageWithBinaKodu = 'Lütfen Düzgün Giriniz.';
++        this.errorMessageWithBinaKodu = 'Kayıt Bulunamadı.';
+       } else if (binaNo !== null && binaNo !== undefined) {
+         this.webDataService.getAdresNoFromKimlikNo(binaNo).subscribe(binaArray => {
+           if (binaArray !== null && binaArray !== undefined) {
+-            binaArray.acikAdresWithBinaKoduArray.forEach(data => {
+-              let bina = new BagimsizBolumBina();
+-              bina = data;
+-              const icKapiNo = bina.icKapiNo;
+-              const regExp = new RegExp(/\D+/g);
+-              const hasChar = icKapiNo.fullPart.match(regExp); // only char regexp not number ![0-9]
+-
+-              // hasChar null gelirse hiç char yok
+-              if (hasChar === null) {
+-                icKapiNo.numberPart = Number(icKapiNo.fullPart);
+-                icKapiNo.charPart = '';
++            if (binaArray.error.description === null && binaArray.error.maksDescription === null) {
++              binaArray.acikAdresWithBinaKoduArray.forEach(data => {
++                let bina = new BagimsizBolumBina();
++                bina = data;
++                const icKapiNo = bina.icKapiNo;
++                const regExp = new RegExp(/\D+/g);
++                const hasChar = icKapiNo.fullPart.match(regExp); // only char regexp not number ![0-9]
++
++                // hasChar null gelirse hiç char yok
++                if (hasChar === null) {
++                  icKapiNo.numberPart = Number(icKapiNo.fullPart);
++                  icKapiNo.charPart = '';
++                } else {
++                  const splittedArray = icKapiNo.fullPart.split(hasChar[0]);
++                  icKapiNo.numberPart = Number(splittedArray[0]);
++                  icKapiNo.charPart = splittedArray[1];
++                }
++                this.binaArray.push(bina);
++                this.icKapiNoFilterArray.push(bina);
++              });
++
++              const tempSortArray: Array<BagimsizBolumBina> = this.binaArray;
++              tempSortArray.sort(function (a, b) {
++                const first = a.icKapiNo.numberPart;
++                const second = b.icKapiNo.numberPart;
++                return first - second;
++              });
++
++              this.binaArray = tempSortArray;
++              this.icKapiNoFilterArray = tempSortArray;
++              // console.log(tempSortArray);
++            } else {
++              console.log(binaArray.error.description);
++              if (binaArray.error.code) {
++                this.errorMessageWithBinaKodu = 'Lütfen Düzgün Giriniz.';
+               } else {
+-                const splittedArray = icKapiNo.fullPart.split(hasChar[0]);
+-                icKapiNo.numberPart = Number(splittedArray[0]);
+-                icKapiNo.charPart = splittedArray[1];
++                this.errorMessageWithBinaKodu = 'Maks Error:' + binaArray.error.maksDescription;
+               }
+-              this.binaArray.push(bina);
+-              this.icKapiNoFilterArray.push(bina);
+-            });
+-
+-            const tempSortArray: Array<BagimsizBolumBina> = this.binaArray;
+-
+-            tempSortArray.sort(function (a, b) {
+-              const first = a.icKapiNo.numberPart;
+-              const second = b.icKapiNo.numberPart;
+-              return first - second;
+-            });
+-
+-            this.binaArray = tempSortArray;
+-            this.icKapiNoFilterArray = tempSortArray;
+-            // console.log(tempSortArray);
++            }
+           } else {
+             this.errorMessageWithBinaKodu = 'Girilen Bina Koduna Dair Bilgi Bulunamadı.';
+           }
+@@ -150,7 +165,7 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+           if (res.error.code === -1) {
+             this.errorMessageWithBinaKodu = 'Lütfen Düzgün Giriniz.';
+           } else {
+-            this.errorMessageWithBinaKodu = res.error.maksDescription;
++            this.errorMessageWithBinaKodu = 'Maks Error:' + res.error.maksDescription;
+           }
+         }
+       }
+@@ -158,6 +173,23 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+   }
+ 
+   onInput(event: Event) {
++    const inputElement: HTMLInputElement = <HTMLInputElement>event.target;
++    const key = event['data'];
++
++    if (inputElement.value.length > 10) {
++      inputElement.value = inputElement.value.slice(0, inputElement.value.length - 1);
++    } else {
++      if (key !== null) {
++        const regExp = new RegExp(/\d+/g); // [0-9] only number regexp
++        const isNumber = key.match(regExp);
++        if (isNumber === null) {
++          inputElement.value = inputElement.value.slice(0, inputElement.value.length - 1);
++        }
++      }
++    }
++  }
++
++  onInputIcKapiNo(event: Event) {
+     this.icKapiNoFilterArray = [];
+ 
+     const inputElement: HTMLInputElement = <HTMLInputElement>event.target;
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 47f49cc6eea8c95821721a8539bafba3aec1b84e..5c707062c88abe76b94912b3ed2b5ab79b35f36a 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -91,7 +91,7 @@ export class WebDataService {
+   constructor(private auth: AuthService, private http: HttpClient) {}
+ 
+   getBinaNoFromBinaKodu(binaKodu) {
+-    return this.http.get<string>(this.maksURL + 'GetBinaNoFromBinaKodu?binaKodu=' + binaKodu['binaKodu'],
++    return this.http.get<string>(this.maksURL + 'GetBinaNoFromBinaKodu?binaKodu=' + binaKodu,
+       { headers: this.auth.createHeader() });
+   }
+ 
