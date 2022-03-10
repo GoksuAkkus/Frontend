@@ -1,0 +1,388 @@
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 0815d004f8775f8d9dc1f22f957a1b27420e4925..9cc8efc4c6931b5d5750193d2d66043e1a49addf 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -925,6 +925,12 @@ export class EsriMapComponent implements OnInit {
+               const justEgitimBolgeleriLayers = layerDesign.filter(layer => layer.category === 'Eğitim Bölgeleri');
+               this.addLayersToMap(map, FeatureLayer, justEgitimBolgeleriLayers);
+             });
++        } else {
++          this.layerService.initEgitimBolgeleriLayers(resEgitimBolgeleriLayerInfos.layers, this.auth.user.nameid, this.auth.userPerm)
++            .subscribe((layerDesign: Array<LayerGroup>) => {
++              const justEgitimBolgeleriLayers = layerDesign.filter(layer => layer.category === 'Eğitim Bölgeleri');
++              this.addLayersToMap(map, FeatureLayer, justEgitimBolgeleriLayers);
++            });
+         }
+       });
+     }, (error) => {
+diff --git a/src/app/mapUtils/layer-utils.service.ts b/src/app/mapUtils/layer-utils.service.ts
+index 838ede5185494fb3bc70b0be460d2ef775751dd5..e836bbda62f1a311a9b9048dbc93adc4f301dfbe 100644
+--- a/src/app/mapUtils/layer-utils.service.ts
++++ b/src/app/mapUtils/layer-utils.service.ts
+@@ -444,7 +444,7 @@ export class LayerUtilsService {
+             definitionName: 'Bina Kurum',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'yapi_durum<>Yıkıldı',
+-            layerOrder: 17,
++            layerOrder: 32,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -457,7 +457,7 @@ export class LayerUtilsService {
+             definitionName: 'Bina Diğer',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'yapi_durum<>Yıkıldı',
+-            layerOrder: 18,
++            layerOrder: 33,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -470,7 +470,7 @@ export class LayerUtilsService {
+             definitionName: 'Detay Alan',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif',
+-            layerOrder: 19,
++            layerOrder: 34,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -482,7 +482,7 @@ export class LayerUtilsService {
+             definitionName: 'Detay Nokta',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif',
+-            layerOrder: 20,
++            layerOrder: 35,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -494,7 +494,7 @@ export class LayerUtilsService {
+             definitionName: 'Nokta Kurum',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'kurum_durum=Açık',
+-            layerOrder: 21,
++            layerOrder: 36,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -507,7 +507,7 @@ export class LayerUtilsService {
+             definitionName: 'Alan Kampus',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif',
+-            layerOrder: 16,
++            layerOrder: 31,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -526,7 +526,7 @@ export class LayerUtilsService {
+             definitionName: 'Yerlesim Plan Siniri',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif',
+-            layerOrder: 5,
++            layerOrder: 20,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -544,7 +544,7 @@ export class LayerUtilsService {
+                 definitionExpression: 'alt_fonksiyonu<>Yüksek Eğitim Tesis Alanı and alt_fonksiyonu' +
+                   '<>Özel Eğitim Tesis Alanı and ' +
+                   'ana_fonksiyonu=Eğitim Alanları and aktif_mi=aktif',
+-                layerOrder: 7,
++                layerOrder: 22,
+                 visible: true,
+                 renderer: {
+                   type: 'simple',
+@@ -568,7 +568,7 @@ export class LayerUtilsService {
+                 definitionName: 'Plan Sinir',
+                 outFields: ['objectid', 'globalid'],
+                 definitionExpression: 'ana_fonksiyonu=Eğitim Dışı Alanlar and aktif_mi=aktif',
+-                layerOrder: 8,
++                layerOrder: 23,
+                 visible: true,
+                 renderer: {
+                   type: 'simple',
+@@ -592,7 +592,7 @@ export class LayerUtilsService {
+                 definitionName: 'Plan Sinir',
+                 outFields: ['objectid', 'globalid'],
+                 definitionExpression: 'alt_fonksiyonu=Yüksek Eğitim Tesis Alanı and aktif_mi=aktif',
+-                layerOrder: 9,
++                layerOrder: 24,
+                 visible: true,
+                 renderer: {
+                   type: 'simple',
+@@ -616,7 +616,7 @@ export class LayerUtilsService {
+                 definitionName: 'Plan Sinir',
+                 outFields: ['objectid', 'globalid'],
+                 definitionExpression: 'alt_fonksiyonu=Özel Eğitim Tesis Alanı and aktif_mi=aktif',
+-                layerOrder: 10,
++                layerOrder: 25,
+                 visible: true,
+                 renderer: {
+                   type: 'simple',
+@@ -642,7 +642,7 @@ export class LayerUtilsService {
+             definitionName: 'Oturum Alani',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif',
+-            layerOrder: 6,
++            layerOrder: 21,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -672,7 +672,7 @@ export class LayerUtilsService {
+             definitionName: 'Kadastro Parseli',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif',
+-            layerOrder: 11,
++            layerOrder: 26,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -685,7 +685,7 @@ export class LayerUtilsService {
+             definitionName: 'Kadastro Parseli',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif and mulkiyet=Müstakil Hazine',
+-            layerOrder: 12,
++            layerOrder: 27,
+             visible: false,
+             renderer: {
+               type: 'simple',
+@@ -710,7 +710,7 @@ export class LayerUtilsService {
+             definitionName: 'Kadastro Parseli',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif and mulkiyet=Müşterek Hazine',
+-            layerOrder: 13,
++            layerOrder: 28,
+             visible: false,
+             renderer: {
+               type: 'simple',
+@@ -735,7 +735,7 @@ export class LayerUtilsService {
+             definitionName: 'Kadastro Parseli',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif and mulkiyet=Kamu',
+-            layerOrder: 14,
++            layerOrder: 29,
+             visible: false,
+             renderer: {
+               type: 'simple',
+@@ -760,7 +760,7 @@ export class LayerUtilsService {
+             definitionName: 'Kadastro Parseli',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=aktif and mulkiyet=Şahıs',
+-            layerOrder: 15,
++            layerOrder: 30,
+             visible: false,
+             renderer: {
+               type: 'simple',
+@@ -792,7 +792,7 @@ export class LayerUtilsService {
+             definitionName: 'Bina Kurum',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'yapi_durum=Yıkıldı',
+-            layerOrder: 27,
++            layerOrder: 10,
+             visible: false,
+             renderer: {
+               type: 'simple',
+@@ -817,7 +817,7 @@ export class LayerUtilsService {
+             definitionName: 'Bina Diğer',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'yapi_durum=Yıkıldı',
+-            layerOrder: 28,
++            layerOrder: 11,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -829,7 +829,7 @@ export class LayerUtilsService {
+             definitionName: 'Detay Alan',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 29,
++            layerOrder: 12,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -841,7 +841,7 @@ export class LayerUtilsService {
+             definitionName: 'Detay Nokta',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 30,
++            layerOrder: 13,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -853,7 +853,7 @@ export class LayerUtilsService {
+             definitionName: 'Nokta Kurum',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'kurum_durum=Kapalı',
+-            layerOrder: 31,
++            layerOrder: 14,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -866,7 +866,7 @@ export class LayerUtilsService {
+             definitionName: 'Alan Kampus',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 26,
++            layerOrder: 9,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -878,7 +878,7 @@ export class LayerUtilsService {
+             definitionName: 'Yerlesim Plan Siniri',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 22,
++            layerOrder: 5,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -889,7 +889,7 @@ export class LayerUtilsService {
+             definitionName: 'Plan Sinir',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 24,
++            layerOrder: 7,
+             visible: false,
+             renderer: {
+               type: 'simple',
+@@ -913,7 +913,7 @@ export class LayerUtilsService {
+             definitionName: 'Oturum Alani',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 23,
++            layerOrder: 6,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -924,7 +924,7 @@ export class LayerUtilsService {
+             definitionName: 'Kadastro Parseli',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'aktif_mi=pasif',
+-            layerOrder: 25,
++            layerOrder: 8,
+             visible: false,
+             authorized: true,
+             isActive: false,
+@@ -945,7 +945,7 @@ export class LayerUtilsService {
+             definitionName: 'Ozel Bina Kurum',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: '',
+-            layerOrder: 33,
++            layerOrder: 17,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -971,7 +971,7 @@ export class LayerUtilsService {
+             definitionName: 'Ozel Detay Alan',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: '',
+-            layerOrder: 34,
++            layerOrder: 18,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -997,7 +997,7 @@ export class LayerUtilsService {
+             definitionName: 'Ozel Nokta Kurum',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: 'kurum_durum=Açık',
+-            layerOrder: 35,
++            layerOrder: 19,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -1011,7 +1011,7 @@ export class LayerUtilsService {
+             definitionName: 'Ozel Alan Kampus',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: '',
+-            layerOrder: 32,
++            layerOrder: 16,
+             visible: true,
+             authorized: true,
+             isActive: true,
+@@ -1037,7 +1037,7 @@ export class LayerUtilsService {
+             definitionName: 'Ozel Egitim Alani',
+             outFields: ['objectid', 'globalid'],
+             definitionExpression: '',
+-            layerOrder: 33,
++            layerOrder: 15,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -1059,7 +1059,7 @@ export class LayerUtilsService {
+             layerName: 'Anaokul',
+             definitionName: 'iedb.sde.agitim_alan',
+             definitionExpression: 'bolge_tipi=Anaokul',
+-            layerOrder: 1,
++            layerOrder: 37,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -1084,7 +1084,7 @@ export class LayerUtilsService {
+             layerName: 'İlkokul',
+             definitionName: 'iedb.sde.agitim_alan',
+             definitionExpression: 'bolge_tipi=İlkokul', // Bunun İlkokul Olarak Düzeltilmesi Gerek
+-            layerOrder: 2,
++            layerOrder: 38,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -1109,7 +1109,7 @@ export class LayerUtilsService {
+             layerName: 'Ortaokul',
+             definitionName: 'iedb.sde.agitim_alan',
+             definitionExpression: 'bolge_tipi=Ortaokul',
+-            layerOrder: 3,
++            layerOrder: 39,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -1134,7 +1134,7 @@ export class LayerUtilsService {
+             layerName: 'İmam Hatip Ortaokulu',
+             definitionName: 'iedb.sde.agitim_alan',
+             definitionExpression: 'bolge_tipi=İmam Hatip Ortaokulu',
+-            layerOrder: 4,
++            layerOrder: 40,
+             visible: false,
+             authorized: true,
+             isActive: true,
+@@ -1159,7 +1159,7 @@ export class LayerUtilsService {
+             layerName: 'Lise',
+             definitionName: 'iedb.sde.agitim_alan',
+             definitionExpression: 'bolge_tipi=Lise',
+-            layerOrder: 5,
++            layerOrder: 41,
+             visible: false,
+             authorized: true,
+             isActive: true,
+diff --git a/src/global.scss b/src/global.scss
+index dfbb1e72abb08805b4a74ca92b6ebc31101e6c84..8a6e6979f6d7b55a0f09e4832a13e7a2824a78d3 100644
+--- a/src/global.scss
++++ b/src/global.scss
+@@ -45,4 +45,4 @@ $headerItemsBorder: 1px solid rgba(0, 0, 0, .1);
+ wizard-navigation-bar.horizontal.large-empty-symbols {
+   overflow: auto !important;
+   max-width: 1000px !important;
+-}
++}
+\ No newline at end of file
+diff --git a/src/index.html b/src/index.html
+index d8c7a69b1a491ebf9793dde0748f0fee35376d7e..1d706a2651643345fecc8d29eb9d64ff0c65643e 100644
+--- a/src/index.html
++++ b/src/index.html
+@@ -8,6 +8,8 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <meta name="google" content="notranslate">
+   <link rel="icon" type="image/x-icon" href="favicon.ico">
++  <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/4.12/esri/css/main.css">
++
+ </head>
+ <body>
+   <app-root></app-root>
+diff --git a/src/styles.scss b/src/styles.scss
+index 4984936b45e55600465c9985cfe9c75158a12dad..21013c536b75a7f7f56de5efa23ccda30ab9e3f7 100644
+--- a/src/styles.scss
++++ b/src/styles.scss
+@@ -1,5 +1,4 @@
+ /* You can add global styles to this file, and also import other style files */
+-@import 'https://js.arcgis.com/4.11/esri/css/main.css';
+ @import "~ag-grid-community/dist/styles/ag-grid.css";
+ @import "~ag-grid-community/dist/styles/ag-theme-balham.css";
+ @import './global.scss';
