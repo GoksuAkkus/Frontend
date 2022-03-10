@@ -1,0 +1,104 @@
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+index 48a624cc0854c52f4975d5c8c5c3094afdf05d2e..17a443fd69c6f33627812ec6f11d78c346ed22a3 100644
+--- a/src/app/models/MaksData.ts
++++ b/src/app/models/MaksData.ts
+@@ -5,6 +5,7 @@ export class MaksData {
+     mahalleler: Array<Mahalle>;
+     csbmler: Array<Csbm>;
+     binalar: Array<Bina>;
++    bucaklar: Array<Bucak>;
+     geometry: MaksGeometry;
+     error: Error;
+ }
+@@ -38,6 +39,24 @@ export interface Csbm {
+     kod: number;
+ }
+ 
++export interface Bucak {
++    bucakAdi: string;
++    kod: number;
++    bagliKoyListesi: Koy[];
++}
++
++export interface Koy {
++    koyAdi: string;
++    kod: number;
++    bagliMahalleListesi: KoyMahalle[];
++}
++
++export interface KoyMahalle {
++    mahalleAdi: string;
++    kod: number;
++    mahalleTipKod: string;
++}
++
+ export interface Bina {
+ 
+     ilKodu: number;
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+index d6eedaf019d41a4262d8707e32fc5012e8e5f82e..e98ef973582144aa57a8884c57c8658601576339 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -11,7 +11,6 @@
+           fill="#d1000f" />
+       </g>
+     </svg>
+-
+   </div>
+   <div class="form-container">
+     <form class="form">
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index aabdba66edecc80e4d3c9742fa7d9ebc31e3391a..b4761dc91c49e2db79b8fa54545608bcbd3f130a 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -4,7 +4,7 @@ import { loadModules } from 'esri-loader';
+ import { DialogService } from 'src/app/dialog/dialog.service';
+ import { MapService } from 'src/app/mapUtils/map.service';
+ import { DistrictPermTKGM, UserPermission } from 'src/app/models/Login/user-permission';
+-import { MaksData, Ilce, UavtIlIlce, IlClass, Bina } from 'src/app/models/MAKSData';
++import { MaksData, Ilce, UavtIlIlce, IlClass, Bina, Bucak, Mahalle } from 'src/app/models/MAKSData';
+ import { SearchFilterObject } from 'src/app/models/TKGM/tkgm-search-data';
+ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AuthService } from 'src/app/services/auth.service';
+@@ -274,6 +274,7 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+         inputArray[1] = kod;
+         dataService.getMahallelerFromMAKS(inputArray[1]).subscribe(res => {
+           this.dataArray[0].mahalleler = res['mahalleler'];
++          this.setKoyMahalleleri(res['bucaklar']);
+           this.filterArray[0].mahalleler = res['mahalleler'];
+         });
+         this.emptyArrays(selectName);
+@@ -308,6 +309,33 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
++  setKoyMahalleleri(bucaklar: Array<Bucak>) {
++    this.dataArray[0].bucaklar = bucaklar;
++    let bucakAdi = '';
++    let koyAdi = '';
++    let koyMahallesiAdi = '';
++    let koyMahallesiKodu = 0;
++    let mahalleTipi = '';
++    bucaklar.forEach(bucak => {
++      bucakAdi = bucak.bucakAdi;
++      bucak.bagliKoyListesi.forEach(koyler => {
++        koyAdi = koyler.koyAdi;
++        koyler.bagliMahalleListesi.forEach(koyMahallesi => {
++          koyMahallesiAdi = koyMahallesi.mahalleAdi;
++          koyMahallesiKodu = koyMahallesi.kod;
++          mahalleTipi = koyMahallesi.mahalleTipKod['aciklama'];
++          if (koyMahallesiAdi === null) {
++            koyMahallesiAdi = 'KÖYÜN KENDİSİ';
++          }
++          const ad = bucakAdi + ',' + koyAdi + ',' + koyMahallesiAdi + ', ' + mahalleTipi;
++
++          const yeniMahalle: Mahalle = { ad: ad, kod: koyMahallesiKodu };
++          this.dataArray[0].mahalleler.push(yeniMahalle);
++        });
++      });
++    });
++  }
++
+   async onClickBinayaGit(binalar: Bina[]) {
+     this.mapService.clearSelectedGraphics('type', 'BinaKoduSorgula');
+ 
