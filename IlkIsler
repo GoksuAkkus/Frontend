@@ -1,0 +1,1541 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index a91b6c0093d8cdc78a0f52a03c8ddf950d71fea0..660f1cdaf3080d6b467a6600ea2d6ed5a0ff13d2 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -74,6 +74,7 @@ import { NviSearchComponent } from './search/nvi-search/nvi-search.component';
+ import { NviDialogComponent } from './nvi-dialog/nvi-dialog.component';
+ import { AttachmentEditorComponent } from './attachment-editor/attachment-editor.component';
+ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.component';
++import { ReportTableComponent } from './report-table/report-table.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -144,6 +145,7 @@ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.componen
+     NviDialogComponent,
+     AttachmentEditorComponent,
+     AnalysisLayerComponent,
++    ReportTableComponent,
+   ],
+   imports: [
+     BrowserAnimationsModule,
+@@ -164,7 +166,7 @@ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.componen
+     CreateModuleComponent, ModuleListComponent, MovementListComponent, MovementCreateComponent,
+     MalikSerhComponent, AcceptDialogComponent, PendingTableComponent, MessageDialogComponent,
+     KisiTasinmazSearchComponent, ModuleReportComponent, SayistayReportComponent, MultiModuleListComponent,
+-    HisseSerhComponent, NviDialogComponent, AttachmentEditorComponent],
++    HisseSerhComponent, NviDialogComponent, AttachmentEditorComponent, ReportTableComponent],
+   providers: [],
+   bootstrap: [AppComponent]
+ })
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 3814592e3ffc9be23db21d46753e8e3f189881f7..fc7aaaee6c48ec5d9158351f79a5cd205abef435 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -224,6 +224,7 @@ export class EsriMapComponent implements OnInit {
+         }
+       };
+       const mapView: esri.MapView = new EsriMapView(mapViewProperties);
++
+       mapView.when(() => {
+         const outputObject: Object = {
+           map: map,
+@@ -268,7 +269,7 @@ export class EsriMapComponent implements OnInit {
+     const urls = [] as Array<RegExp>;
+     const regExp = RegExp(/https:\/\/tucbs-public-api.csb.gov.tr/g);
+     const nregExp = RegExp(/http:\/\/ncbsservis.csb.gov.tr/g);
+-    const gisregExp = RegExp(/http:\/\/gis-prod-api.csb.gov.tr/g);
++    const gisregExp = RegExp(/https:\/\/gis-prod-api.csb.gov.tr/g);
+     urls.push(regExp, nregExp, gisregExp);
+ 
+     const esriRequestInterceptor = <esri.RequestInterceptor>{
+@@ -294,7 +295,7 @@ export class EsriMapComponent implements OnInit {
+     if (this.auth.user.nameid !== 1) {
+       this.auth.me().subscribe(res => {
+         this.prepareLayers(map, FeatureLayer);
+-        // this.createAnalysisLayers(map);
++        this.createAnalysisLayers(map);
+         this.createOtherLayers(map, FeatureLayer, GraphicsLayer);
+         this.createTKGMLayers(map);
+         this.createMaksLayers(map);
+@@ -305,7 +306,7 @@ export class EsriMapComponent implements OnInit {
+     } else {
+       this.auth.userPerm = undefined;
+       this.prepareLayers(map, FeatureLayer);
+-      // this.createAnalysisLayers(map);
++      this.createAnalysisLayers(map);
+       this.createOtherLayers(map, FeatureLayer, GraphicsLayer);
+       this.createTKGMLayers(map);
+       this.createMaksLayers(map);
+@@ -641,6 +642,7 @@ export class EsriMapComponent implements OnInit {
+           layer['title'] = layer.name;
+           layer['opacity'] = 1;
+ 
++          layer['minScale'] = 18056;
+           return layer;
+         });
+ 
+@@ -649,8 +651,10 @@ export class EsriMapComponent implements OnInit {
+           title: 'Analiz Layers',
+           visible: true,
+           sublayers: subLayerArray,
++          minScale: 18056,
+           opacity: 1,
+         };
++
+         const mapImageLayer = new MapImageLayerConstructor(mapImageLayerProperties);
+         mapImageLayer.set('analysis', true);
+         map.add(mapImageLayer);
+@@ -987,17 +991,17 @@ export class EsriMapComponent implements OnInit {
+       const title = layer.definitionName;
+       switch (title) {
+         case 'Nokta Kurum':
+-        url = environment.arcgisEkServislerURL + 'FeatureServer/' + 7;
+-        break;
++          url = environment.arcgisEkServislerURL + 'FeatureServer/' + 7;
++          break;
+         case 'Detay Alan':
+-        url = environment.arcgisEkServislerURL + 'FeatureServer/' + 8;
+-        break;
++          url = environment.arcgisEkServislerURL + 'FeatureServer/' + 8;
++          break;
+         case 'Bina Kurum':
+-        url = environment.arcgisEkServislerURL + 'FeatureServer/' + 9;
+-        break;
++          url = environment.arcgisEkServislerURL + 'FeatureServer/' + 9;
++          break;
+         case 'Alan Kampus':
+-        url = environment.arcgisEkServislerURL + 'FeatureServer/' + 10;
+-        break;
++          url = environment.arcgisEkServislerURL + 'FeatureServer/' + 10;
++          break;
+       }
+     } else {
+       url = environment.arcgisMEBURL + 'FeatureServer/' + layer.id;
+diff --git a/src/app/models/ArcgisService/service-info.ts b/src/app/models/ArcgisService/service-info.ts
+index 4cc2dc5ceadee2843779a9025ea67b700a7ffa0e..67d1e215b6160507d3e909abe9b61346980a961e 100644
+--- a/src/app/models/ArcgisService/service-info.ts
++++ b/src/app/models/ArcgisService/service-info.ts
+@@ -4,4 +4,10 @@ export interface ServiceInfo {
+ export interface LayerInfo {
+     id: number;
+     name: string;
++    parentLayerId: number;
++    subLayerIds: string;
++}
++
++export interface GroupLayerModel extends LayerInfo {
++    subLayers?: Array<LayerInfo>;
+ }
+diff --git a/src/app/module-report/module-report.component.html b/src/app/module-report/module-report.component.html
+index e3ec37538805059e26f17f3d3f4ff815a7015257..746dc2e5b19ffde081c89db20b38f882b6471478 100644
+--- a/src/app/module-report/module-report.component.html
++++ b/src/app/module-report/module-report.component.html
+@@ -11,16 +11,20 @@
+       (rowClicked)="onRowClicked($event)">
+     </ag-grid-angular>
+   </div>
+-  <button (click)="exportDataAsExcel()" class="btn-feyz">
+-    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 26 26"
+-      xml:space="preserve" width="24">
+-      <path style="fill:white;" d="M25.162,3H16v2.984h3.031v2.031H16V10h3v2h-3v2h3v2h-3v2h3v2h-3v3h9.162
++  <div class="button-container">
++    <button (click)="exportDataAsExcel()" class="btn-feyz">
++      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
++        viewBox="0 0 26 26" xml:space="preserve" width="24">
++        <path style="fill:white;" d="M25.162,3H16v2.984h3.031v2.031H16V10h3v2h-3v2h3v2h-3v2h3v2h-3v3h9.162
+             C25.623,23,26,22.609,26,22.13V3.87C26,3.391,25.623,3,25.162,3z M24,20h-4v-2h4V20z M24,16h-4v-2h4V16z M24,12h-4v-2h4V12z M24,8
+             h-4V6h4V8z" />
+-      <path style="fill:white;" d="M0,2.889v20.223L15,26V0L0,2.889z M9.488,18.08l-1.745-3.299c-0.066-0.123-0.134-0.349-0.205-0.678
++        <path style="fill:white;" d="M0,2.889v20.223L15,26V0L0,2.889z M9.488,18.08l-1.745-3.299c-0.066-0.123-0.134-0.349-0.205-0.678
+             H7.511C7.478,14.258,7.4,14.494,7.277,14.81l-1.751,3.27H2.807l3.228-5.064L3.082,7.951h2.776l1.448,3.037
+             c0.113,0.24,0.214,0.525,0.304,0.854h0.028c0.057-0.198,0.163-0.492,0.318-0.883l1.61-3.009h2.542l-3.037,5.022l3.122,5.107
+             L9.488,18.08L9.488,18.08z" />
+-    </svg>
+-  </button>
+-</div>
+\ No newline at end of file
++      </svg>
++    </button>
++    <input *ngIf="guiPermissions[1] === true" class="layer-show-button" type="button" value="Katman Görüntüle"
++      (click)="onOpenSymbologyDialog()">
++  </div>
++</div>
+diff --git a/src/app/module-report/module-report.component.scss b/src/app/module-report/module-report.component.scss
+index 3c4671b1be4a7463d54a044dec6b27d30c9710ec..a17b517109bc7ad0ee1911ba82c72e2a4765fba5 100644
+--- a/src/app/module-report/module-report.component.scss
++++ b/src/app/module-report/module-report.component.scss
+@@ -21,27 +21,59 @@
+   width: 100%;
+ }
+ 
+-.btn-feyz {
++
++
++.button-container {
+   display: flex;
+-  align-items: center;
+-  justify-content: center;
+-  color: white;
+-  border-radius: 4px;
+-  background-color: $primaryColor;
+-  padding: 6px 8px;
+-  outline: none;
+-  border: none;
+-  width: 40px;
+-  font-weight: 600;
+-  font-size: 16px;
+-  transition: background-color .3s ease-out;
+-  cursor: pointer;
+-
+-  &:hover {
+-    background-color: lighten($primaryColor, 8);
++
++  >.btn-feyz {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    color: white;
++    border-radius: 4px;
++    background-color: $primaryColor;
++    padding: 6px 8px;
++    outline: none;
++    border: none;
++    width: 40px;
++    font-weight: 600;
++    font-size: 16px;
++    transition: background-color .3s ease-out;
++    cursor: pointer;
++
++    &:hover {
++      background-color: lighten($primaryColor, 8);
++    }
++
++    &:active {
++      background-color: lighten($primaryColor, 20);
++    }
+   }
+ 
+-  &:active {
+-    background-color: lighten($primaryColor, 20);
++  >.layer-show-button {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    color: white;
++    border-radius: 4px;
++    background-color: $primaryColor;
++    padding: 6px 8px;
++    outline: none;
++    border: none;
++    width: 200px;
++    font-weight: 600;
++    font-size: 16px;
++    margin-left: 20px;
++    transition: background-color .3s ease-out;
++    cursor: pointer;
++
++    &:hover {
++      background-color: lighten($primaryColor, 8);
++    }
++
++    &:active {
++      background-color: lighten($primaryColor, 20);
++    }
+   }
+ }
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index bee81ed02cf47fcf5bf251b9471fca7345ec411a..77721a441ef828b982f6c5180c5df0edc228c5c1 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -3,7 +3,7 @@ import { AgGridNg2 } from 'ag-grid-angular';
+ import { DialogConfig } from '../dialog/dialog-config';
+ import { DialogRef } from '../dialog/dialog-ref';
+ import esri = __esri;
+-import { ColDef, IDatasource, IGetRowsParams, RowClickedEvent } from 'ag-grid-community';
++import { ColDef, IDatasource, IGetRowsParams, RowClickedEvent, ColumnApi } from 'ag-grid-community';
+ import { ModulesModel } from '../models/Info/modules-model';
+ import { HttpClient, HttpHeaders } from '@angular/common/http';
+ import { AuthService } from '../services/auth.service';
+@@ -16,6 +16,8 @@ import { MovementData } from '../models/movement/movement-data';
+ import { DialogService } from '../dialog/dialog.service';
+ import { ProgressInfoComponent } from '../progress-info/progress-info.component';
+ import { environment } from 'src/environments/environment';
++import { UserPermission } from '../models/Login/user-permission';
++import { LayerSymbologyComponent } from '../layer-symbology/layer-symbology.component';
+ @Component({
+   selector: 'app-module-report',
+   templateUrl: './module-report.component.html',
+@@ -29,11 +31,20 @@ export class ModuleReportComponent implements OnInit {
+   moduleData: Array<ModulesModel> = [];
+   allowedModules: { ids: Array<number>, names: Array<string> } = { ids: [], names: [] };
+   filterParams: esri.QueryProperties;
++  processMovementLayer: esri.FeatureLayer;
++
++  guiPermissions: Array<boolean> = [];
++  symbologyBuilderDialog: DialogRef;
++
+   constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef,
+     private http: HttpClient, private auth: AuthService, private dialog: DialogService) { }
+ 
+   ngOnInit() {
+-    this.mapView = <esri.MapView>this.dialogConfig.data.mapView;
++    const data = this.dialogConfig.data;
++    this.mapView = <esri.MapView>data.mapView;
++    const userPermission = data.userPerm;
++
++    this.fillGUIAuthorization(userPermission);
+     this.initalizeAGGrid();
+   }
+ 
+@@ -56,7 +67,6 @@ export class ModuleReportComponent implements OnInit {
+       search_id = rowClickedEvent.data.i_parsel_id;
+     }
+ 
+-
+     const map = this.mapView.map;
+     if (status === 0) {
+       const queryLayer = <esri.FeatureLayer>map.layers.find(layer => layer.title === 'Yapılar');
+@@ -225,6 +235,35 @@ export class ModuleReportComponent implements OnInit {
+     });
+   }
+ 
++  onOpenSymbologyDialog() {
++    const columnApi: ColumnApi = this.agGrid.api['columnController'];
++
++    const columnsToExport = columnApi.getAllDisplayedColumns();
++
++    const fields = this.processMovementLayer.fields;
++    const layerFields = [];
++    columnsToExport.forEach(column => {
++      const foundField = fields.find(field => field.name === column.getColId());
++      if (foundField !== undefined) {
++        layerFields.push(foundField);
++      }
++    });
++    if (columnsToExport.length === 0) {
++      console.error('Katman olarak görüntülemek için tabloda listelemeniz gerekmektedir');
++    } else {
++      this.closeSymbologyBuilder();
++      this.symbologyBuilderDialog = this.dialog.open(LayerSymbologyComponent, 'Sembol Oluşturucu', true, {
++        data: {
++          geometry: undefined,
++          whereQuery: this.whereQuery,
++          layer: this.processMovementLayer,
++          fields: layerFields,
++          mapView: this.mapView,
++        }
++      }, true, 'red-to-light');
++    }
++  }
++
+   getAllModules(where: string) {
+     const agGrid = this.agGrid;
+     const agGridApi = agGrid.api;
+@@ -235,6 +274,7 @@ export class ModuleReportComponent implements OnInit {
+ 
+     const moduleLayer = <esri.FeatureLayer>layers.find(layer => layer.title === 'İslem');
+     const processMovementLayer = <esri.FeatureLayer>layers.find(layer => layer.title === 'İslem_Hareket');
++    this.processMovementLayer = processMovementLayer;
+ 
+     const definitionExpression = processMovementLayer.definitionExpression === null ?
+       '' : processMovementLayer.definitionExpression + ' AND ';
+@@ -391,7 +431,7 @@ export class ModuleReportComponent implements OnInit {
+ 
+   getExtraFields(processMovementLayer: esri.FeatureLayer, isAllShowed?: boolean) {
+     const searchFields = ['parsel_no', 'ada_no', 'i_il', 'i_ilce', 'i_touch_by'];
+-    const fieldAliases = ['Parsel No', 'Ada No', 'İl', 'İlçe' , 'Kullanıcı'];
++    const fieldAliases = ['Parsel No', 'Ada No', 'İl', 'İlçe', 'Kullanıcı'];
+ 
+     if (isAllShowed !== true) {
+       searchFields.unshift('i_parsel_id', 'i_bina_id');
+@@ -624,4 +664,34 @@ export class ModuleReportComponent implements OnInit {
+       progressDialog.close();
+     });
+   }
++
++  fillGUIAuthorization(userPermission: UserPermission) {
++    this.guiPermissions.push(this.isAuthorized(userPermission, 0));
++    this.guiPermissions.push(this.isAuthorized(userPermission, 1));
++  }
++
++  isAuthorized(userPermission: UserPermission, id: number) {
++    if (userPermission === undefined) {
++      return true;
++    }
++
++    const flattenPermItems = userPermission.flattenPermGUI[1];
++
++    if (flattenPermItems !== undefined) {
++      if (flattenPermItems.items.includes(id)) {
++        return true;
++      } else {
++        return false;
++      }
++    } else {
++      return false;
++    }
++  }
++
++  closeSymbologyBuilder() {
++    if (this.symbologyBuilderDialog !== undefined) {
++      this.symbologyBuilderDialog.close();
++      this.symbologyBuilderDialog = undefined;
++    }
++  }
+ }
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 55aa1c05d17c06a7db18f86a840dd751d34434e3..b85a5af5964b6b11d09061456724e62c861bfdf1 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -609,7 +609,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+   updateAttachments(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+     const featureAttributes = <any>this.infoAttributes;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson`;
++    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
++      `&token=${sessionStorage.getItem('CBSArcToken')}`;
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined) {
+         if (attachments.length === 0) {
+@@ -653,8 +654,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+   removeIfHasAttachment(dialog: DialogRef) {
+     const featureAttributes = <any>this.infoAttributes;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson&
+-    token=${sessionStorage.getItem('CBSArcToken')}`;
++    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
++      `&token=${sessionStorage.getItem('CBSArcToken')}`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined && attachments.length > 0) {
+@@ -1378,7 +1379,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const attachmentId = attachment.id;
+     const contentType = attachment.contentType;
+ 
+-    const url = `${environment.arcgisMEBURL}FeatureServer/14/${objectId}/attachments/${attachmentId}`;
++    const url = `${environment.arcgisMEBURL}FeatureServer/14/${objectId}/attachments/${attachmentId}` +
++      `?token=${sessionStorage.getItem('CBSArcToken')}`;
+     this.http.get(url, { responseType: 'blob' }).subscribe((data: Blob) => {
+ 
+       const downloadURL = window.URL.createObjectURL(data);
+diff --git a/src/app/modules/module-list/rendererClass/multi-renderer.component.ts b/src/app/modules/module-list/rendererClass/multi-renderer.component.ts
+index bb91120afe76377af118a769c111377c8bc86c08..c56266d0f9c4cb71341cc120ba3290a223e3a280 100644
+--- a/src/app/modules/module-list/rendererClass/multi-renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/multi-renderer.component.ts
+@@ -112,7 +112,8 @@ export class MultiRendererComponent implements ICellRendererAngularComp {
+             this.loadingStatus = true;
+             const id = params['id'];
+             if (state === 6) {
+-                const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson`;
++                const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson` +
++                    `&token=${sessionStorage.getItem('CBSArcToken')}`;
+                 this.http.get(url).subscribe(res => {
+                     const attachmentInfos = <Array<esri.AttachmentInfo>>res['attachmentInfos'];
+ 
+@@ -126,7 +127,7 @@ export class MultiRendererComponent implements ICellRendererAngularComp {
+ 
+         if (this.params.title === 'Hareketler') {
+             const parentComponent: MultiModuleListComponent = this.params.context.componentParent;
+-            const operations = <Array<ModuleOperations>> parentComponent.multiModuleData.multiModulesData.operations;
++            const operations = <Array<ModuleOperations>>parentComponent.multiModuleData.multiModulesData.operations;
+             if (params.data !== undefined) {
+                 const rowData = params.data;
+                 const islem_turu = rowData.islem_turu;
+@@ -145,18 +146,18 @@ export class MultiRendererComponent implements ICellRendererAngularComp {
+             (<MultiModuleListComponent>this.params.context.componentParent).openModuleDetail(this.params);
+         } else if (this.params.title === 'Hareketler') {
+             (<MultiModuleListComponent>this.params.context.componentParent).openMovementList(this.params);
+-        // } else if (this.params.title === 'Düzenle') {
++            // } else if (this.params.title === 'Düzenle') {
+             // (<MultiModuleListComponent>this.params.context.componentParent).updateMovement(this.params.data);
+-        // } else if (this.params.title === 'Git. Parsel') {
+-        //     (<MultiModuleListComponent>this.params.context.componentParent).onOpenNewHistory(this.params.data, false);
+-        // } else if (this.params.title === 'Gel. Parsel') {
+-        //     (<MultiModuleListComponent>this.params.context.componentParent).onOpenNewHistory(this.params.data, true);
+-        // } else if (this.params.title === 'Malik/S-B-İ') {
+-        //     (<MultiModuleListComponent>this.params.context.componentParent).onGetSerhBeyanMalik(this.params.data);
+-        // } else if (this.params.title === 'Hisse Bilgisi') {
+-        //     (<MultiModuleListComponent>this.params.context.componentParent).getHisseByTasinmazId(this.params.data);
+-        // } else if (this.params.title === 'Tasin. Git') {
+-        //     (<MultiModuleListComponent>this.params.context.componentParent).goToTasinmazLocation(this.params.data);
++            // } else if (this.params.title === 'Git. Parsel') {
++            //     (<MultiModuleListComponent>this.params.context.componentParent).onOpenNewHistory(this.params.data, false);
++            // } else if (this.params.title === 'Gel. Parsel') {
++            //     (<MultiModuleListComponent>this.params.context.componentParent).onOpenNewHistory(this.params.data, true);
++            // } else if (this.params.title === 'Malik/S-B-İ') {
++            //     (<MultiModuleListComponent>this.params.context.componentParent).onGetSerhBeyanMalik(this.params.data);
++            // } else if (this.params.title === 'Hisse Bilgisi') {
++            //     (<MultiModuleListComponent>this.params.context.componentParent).getHisseByTasinmazId(this.params.data);
++            // } else if (this.params.title === 'Tasin. Git') {
++            //     (<MultiModuleListComponent>this.params.context.componentParent).goToTasinmazLocation(this.params.data);
+         } else {
+             console.error('PARAMS', this.params);
+             throw new Error(`${this.params.title} is unknown`);
+@@ -178,7 +179,8 @@ export class MultiRendererComponent implements ICellRendererAngularComp {
+         const attachmentId = attachment.id;
+         const contentType = attachment.contentType;
+ 
+-        const url = `${environment.arcgisMEBURL}FeatureServer/${id}/${objectId}/attachments/${attachmentId}`;
++        const url = `${environment.arcgisMEBURL}FeatureServer/${id}/${objectId}/attachments/${attachmentId}`
++            + `?token=${sessionStorage.getItem('CBSArcToken')}`;
+         this.http.get(url, { responseType: 'blob' }).subscribe((data: Blob) => {
+ 
+             const downloadURL = window.URL.createObjectURL(data);
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index 5010dfaeaf9e4d56f5d1e1526d8d5fc8c925f73f..34839e7ae4d13ce56d8a34f0542fe33a72e7ae89 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -111,7 +111,8 @@ export class RendererComponent implements ICellRendererAngularComp {
+             this.loadingStatus = true;
+             const id = params['id'];
+             if (state === 6) {
+-                const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson`;
++                const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson` +
++                    `&token=${sessionStorage.getItem('CBSArcToken')}`;
+                 this.http.get(url).subscribe(res => {
+                     const attachmentInfos = <Array<esri.AttachmentInfo>>res['attachmentInfos'];
+ 
+@@ -178,7 +179,9 @@ export class RendererComponent implements ICellRendererAngularComp {
+         const attachmentId = attachment.id;
+         const contentType = attachment.contentType;
+ 
+-        const url = `${environment.arcgisMEBURL}FeatureServer/${id}/${objectId}/attachments/${attachmentId}`;
++        const url = `${environment.arcgisMEBURL}FeatureServer/${id}/${objectId}/attachments/${attachmentId}` +
++            `?token=${sessionStorage.getItem('CBSArcToken')}`;
++
+         this.http.get(url, { responseType: 'blob' }).subscribe((data: Blob) => {
+ 
+             const downloadURL = window.URL.createObjectURL(data);
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 2eefea819fd0e139f4e61446e7ba60763aaaa374..35f34981651e9bba3f8fe0596f9573d9e351bdd0 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -302,9 +302,9 @@ export class MovementCreateComponent implements OnInit {
+ 
+           if (field.type === 'date' && !(formDataValue === undefined || formDataValue === null)) {
+             const date = new Date(formDataValue);
+-              if (!isNaN(date.getTime())) {
+-                formDataValue = new Date(formDataValue).toISOString().split('T')[0];
+-              }
++            if (!isNaN(date.getTime())) {
++              formDataValue = new Date(formDataValue).toISOString().split('T')[0];
++            }
+           } else if (field.type === 'domain') {
+             this.bindFieldDomainValues(<FormData>field);
+           }
+@@ -678,7 +678,9 @@ export class MovementCreateComponent implements OnInit {
+ 
+   updateAttachments(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+     const featureAttributes = <any>this.features;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`;
++    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`
++      + `&token=${sessionStorage.getItem('CBSArcToken')}`;
++
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined && attachments.length === 0) {
+         this.addAttachment(formValues, dialog, results);
+@@ -716,7 +718,8 @@ export class MovementCreateComponent implements OnInit {
+ 
+   removeIfHasAttachment(dialog: DialogRef) {
+     const featureAttributes = <any>this.features;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`;
++    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`
++      + `&token=${sessionStorage.getItem('CBSArcToken')}`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined && attachments.length > 0) {
+diff --git a/src/app/report-table/report-table.component.html b/src/app/report-table/report-table.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..5d41d8f6d790267fb67e22ccc8b0fa7ca5e765a3
+--- /dev/null
++++ b/src/app/report-table/report-table.component.html
+@@ -0,0 +1,22 @@
++<div class="modal-content">
++  <div style="display: flex;flex: 1">
++    <ag-grid-angular id="agGrid" #agGrid class="ag-theme-balham ag-grid">
++    </ag-grid-angular>
++  </div>
++  <div class="bottom-button-container">
++    <!-- <button *ngIf="guiPermissions[0] === true" (click)="exportDataAsExcel()" class="btn-feyz">
++      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
++        viewBox="0 0 26 26" xml:space="preserve" width="24">
++        <path style="fill:white;" d="M25.162,3H16v2.984h3.031v2.031H16V10h3v2h-3v2h3v2h-3v2h3v2h-3v3h9.162
++              C25.623,23,26,22.609,26,22.13V3.87C26,3.391,25.623,3,25.162,3z M24,20h-4v-2h4V20z M24,16h-4v-2h4V16z M24,12h-4v-2h4V12z M24,8
++              h-4V6h4V8z" />
++        <path style="fill:white;" d="M0,2.889v20.223L15,26V0L0,2.889z M9.488,18.08l-1.745-3.299c-0.066-0.123-0.134-0.349-0.205-0.678
++              H7.511C7.478,14.258,7.4,14.494,7.277,14.81l-1.751,3.27H2.807l3.228-5.064L3.082,7.951h2.776l1.448,3.037
++              c0.113,0.24,0.214,0.525,0.304,0.854h0.028c0.057-0.198,0.163-0.492,0.318-0.883l1.61-3.009h2.542l-3.037,5.022l3.122,5.107
++              L9.488,18.08L9.488,18.08z" />
++      </svg>
++    </button> -->
++    <!-- <input *ngIf="guiPermissions[1] === true" class="btn-feyz" type="button" value="Katman Görüntüle"
++      (click)="onOpenSymbologyDialog()"> -->
++  </div>
++</div>
+diff --git a/src/app/report-table/report-table.component.scss b/src/app/report-table/report-table.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..815799f4cdccc0b84c9b1ce9a4ecb2911be7c52b
+--- /dev/null
++++ b/src/app/report-table/report-table.component.scss
+@@ -0,0 +1,109 @@
++@import '../../global.scss';
++$color_1: white;
++
++.modal-content {
++  display: flex;
++  flex-direction: column;
++  justify-content: flex-start;
++  padding: 24px;
++  box-sizing: border-box;
++  width: 1000px;
++  max-height: 70vh;
++  min-height: 500px;
++  min-width: 500px;
++}
++
++.form-group {
++  width: 100%;
++  position: relative;
++  display: flex;
++
++  .login-input {
++    width: 100%;
++    border: none;
++    height: 20px;
++    background-color: transparent;
++    color: $primaryColor;
++    transition-duration: 0.3s;
++    border-bottom: 1px solid #e6e2e2;
++    word-break: break-all;
++  }
++
++  .floating-label {
++    position: absolute;
++    left: 0px;
++    transition: all 200ms;
++    opacity: 0.7;
++    font-weight: 600;
++    font-size: 18px;
++  }
++
++  .notch {
++    position: absolute;
++    right: 0;
++    height: 100%;
++    margin: auto 0;
++    pointer-events: none;
++    transition: .5s;
++  }
++}
++
++
++.login-input {
++
++  &:focus+.floating-label,
++  &:valid+.floating-label {
++    font-size: 75%;
++    transform: translate3d(0, -100%, 0);
++    opacity: 1;
++  }
++
++  &:focus {
++    outline: none;
++    color: $color_1;
++  }
++}
++
++.ag-grid {
++  width: 100%;
++  border-radius: 8px;
++}
++
++.show {
++  display: block;
++}
++
++.btn-feyz {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  color: white;
++  border-radius: 4px;
++  background-color: $primaryColor;
++  padding: 6px 8px;
++  outline: none;
++  border: none;
++  font-weight: 600;
++  font-size: 16px;
++  transition: background-color .3s ease-out;
++  cursor: pointer;
++
++  &:hover {
++    background-color: lighten($primaryColor, 8);
++  }
++
++  &:active {
++    background-color: lighten($primaryColor, 20);
++  }
++}
++
++.bottom-button-container {
++  display: grid;
++  grid-template-columns: auto auto 1fr;
++  grid-column-gap: 16px;
++  margin-top: 8px;
++}
++
++.hide {
++  visibility: hidden;
++}
+diff --git a/src/app/report-table/report-table.component.spec.ts b/src/app/report-table/report-table.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..55152c3395e88b6aac3599499ab76918715996c4
+--- /dev/null
++++ b/src/app/report-table/report-table.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { ReportTableComponent } from './report-table.component';
++
++describe('ReportTableComponent', () => {
++  let component: ReportTableComponent;
++  let fixture: ComponentFixture<ReportTableComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ ReportTableComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(ReportTableComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/report-table/report-table.component.ts b/src/app/report-table/report-table.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..1a4feeff94a39ad36eda9a945bd5d8eafebe1945
+--- /dev/null
++++ b/src/app/report-table/report-table.component.ts
+@@ -0,0 +1,470 @@
++import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
++import { AgGridNg2 } from 'ag-grid-angular';
++import { DialogRef } from '../dialog/dialog-ref';
++import { DialogConfig } from '../dialog/dialog-config';
++import { DialogService } from '../dialog/dialog.service';
++import { HttpClient, HttpHeaders } from '@angular/common/http';
++import esri = __esri;
++import { UserPermission } from '../models/Login/user-permission';
++import { environment } from 'src/environments/environment';
++import { loadModules } from 'esri-loader';
++import { ColDef, IDatasource, IGetRowsParams, ColumnApi } from 'ag-grid-community';
++import { SortModel } from '../models/AGGrid/sort-model';
++import { FilterModel } from '../models/AGGrid/filter-model';
++import { QueryConstructor } from '../models/AGGrid/query-constructor';
++import { ProgressInfoComponent } from '../progress-info/progress-info.component';
++import { LayerSymbologyComponent } from '../layer-symbology/layer-symbology.component';
++
++@Component({
++  selector: 'app-report-table',
++  templateUrl: './report-table.component.html',
++  styleUrls: ['./report-table.component.scss']
++})
++export class ReportTableComponent implements OnInit, OnDestroy {
++  @ViewChild('agGrid', { static: true }) agGrid: AgGridNg2;
++
++  guiPermissions: Array<boolean> = [];
++  mapView: esri.MapView;
++  symbologyBuilderDialog: DialogRef;
++  whereQuery: string;
++
++  filterParams: esri.QueryProperties;
++  reportLayer: esri.FeatureLayer;
++
++  constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService, private http: HttpClient) { }
++
++  ngOnInit() {
++    const data = this.dialogConfig.data;
++
++    const mapView: esri.MapView = data.mapView;
++    const selectedLayerID = <number>data.selectedLayerID;
++    const userPermission = data.userPerm;
++
++    this.mapView = mapView;
++
++    this.fillGUIAuthorization(userPermission);
++    this.initalizeAGGrid();
++    loadModules(['esri/layers/FeatureLayer']).then(([FeatureLayer]) => {
++      const FeatureLayerConstructor = <esri.FeatureLayerConstructor>FeatureLayer;
++
++      const featureLayerProperties = <esri.FeatureLayerProperties>{
++        title: 'Deneme',
++        url: `${environment.arcgisMEBRaporURL}/${selectedLayerID}`,
++        visible: false,
++        minScale: 0,
++        maxScale: 0
++      };
++
++      const reportLayer = new FeatureLayerConstructor(featureLayerProperties);
++      mapView.map.add(reportLayer);
++
++      reportLayer.on('layerview-create', (event) => {
++        this.reportLayer = reportLayer;
++
++        reportLayer.fields.forEach(field => field.set('rAuthorized', true));
++        this.filterData();
++      });
++    });
++  }
++
++  fillGUIAuthorization(userPermission: UserPermission) {
++    this.guiPermissions.push(this.isAuthorized(userPermission, 0));
++    this.guiPermissions.push(this.isAuthorized(userPermission, 1));
++  }
++
++  isAuthorized(userPermission: UserPermission, id: number) {
++    if (userPermission === undefined) {
++      return true;
++    }
++
++    const flattenPermItems = userPermission.flattenPermGUI[1];
++
++    if (flattenPermItems !== undefined) {
++      if (flattenPermItems.items.includes(id)) {
++        return true;
++      } else {
++        return false;
++      }
++    } else {
++      return false;
++    }
++  }
++
++  initalizeAGGrid() {
++    this.agGrid.floatingFilter = true;
++    this.agGrid.pagination = true;
++    this.agGrid.paginationAutoPageSize = true;
++    this.agGrid.maxBlocksInCache = 2;
++    this.agGrid.infiniteInitialRowCount = 1;
++    this.agGrid.rowModelType = 'infinite';
++    this.agGrid.rowDeselection = true;
++    this.agGrid.rowSelection = 'single';
++    this.agGrid.defaultColDef = {
++      sortable: true,
++      resizable: true,
++      filter: true,
++      width: 100
++    };
++    this.agGrid.localeText = {
++      page: 'Sayfa',
++      more: 'Daha',
++      to: '->',
++      of: ' / ',
++      next: 'Sonraki',
++      previous: 'Önceki',
++      loadingOoo: 'Yükleniyor...',
++      equals: 'Eşit',
++      notEqual: 'Eşit Değil',
++      lessThan: 'Küçüktür',
++      greaterThan: 'Büyüktür',
++      lessThanOrEqual: 'Küçük Eşittir',
++      greaterThanOrEqual: 'Büyük Eşittir',
++      inRange: 'Aralık',
++      contains: 'İçeren',
++      notContains: 'İçermez',
++      endsWith: '-ile Başlayan',
++      startsWith: '-ile Biten',
++      filters: 'Filtreler',
++      noRowsToShow: 'Veri bulunamadı',
++    };
++
++    this.agGrid.gridOptions = {
++      getRowStyle: function (params) {
++        return { cursor: 'pointer' };
++      }
++    };
++  }
++
++  filterData() {
++    const queryLayer: esri.FeatureLayer = this.reportLayer;
++
++    let queryProperties: esri.QueryProperties;
++    queryProperties = {
++      where: '1=1',
++      outFields: ['*'],
++    };
++
++    this.addZonePerm(queryLayer, queryProperties);
++
++    this.createColDefs(queryLayer);
++
++    const dataSource: IDatasource = {
++      getRows: (params) => {
++        const queryParams = this.checkSortParameter(params, queryProperties);
++        const filteredParams = this.addFilterParameters(params.filterModel, queryParams);
++        this.whereQuery = filteredParams.where;
++
++        this.filterParams = filteredParams;
++        // queryLayer.queryFeatureCount(filteredParams).then(count => {
++        const start = params.startRow;
++        const end = params.endRow;
++        const num = end - start;
++
++        filteredParams.num = num;
++        filteredParams.start = start;
++
++        this.filterParams = filteredParams;
++        queryLayer.queryFeatures(filteredParams).then(res => {
++          const objectModel = res.features.map(feature => feature.attributes);
++          params.successCallback(objectModel);
++        });
++        // });
++      }
++    };
++    this.agGrid.api.setDatasource(dataSource);
++  }
++
++  checkSortParameter(params: IGetRowsParams, queryParameters: esri.QueryProperties): esri.QueryProperties {
++    const sortModels: Array<SortModel> = params.sortModel;
++    const queryParams = Object.assign({}, queryParameters);
++    if (sortModels.length > 0) {
++      const sortModel = sortModels[0];
++
++      const orderByFieldsDef = `${sortModel.colId} ${sortModel.sort}`;
++      queryParams.orderByFields = [orderByFieldsDef];
++    }
++
++    return queryParams;
++  }
++
++  addFilterParameters(filterModel: FilterModel, queryParams: esri.QueryProperties) {
++    const params = Object.assign({}, queryParams);
++    for (const param in filterModel) {
++      if (filterModel.hasOwnProperty(param)) {
++        const filteredFieldName = param;
++        const fieldDomain = this.getFieldDomain(filteredFieldName);
++        if (fieldDomain !== null) {
++          const fieldFilterModel = filterModel[param];
++          const queryConstructor = new QueryConstructor(fieldFilterModel, params.where, filteredFieldName, fieldDomain);
++
++          params.where = queryConstructor.getWhereQuery();
++        } else {
++          const fieldFilterModel = filterModel[param];
++          const queryConstructor = new QueryConstructor(fieldFilterModel, params.where, filteredFieldName);
++
++          params.where = queryConstructor.getWhereQuery();
++        }
++      }
++    }
++    return params;
++  }
++
++  getFieldDomain(fieldName: string): esri.Domain {
++    const foundField: esri.Field = this.reportLayer.fields.find(field => field.name === fieldName);
++    if (foundField !== undefined) {
++      return foundField.domain;
++    } else {
++      console.error('Field Domain Not Found');
++      return null;
++    }
++  }
++
++  createColDefs(layer: esri.FeatureLayer) {
++    const colDefs: Array<ColDef> = [];
++    layer.fields.forEach(field => {
++      if (field['get'] === undefined) {
++        const colDef = this.createColDef(field);
++
++        colDefs.push(colDef);
++      } else if (field.get('rAuthorized')) {
++        if (field.get('disabled') === true) {
++          return;
++        } else if (field.type === 'geometry') {
++          return;
++        }
++
++        const colDef = this.createColDef(field);
++        colDefs.push(colDef);
++      }
++    });
++    this.agGrid.api.setColumnDefs(colDefs);
++  }
++
++  createColDef(field: esri.Field) {
++    const colDef: ColDef = {};
++    if (field.type === 'string') {
++      colDef.headerName = field.alias;
++      colDef.colId = field.name;
++      colDef.field = field.name;
++      colDef.filter = 'agTextColumnFilter';
++      if (field.domain !== null) {
++        colDef.sortable = false;
++      }
++    } else if (field.type === 'date') {
++      colDef.headerName = field.alias;
++      colDef.colId = field.name;
++      colDef.field = field.name;
++      colDef.filter = 'agDateColumnFilter';
++      colDef.filterParams = {
++        browserDatePicker: true
++      };
++      this.createGetterForDate(colDef, field.name);
++    } else if (!(field.type === 'xml' || field.type === 'raster' || field.type === 'blob' || field.type === 'geometry')) {
++      if (field.domain !== null) {
++        colDef.filter = 'agTextColumnFilter';
++        colDef.sortable = false;
++        this.createGetterForDomain(colDef, field.name, field.domain);
++      } else {
++        colDef.filter = 'agNumberColumnFilter';
++      }
++      colDef.headerName = field.alias;
++      colDef.colId = field.name;
++      colDef.field = field.name;
++    } else {
++      console.error('Exception Data');
++    }
++    if (colDef.filter === 'agTextColumnFilter') {
++      colDef.filterParams = {
++        textFormatter: function (gridValue: string) {
++          const lowerCasedValue = gridValue.toLocaleLowerCase();
++          return lowerCasedValue;
++        }
++      };
++    }
++
++    return colDef;
++  }
++
++  createGetterForDate(coldef: ColDef, fieldName: string) {
++    coldef.valueGetter = (params) => {
++      if (params.data !== undefined) {
++        const fieldValue = params.data[fieldName];
++        if (fieldValue === null) {
++          return null;
++        }
++
++        return new Date(fieldValue).toLocaleDateString('tr-TR');
++      }
++    };
++  }
++
++  createGetterForDomain(coldef: ColDef, fieldName: string, domain: esri.Domain) {
++    coldef.valueGetter = (params) => {
++      if (params.data !== undefined) {
++        const fieldValue = params.data[fieldName];
++        if (fieldValue === null) {
++          return '';
++        }
++
++        if (domain.type === 'coded-value') {
++          const codedValueDomain: esri.CodedValueDomain = <esri.CodedValueDomain>domain;
++          const domainValue = codedValueDomain.getName(fieldValue);
++
++          return domainValue;
++        } else if (domain.type === 'codedValue') {
++          const codedValueDomain: esri.CodedValueDomain = <esri.CodedValueDomain>domain;
++          const foundCodedValueDomain = codedValueDomain.codedValues.find(codedValue => codedValue.code === fieldValue);
++
++          return foundCodedValueDomain.name;
++        } else {
++          console.error('Another Type Found');
++          return '';
++        }
++      }
++    };
++  }
++
++  addZonePerm(queryLayer: esri.FeatureLayer, queryProperties: esri.QueryProperties) {
++    if (queryLayer.get('zoneExpression') === '*') {
++      return;
++    }
++
++    if (queryLayer.get('zoneExpression') !== undefined) {
++      const zoneExpression = <string>queryLayer.get('zoneExpression');
++
++      if (zoneExpression.startsWith(' or')) {
++        const splittedZoneExpression = zoneExpression.substring(3);
++
++        queryProperties.where += ' and' + splittedZoneExpression;
++      } else {
++        if (zoneExpression.startsWith(' and')) {
++          if (queryProperties.where !== '') {
++            queryProperties.where += zoneExpression;
++          } else {
++            queryProperties.where = zoneExpression.substring(4);
++          }
++        } else {
++          if (queryProperties.where !== '') {
++            queryProperties.where += ' and' + zoneExpression;
++          } else {
++            queryProperties.where = zoneExpression;
++          }
++        }
++      }
++    } else {
++      const mapView = this.mapView;
++      const map = mapView.map;
++      const layers = map.layers;
++
++      const foundLayer = layers.find(layer => layer.get('zoneExpression') !== undefined);
++      if (foundLayer === undefined) {
++        return;
++      }
++
++      const zoneExpression = <string>foundLayer.get('zoneExpression');
++      if (zoneExpression.startsWith(' or')) {
++        const splittedZoneExpression = zoneExpression.substring(3);
++
++        queryProperties.where += ' and' + splittedZoneExpression;
++      } else {
++        if (zoneExpression.startsWith(' and')) {
++          if (queryProperties.where !== '') {
++            queryProperties.where += zoneExpression;
++          } else {
++            queryProperties.where = zoneExpression.substring(4);
++          }
++        } else {
++          if (queryProperties.where !== '') {
++            queryProperties.where += ' and' + zoneExpression;
++          } else {
++            queryProperties.where = zoneExpression;
++          }
++        }
++      }
++    }
++  }
++
++  exportDataAsExcel() {
++    const columns = this.agGrid.columnApi.getAllColumns();
++
++    const outFields = [];
++    const headerNames = [];
++    columns.forEach(column => {
++      if (column.isVisible()) {
++        headerNames.push(column.getColDef().headerName);
++        outFields.push(column.getColId());
++      }
++    });
++    const queryLayer: esri.FeatureLayer = this.reportLayer;
++    const filterParams: esri.QueryProperties = this.filterParams;
++
++    const progressDialog = this.dialog.openUnClosable(ProgressInfoComponent, 'Excel Çıktısı Hazırlanıyor', false, {}, false, 'light');
++    const httpOptions = new HttpHeaders({
++      'X-Content-Type-Options': 'nosniff',
++      'Authorization': sessionStorage.getItem('CBSMEBtoken')
++    });
++    const url = encodeURI(`${queryLayer.url}/${queryLayer.layerId}/query?where=${filterParams.where ? filterParams.where : '1=1'}`
++      + `&outFields=${outFields.toString()}&resultOffset=${filterParams.start.toString()}`
++      + `&resultRecordCount=${(filterParams.num * 10).toString()}&returnGeometry=false&f=json`);
++
++    const objectData = {
++      workSheetName: queryLayer.title,
++      headers: headerNames,
++      uri: url
++    };
++
++    this.http.post(environment.ws + 'Cbs/exportExcel', objectData, {
++      headers: httpOptions,
++      responseType: 'arraybuffer'
++    }).subscribe(res => {
++      const blob = new Blob([res], { type: ' application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
++      const objectUrl = URL.createObjectURL(blob);
++      window.open(objectUrl);
++      progressDialog.close();
++    }, err => {
++      console.error('Something Went Wrong');
++      progressDialog.close();
++    });
++  }
++
++  onOpenSymbologyDialog() {
++    const columnApi: ColumnApi = this.agGrid.api['columnController'];
++
++    const columnsToExport = columnApi.getAllDisplayedColumns();
++
++    const fields = this.reportLayer.fields;
++    const layerFields = [];
++
++    columnsToExport.forEach(column => {
++      const foundField = fields.find(field => field.name === column.getColId());
++      if (foundField !== undefined) {
++        layerFields.push(foundField);
++      }
++    });
++
++    if (columnsToExport.length === 0) {
++      console.error('Katman olarak görüntülemek için tabloda listelemeniz gerekmektedir');
++    } else {
++      this.closeSymbologyBuilder();
++      this.symbologyBuilderDialog = this.dialog.open(LayerSymbologyComponent, 'Sembol Oluşturucu', true, {
++        data: {
++          whereQuery: this.whereQuery,
++          layer: this.reportLayer,
++          fields: layerFields,
++          mapView: this.mapView,
++        }
++      }, true, 'red-to-light');
++    }
++  }
++
++  closeSymbologyBuilder() {
++    if (this.symbologyBuilderDialog !== undefined) {
++      this.symbologyBuilderDialog.close();
++      this.symbologyBuilderDialog = undefined;
++    }
++  }
++
++  ngOnDestroy(): void {
++    this.closeSymbologyBuilder();
++  }
++}
+diff --git a/src/app/reports/reports.component.css b/src/app/reports/reports.component.css
+index dda2e8c32ed8cd67bde85ad59ccb97173da28bdf..5748fe6eceb784a54739c6b1acf1d266d24239bc 100644
+--- a/src/app/reports/reports.component.css
++++ b/src/app/reports/reports.component.css
+@@ -69,6 +69,7 @@
+   padding: 8px 10px;
+   position: relative;
+   display: none;
++  cursor: pointer;
+ }
+ 
+ .layer-panel .collapsing {
+@@ -87,7 +88,8 @@
+ .content-collapse>div:not(.collapsible),
+ .content-collapse.show>div:not(.collapsible) {
+   padding: 8px 12px;
+-  color: #8f8f8f;
++  color: #d1000f;
++  border-bottom: solid 1px #b9c1d4;
+ }
+ 
+ .collapsible-img {
+diff --git a/src/app/reports/reports.component.html b/src/app/reports/reports.component.html
+index 99d403df90d50303061575ac0d21d6625e31daa4..7616c6f29ab3fa3b4d88d10dc4c42804ab7f1cfd 100644
+--- a/src/app/reports/reports.component.html
++++ b/src/app/reports/reports.component.html
+@@ -9,8 +9,28 @@
+     <div class="collapsible" (click)="onClickSayistayReport()">
+       <label>Sayıştay Raporu</label>
+     </div>
+-    <div class="collapsible" (click)="onClickReports()">
+-      <label for="">Raporlar</label>
++    <div class="collapsible" (click)="onClickCollapsible($event)">
++      <label for="">MEB Raporlar</label>
++      <img class="collapsible-img" src="assets/img/dropdown.png">
++    </div>
++    <div class="content-collapse">
++      <!-- <ng-container *ngFor="let layer of analysisLayers.layers">
++        {{layer.title}}
++      </ng-container> -->
++      <ng-container *ngFor="let mebGroupReport of mebGroupReports">
++        <div *ngIf="mebGroupReport.subLayers !== undefined" class="collapsible">
++          {{mebGroupReport.name}}
++          <img class="collapsible-img" src="assets/img/dropdown.png">
++        </div>
++        <div *ngIf="mebGroupReport.subLayers !== undefined" class="content-collapse">
++          <div *ngFor="let subLayer of mebGroupReport.subLayers" (click)="onOpenReportTable(subLayer)">
++            {{subLayer.name}}
++          </div>
++        </div>
++        <div *ngIf="mebGroupReport.subLayers === undefined" (click)="onOpenReportTable(mebGroupReport)">
++          {{mebGroupReport.name}}
++        </div>
++      </ng-container>
+     </div>
+   </div>
+ </div>
+diff --git a/src/app/reports/reports.component.ts b/src/app/reports/reports.component.ts
+index 3608ee63d77e051577d43bd07f38488433a312f7..ce92723bb3a89b57a9581ece2db570aebb54537b 100644
+--- a/src/app/reports/reports.component.ts
++++ b/src/app/reports/reports.component.ts
+@@ -8,6 +8,10 @@ import { NotificationService } from '../notification/notification.service';
+ import { SayistayReportComponent } from '../sayistay-report/sayistay-report.component';
+ import { AuthService } from '../services/auth.service';
+ import { UserPermission } from '../models/Login/user-permission';
++import { HttpClient } from '@angular/common/http';
++import { environment } from 'src/environments/environment';
++import { ServiceInfo, LayerInfo, GroupLayerModel } from '../models/ArcgisService/service-info';
++import { ReportTableComponent } from '../report-table/report-table.component';
+ 
+ @Component({
+   selector: 'app-reports',
+@@ -27,8 +31,11 @@ export class ReportsComponent implements OnInit {
+   cityPerm: Array<number> = [];
+   districtPerm: Array<number> = [];
+ 
++  mebGroupReports: Array<GroupLayerModel> = [];
++  reportTableDialogRef: DialogRef;
++
+   constructor(private dialogService: DialogService, private webdataservice: WebDataService, private notify: NotificationService,
+-    private auth: AuthService) { }
++    private auth: AuthService, private http: HttpClient) { }
+ 
+   @Input()
+   set mapView(mapView) {
+@@ -60,6 +67,30 @@ export class ReportsComponent implements OnInit {
+         this.iller = result.features;
+       });
+     }
++
++    this.getMEBReports().subscribe(resServiceInfo => {
++      const groupLayerModel: Array<GroupLayerModel> = [];
++      resServiceInfo.layers.forEach(layer => {
++        if (layer.parentLayerId === -1) {
++          groupLayerModel.push(layer);
++        } else {
++          const parentLayerId = layer.parentLayerId;
++          const groupLayer = groupLayerModel[parentLayerId];
++
++          if (groupLayer !== undefined) {
++            if (groupLayer.subLayers === undefined) {
++              groupLayer.subLayers = [];
++            }
++
++            groupLayer.subLayers.push(layer);
++          } else {
++            console.error('Group Layer ID mevcut Değil');
++          }
++        }
++      });
++
++      this.mebGroupReports = groupLayerModel;
++    });
+   }
+ 
+   onClickCollapsible(event: Event) {
+@@ -77,6 +108,70 @@ export class ReportsComponent implements OnInit {
+     }
+   }
+ 
++  onClickReport() {
++    if (this.moduleDialogRef !== undefined) {
++      this.moduleDialogRef.close();
++    }
++
++    this.moduleDialogRef = this.dialogService.open(ModuleReportComponent, 'İşlem Analiz Raporları', true, {
++      data: {
++        mapView: this._mapView
++      }
++    }, true, 'blue');
++
++    this.moduleDialogRef.emitEvent.subscribe(featureSet => {
++      this.openInfoDialog.emit(featureSet);
++    });
++
++    this.moduleDialogRef.afterClosed.subscribe(res => {
++      this.moduleDialogRef = undefined;
++    });
++  }
++
++  onClickSayistayReport() {
++    if (this.sayistayDialogRef !== undefined) {
++      this.sayistayDialogRef.close();
++    }
++
++    this.sayistayDialogRef = this.dialogService.open(SayistayReportComponent, 'Sayıştay Raporu', true, {
++      data: {
++        mapView: this._mapView,
++        iller: this.iller,
++        cityPerm: this.cityPerm,
++        districtPerm: this.districtPerm
++      }
++    }, true, 'blue');
++
++    this.sayistayDialogRef.emitEvent.subscribe(event => {
++      const featureSet = <esri.FeatureSet>event;
++
++      this.clickSayistayRow.emit(featureSet);
++    });
++
++    this.sayistayDialogRef.afterClosed.subscribe(res => {
++      this.sayistayDialogRef = undefined;
++    });
++  }
++
++  onClickReports(event: Event) {
++    this.onClickCollapsible(event);
++  }
++
++  onOpenReportTable(layerObject: GroupLayerModel) {
++    if (this.reportTableDialogRef !== undefined) {
++      this.reportTableDialogRef.close();
++      this.reportTableDialogRef = undefined;
++    }
++
++    this.reportTableDialogRef = this.dialogService.open(ReportTableComponent, `${layerObject.name} Veri Tablosu`, true, {
++      data: {
++        mapView: this.mapView,
++        userPerm: this.auth.userPerm,
++        selectedLayerID: layerObject.id
++      }
++    }, undefined, 'red-to-light');
++  }
++
+   animateCollapsibleContent(content: HTMLElement) {
+     content.style.height = content.clientHeight + 'px';
+     if (content.parentElement.classList.contains('content-collapse')) {
+@@ -132,55 +227,6 @@ export class ReportsComponent implements OnInit {
+     }, 0.35 * 1000);
+   }
+ 
+-  onClickReport() {
+-    if (this.moduleDialogRef !== undefined) {
+-      this.moduleDialogRef.close();
+-    }
+-
+-    this.moduleDialogRef = this.dialogService.open(ModuleReportComponent, 'İşlem Analiz Raporları', true, {
+-      data: {
+-        mapView: this._mapView
+-      }
+-    }, true, 'blue');
+-
+-    this.moduleDialogRef.emitEvent.subscribe(featureSet => {
+-      this.openInfoDialog.emit(featureSet);
+-    });
+-
+-    this.moduleDialogRef.afterClosed.subscribe(res => {
+-      this.moduleDialogRef = undefined;
+-    });
+-  }
+-
+-  onClickSayistayReport() {
+-    if (this.sayistayDialogRef !== undefined) {
+-      this.sayistayDialogRef.close();
+-    }
+-
+-    this.sayistayDialogRef = this.dialogService.open(SayistayReportComponent, 'Sayıştay Raporu', true, {
+-      data: {
+-        mapView: this._mapView,
+-        iller: this.iller,
+-        cityPerm: this.cityPerm,
+-        districtPerm: this.districtPerm
+-      }
+-    }, true, 'blue');
+-
+-    this.sayistayDialogRef.emitEvent.subscribe(event => {
+-      const featureSet = <esri.FeatureSet>event;
+-
+-      this.clickSayistayRow.emit(featureSet);
+-    });
+-
+-    this.sayistayDialogRef.afterClosed.subscribe(res => {
+-      this.sayistayDialogRef = undefined;
+-    });
+-  }
+-
+-  onClickReports() {
+-
+-  }
+-
+   getZoneCodes(userPerm: UserPermission): Object {
+     const cityPerm: Array<number> = [];
+     const districtPerm: Array<number> = [];
+@@ -232,4 +278,9 @@ export class ReportsComponent implements OnInit {
+ 
+     return { 'cityPerm': cityPerm, 'districtPerm': districtPerm };
+   }
++
++  getMEBReports() {
++    const url = environment.arcgisMEBRaporURL + `?token=${sessionStorage.getItem('CBSArcToken')}&f=json`;
++    return this.http.get<ServiceInfo>(url);
++  }
+ }
+diff --git a/src/app/top-right-buttons/top-right-buttons.component.html b/src/app/top-right-buttons/top-right-buttons.component.html
+index c8a43da28691f7664155cf93a8d3b47390e68df4..34c3e7544a391547c173107dc8c5e90b390dd476 100644
+--- a/src/app/top-right-buttons/top-right-buttons.component.html
++++ b/src/app/top-right-buttons/top-right-buttons.component.html
+@@ -30,11 +30,11 @@
+ 
+     </span>
+   </div>
+-  <!-- <div class="layer-btn" (click)="dispatchAnalysisLayerView()" title="Analizler">
++  <div class="layer-btn" (click)="dispatchAnalysisLayerView()" title="Analizler">
+     <span class="layer-btn-span">
+       <img src="assets/img/other-layer.png">
+     </span>
+-  </div> -->
++  </div>
+   <div class="layer-btn" (click)="dispatchOtherLayerView()" title="Diğer Katmanlar">
+     <span class="layer-btn-span">
+       <img src="assets/img/other-layer.png">
+diff --git a/src/app/top-right-buttons/top-right-buttons.component.ts b/src/app/top-right-buttons/top-right-buttons.component.ts
+index 92cd0b342ef3f1527c27a5d2ae18a937d8a9dead..8bc2b18cca1db9923bc6846e719d46cefcff7852 100644
+--- a/src/app/top-right-buttons/top-right-buttons.component.ts
++++ b/src/app/top-right-buttons/top-right-buttons.component.ts
+@@ -8,6 +8,7 @@ import { UserPermission } from '../models/Login/user-permission';
+ })
+ export class TopRightButtonsComponent implements OnInit {
+   _userPerm: UserPermission;
++  guiPermissions: Array<boolean> = [];
+ 
+   @Input()
+   set userPerm(userPerm: UserPermission) {
+@@ -31,6 +32,34 @@ export class TopRightButtonsComponent implements OnInit {
+ 
+   ngOnInit() { }
+ 
++  fillGUIAuthorization(userPermission: UserPermission) {
++    // TODO: Zeynep Yetkilendirme Raporlara ve Analizlere eklenip buradan kontrolü eklenecek
++    // TODO: HTML tarafında Ng-if kontrolü yapılacak
++
++    // this.guiPermissions.push(this.isAuthorized(userPermission, 0));
++    // this.guiPermissions.push(this.isAuthorized(userPermission, 1));
++    // this.guiPermissions.push(this.isAuthorized(userPermission, 2));
++    // this.guiPermissions.push(this.isAuthorized(userPermission, 3));
++  }
++
++  isAuthorized(userPermission: UserPermission, id: number) {
++    if (userPermission === undefined) {
++      return true;
++    }
++
++    const flattenPermItems = userPermission.flattenPermGUI[1];
++
++    if (flattenPermItems !== undefined) {
++      if (flattenPermItems.items.includes(id)) {
++        return true;
++      } else {
++        return false;
++      }
++    } else {
++      return false;
++    }
++  }
++
+   dispathLayerView() {
+     this.layerViewClicked.emit();
+   }
+diff --git a/src/environments/environment.prod.ts b/src/environments/environment.prod.ts
+index a131e1fc6d199e39a8ca9e2a964972678231e95b..950814f6f1e4c2779f317570455ad84bf67b719f 100644
+--- a/src/environments/environment.prod.ts
++++ b/src/environments/environment.prod.ts
+@@ -7,6 +7,7 @@ export const environment = {
+   arcgisMEBPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/pending/',
+   arcgisMEBHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/history/',
+   arcgisMEBAnalysisURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/analiz/MapServer',
++  arcgisMEBReportsURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer',
+   arcgisEkServislerURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ek_servisler/',
+   arcgisMEBRaporURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer'
+ };
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index 7c5429ae5f1113f78a25b705523676b68c86834a..76a2547927b2aa1604601e2741c3b813d9f002e6 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -10,8 +10,8 @@ export const environment = {
+   arcgisSQL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/sql/',
+   arcgisMEBPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/pending/',
+   arcgisMEBHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/history/',
+-  arcgisMEBAnalysisURL: 'https://cbs.meb.gov.tr/arcgis/rest/services/mebcbs2023/analiz/MapServer',
+-  arcgisEkServislerURL: 'https://cbs.meb.gov.tr:6443/arcgis/rest/services/MEB_IEDB/ek_servisler/',
++  arcgisMEBAnalysisURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/analiz/MapServer',
++  arcgisEkServislerURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ek_servisler/',
+   arcgisMEBRaporURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer'
+ };
+ 
