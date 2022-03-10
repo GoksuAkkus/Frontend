@@ -1,0 +1,201 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index aec1f37fe19fb211610fa46d702ff19a1b763599..b50761ba0d9765eaa253c806c9e487ee7f169a1f 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -164,6 +164,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     this.createInitializedForm();
+     this.initalizeAGGrid();
+ 
++    // GAGA BURASI AÇILACAK
++    // this.getLayerFields().subscribe(fields => {
+     this.getTestLayerFields().subscribe(fields => {
+       this.fields = fields;
+ 
+@@ -2608,6 +2610,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     } else {
+       parselID = this.dialogConfig.data['feature']['attributes']['tasinmaz_id'];
++      // GAGA BURASI DEĞİŞTİRİLECEK
+       const processUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
+       const islemMalikUrl = environment.arcgisMEBURL + 'FeatureServer/17/query';
+       // const islemMalikUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3/query';
+@@ -2643,6 +2646,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   ifMalikHasAlreadyInOtherProcess(parselID: any, malikId: any) {
++    // GAGA BURASI AÇILACAK
+     // const processUrl = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
+     const processUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
+     const islemMalikUrl = environment.arcgisMEBURL + 'FeatureServer/17/query';
+@@ -2882,6 +2886,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+   getMirasciFields() {
+     // BURASI MİRASÇI TABLOSU URL İ OLACAK
++    // GAGA BURASI DEĞİŞTİRİLECEK
+     return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/5/query', {
+       params: {
+         token: sessionStorage.getItem('CBSArcToken'),
+@@ -2894,6 +2899,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     this.mirasciState = true;
+     const tasinmazID = this.dialogConfig.data['feature']['attributes']['tasinmaz_id'];
+     // BURASI MİRASÇI TABLOSU URL İ OLACAK
++    // GAGA BURASI DEĞİŞTİRİLECEK
+     const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/4/query';
+     let isInfo = 1;
+     const queryProperties = <esri.QueryProperties>{
+@@ -3056,6 +3062,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const attachmentId = attachment.id;
+     const contentType = attachment.contentType;
+ 
++    // GAGA BURASI AÇILACAK
+     // const url = `${environment.arcgisMEBURL}FeatureServer/14/${objectId}/attachments/${attachmentId}` +
+     //   `?token=${sessionStorage.getItem('CBSArcToken')}`;
+     const url = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${objectId}/attachments/${attachmentId}` +
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index d5bc6204bc1a0832b2a18ecf6d9f2f25fbf6b7a7..86f1662e06021b347b3e7ae31f5b7f930593194d 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -80,10 +80,19 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       this.getRequiredFields(featureData, layerWhereField).then(feature => {
+         this.requiredFields = feature;
+         const whereValue = feature.getAttribute(layerWhereField);
+-        this.getLayerFields().subscribe(fields => {
++        // GAGA BURASI AÇILACAK
++        // this.getLayerFields().subscribe(fields => {
++        this.getTestLayerFields().subscribe(fields => {
+           this.fields = fields;
++          // GAGA BURAYA DOSYANO EKLEENECEK
++          // const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
++          //   'talep_turu', 'alt_konu', 'touch_by', 'touch_date', 'create_date'];
++          // this.showFields = showFields;
++
++          // GAGA e_yatirim_proje_no ve islem_no lar coklu_secim_no olarak değiştirilecek
++          //TODO: GAGA BURADAN e_yatirim_proje_no  KALDIRILACAK YERİNE ÇOKLUSEÇİM İLE EKLENENLERE ÖZEL ID FİELDI GETİRİLECEK
+           const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
+-            'talep_turu', 'alt_konu', 'touch_by', 'touch_date', 'create_date'];
++            'talep_turu', 'alt_konu', 'touch_by', 'touch_date', 'create_date', 'ucret', 'dosya_no', 'e_yatirim_proje_no'];
+           this.showFields = showFields;
+ 
+           let colDefs = this.createColumnDefinitions(fields, showFields);
+@@ -172,6 +181,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+   initializeLastMovement(whereField: string, layerWhereField: string, featureData: any) {
+     this.rowsInfoArray = [];
+     const movementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Hareket');
++    const processLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem');
+     const processMovementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem_Hareket');
+     const durumuField = movementLayer.fields.find(field => (field.name === 'durumu' || field.name === 'h_durumu'));
+     if (durumuField !== null) {
+@@ -185,19 +195,43 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       outFields: ['i_objectid', 'h_durumu']
+     };
+ 
++    // BURAYI NEDEN YAPTIĞIMI HATIRLAMIYORUM
++    // GAGA BURASI TEST EDİLECEK
++    const queryProp2: esri.QueryProperties = {
++      where: `touch_by='goksuvat'`,
++      returnGeometry: false,
++      outFields: ['objectid', 'durumu']
++    };
++
+     processMovementLayer.queryFeatures(queryProp).then(response => {
+-      response.features.forEach(feature => {
+-        const rowInfo = new EmitObjectForLastMovement();
+-        const attributes = feature.attributes;
+-        const hDurumu = attributes['h_durumu'];
+-        if (hDurumu === null) {
+-          rowInfo.lastMovement = '';
+-        } else {
+-          const codeValue = this.hDurumuDomains.find(domain => domain.code === Number(hDurumu));
+-          rowInfo.lastMovement = codeValue['name'];
+-        }
+-        rowInfo.objectId = attributes['i_objectid'];
+-        this.rowsInfoArray.push(rowInfo);
++      processLayer.queryFeatures(queryProp2).then(res => {
++        response.features.forEach(feature => {
++          const rowInfo = new EmitObjectForLastMovement();
++          const attributes = feature.attributes;
++          const hDurumu = attributes['h_durumu'];
++          if (hDurumu === null) {
++            rowInfo.lastMovement = '';
++          } else {
++            const codeValue = this.hDurumuDomains.find(domain => domain.code === Number(hDurumu));
++            rowInfo.lastMovement = codeValue['name'];
++          }
++          rowInfo.objectId = attributes['i_objectid'];
++          this.rowsInfoArray.push(rowInfo);
++        });
++
++        res.features.forEach(feat => {
++          const rowInfo = new EmitObjectForLastMovement();
++          const attributes = feat.attributes;
++          const hDurumu = attributes['durumu'];
++          if (hDurumu === null) {
++            rowInfo.lastMovement = '';
++          } else {
++            const codeValue = this.hDurumuDomains.find(domain => domain.code === Number(hDurumu));
++            rowInfo.lastMovement = codeValue['name'];
++          }
++          rowInfo.objectId = attributes['objectid'];
++          this.rowsInfoArray.push(rowInfo);
++        });
+       });
+     });
+   }
+@@ -228,7 +262,9 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       whereValue = `'${whereValue}'`;
+     }
+ 
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
+     const queryProperties = <esri.QueryProperties>{
+       outFields: ['*'],
+       where: `${whereField} = ${whereValue}`,
+@@ -418,7 +454,9 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+   openModuleDetail(params: any) {
+     const objectid = params.data.objectid;
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
+     const queryProperties = <esri.QueryProperties>{
+       outFields: ['*'],
+       where: `objectid = ${objectid}`,
+@@ -431,6 +469,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+       const islem_turu = <number>foundFeature.attributes['islem_turu'];
+       if (islem_turu !== undefined) {
++
+         const domain = this.getFieldDomain('islem_turu');
+         if (domain.type === 'codedValue') {
+           const codedValueDomain = <esri.CodedValueDomain>domain;
+@@ -449,7 +488,9 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+                 moduleRefField: moduleRefField,
+                 type: foundCodedValue.name,
+                 feature: this.featureData,
+-                moduleData: foundFeature.attributes
++                moduleData: foundFeature.attributes,
++                objectId: objectid,
++                mapView: this.mapView
+               }
+             }, false, 'light');
+ 
+@@ -591,6 +632,16 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     };
+   }
+ 
++  // GAGA BURASI SİLİNECEK
++  getTestLayerFields() {
++    return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1', {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson',
++      }
++    }).pipe(map(response => response['fields']));
++  }
++
+   getLayerFields() {
+     return this.http.get<Array<esri.Field>>(environment.arcgisMEBURL + 'FeatureServer/' + 14, {
+       params: {
