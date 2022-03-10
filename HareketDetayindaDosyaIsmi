@@ -1,0 +1,143 @@
+diff --git a/src/app/movements/movement-create/movement-create.component.html b/src/app/movements/movement-create/movement-create.component.html
+index 9024293b969c3e1701c7d9910bbada20eec83c89..def3991203f82db7d5ed0676bcb6eadf4a4df1e0 100644
+--- a/src/app/movements/movement-create/movement-create.component.html
++++ b/src/app/movements/movement-create/movement-create.component.html
+@@ -2,12 +2,19 @@
+   <form [formGroup]="formGroup" class="module-form" (ngSubmit)="onSubmit()">
+     <div class="form-group" *ngFor="let formData of movementFormData;let i = index">
+       <label>{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
+-      <input *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain') && formData.name !== 'aciklama' )" [name]="formData.name"
+-        [type]="formData.type" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
+-        [disabled]="formData.disabled">
+-
+-      <textarea *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain') && formData.name === 'aciklama' )" [name]="formData.name"
+-        [formControlName]="formData.name" (input)="onChangeFormControl($event)"
++      <input
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file' ) && formData.name !== 'aciklama' && readMode)"
++        [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
++        (input)="onChangeFormControl($event)" [disabled]="formData.disabled">
++      <textarea *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name === 'aciklama' && readMode )"
++        [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
++        [disabled]="formData.disabled"></textarea>
++      <input *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain') && formData.name !== 'aciklama' && !readMode)"
++        [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
++        (input)="onChangeFormControl($event)" [disabled]="formData.disabled">
++      <textarea
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain') && formData.name === 'aciklama' && !readMode )"
++        [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
+         [disabled]="formData.disabled"></textarea>
+       <select *ngIf="formData.type === 'domain' || formData.type === 'localDomain'" [name]="formData.name"
+         [formControlName]="formData.name" (change)="onChangeFormControl($event)" [disabled]="formData.disabled">
+@@ -15,6 +22,9 @@
+         <option *ngFor="let domainValue of formData.domain_values" [value]="domainValue.value">{{domainValue.name}}
+         </option>
+       </select>
++      <label
++        *ngIf="formData.type ==='file' && this.fileReadMode && attachmentData !== undefined && attachmentData[0] !== undefined && attachmentData[0].name !== undefined">
++        {{attachmentData[0].name}}</label>
+     </div>
+     <div class="form-group">
+       <input *ngIf="createMode" type="submit" value="Kaydet" [disabled]="formGroup.invalid">
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index e70ae0d6d60da9cedd2401c2bd92b67f026be0f6..d2d8719bfd3ee85b1e386943b5005143e6c5fdf4 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -35,6 +35,9 @@ export class MovementCreateComponent implements OnInit {
+   features: Array<esri.Graphic> = [];
+   movementFormData: Array<Object> = [];
+   movementData: MovementData;
++  attachmentData: Array<esri.AttachmentInfo> = [];
++  formAttachmentData: File;
++  fileReadMode = false;
+ 
+   featureData: esri.Graphic;
+   moduleData: any;
+@@ -308,7 +311,7 @@ export class MovementCreateComponent implements OnInit {
+       formElement = <HTMLSelectElement>target;
+     }
+ 
+-    if (formElement.type === 'file') {
++    if (formElement.type === 'file' && this.readMode === undefined) {
+       const reader = new FileReader();
+ 
+       if ((<HTMLInputElement>formElement).files && (<HTMLInputElement>formElement).files.length) {
+@@ -440,6 +443,11 @@ export class MovementCreateComponent implements OnInit {
+         }
+       });
+ 
++      const foundFileField = foundFormData.fields.find(field => field.name === 'attachment');
++      if (foundFileField !== undefined && this.readMode) {
++        this.fileReadMode = true;
++      }
++
+       foundFormData.fields.forEach(field => {
+         const formControlName = field.name;
+         const formControlType = field.type;
+@@ -456,7 +464,7 @@ export class MovementCreateComponent implements OnInit {
+ 
+           if (foundValue !== undefined) {
+             this.movementFormData.push(field);
+-
++            let createdFormControl;
+             if (field.type === 'date' && !(formDataValue === undefined || formDataValue === null)) {
+               const date = new Date(formDataValue);
+               if (!isNaN(date.getTime())) {
+@@ -465,13 +473,22 @@ export class MovementCreateComponent implements OnInit {
+             } else if (field.type === 'domain') {
+               this.bindFieldDomainValues(<FormData>field);
+             }
+-
+-            const createdFormControl = this.createFormControl(formControlName, formControlType, isRequired, formDataValue);
+-            this.formGroup.addControl(formControlName, createdFormControl);
++            if (field.type === 'file' && this.readMode) {
++              const featureAttributes = this.features;
++              const objectid = featureAttributes['objectid'];
++              const movementUrl = `${environment.arcgisMEBURL}FeatureServer/13/${objectid}/`;
++              const attachmentInfosURL = movementUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
++              this.getAttachments(attachmentInfosURL).subscribe(attachmentData => {
++                this.attachmentData = attachmentData;
++              });
++            } else {
++              createdFormControl = this.createFormControl(formControlName, formControlType, isRequired, formDataValue);
++              this.formGroup.addControl(formControlName, createdFormControl);
++            }
+           }
+         } else {
+           this.movementFormData.push(field);
+-
++          let createdFormControl;
+           if (field.type === 'date' && !(formDataValue === undefined || formDataValue === null)) {
+             const date = new Date(formDataValue);
+             if (!isNaN(date.getTime())) {
+@@ -480,10 +497,19 @@ export class MovementCreateComponent implements OnInit {
+           } else if (field.type === 'domain') {
+             this.bindFieldDomainValues(<FormData>field);
+           }
++          if (field.type === 'file' && this.readMode) {
++            const featureAttributes = this.features;
++            const objectid = featureAttributes['objectid'];
++            const movementUrl = `${environment.arcgisMEBURL}FeatureServer/13/${objectid}/`;
++            const attachmentInfosURL = movementUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
++            this.getAttachments(attachmentInfosURL).subscribe(attachmentData => {
++              this.attachmentData = attachmentData;
++            });
++          } else {
++            createdFormControl = this.createFormControl(formControlName, formControlType, isRequired, formDataValue);
++            this.formGroup.addControl(formControlName, createdFormControl);
++          }
+ 
+-          const createdFormControl = this.createFormControl(formControlName, formControlType, isRequired, formDataValue);
+-
+-          this.formGroup.addControl(formControlName, createdFormControl);
+           // tslint:disable-next-line:triple-equals
+           if (this.movementData.type === 14 && formObject['durumu'] == 26 && formControlName === 'proje_no') {
+             this.formGroup.controls['proje_no'].disable();
+@@ -876,6 +902,8 @@ export class MovementCreateComponent implements OnInit {
+       this.dialog.close(false);
+       console.error(error);
+     });
++
++    // TODO: BURANIN SONUNDA ERRORA DÜŞÜYOR BUNA SONRA BAKILACAK
+   }
+ 
+   onDeleteMovement() {
