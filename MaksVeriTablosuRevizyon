@@ -1,0 +1,151 @@
+diff --git a/src/app/data-table/data-table.component.html b/src/app/data-table/data-table.component.html
+index a4f1351ccbc20ff2e2be8edce8e5a38fe9754ba7..f3603a627d6ddef75986c52272215088cab1abd9 100644
+--- a/src/app/data-table/data-table.component.html
++++ b/src/app/data-table/data-table.component.html
+@@ -75,6 +75,31 @@
+             </tr>
+           </thead>
+         </table>
++
++        <button  (click)="exportTableToExcel()">
++          <svg
++            xml:space="preserve"
++            xmlns:xlink="http://www.w3.org/1999/xlink"
++            version="1.1"
++            viewBox="0 0 26 26"
++            width="24"
++            xmlns="http://www.w3.org/2000/svg"
++          >
++            <path
++              d="M25.162,3H16v2.984h3.031v2.031H16V10h3v2h-3v2h3v2h-3v2h3v2h-3v3h9.162
++          C25.623,23,26,22.609,26,22.13V3.87C26,3.391,25.623,3,25.162,3z M24,20h-4v-2h4V20z M24,16h-4v-2h4V16z M24,12h-4v-2h4V12z M24,8
++          h-4V6h4V8z"
++              style="fill: white;"
++            ></path>
++            <path
++              d="M0,2.889v20.223L15,26V0L0,2.889z M9.488,18.08l-1.745-3.299c-0.066-0.123-0.134-0.349-0.205-0.678
++          H7.511C7.478,14.258,7.4,14.494,7.277,14.81l-1.751,3.27H2.807l3.228-5.064L3.082,7.951h2.776l1.448,3.037
++          c0.113,0.24,0.214,0.525,0.304,0.854h0.028c0.057-0.198,0.163-0.492,0.318-0.883l1.61-3.009h2.542l-3.037,5.022l3.122,5.107
++          L9.488,18.08L9.488,18.08z"
++              style="fill: white;"
++            ></path>
++          </svg>
++        </button>
+       </div>
+     </div>
+   </div>
+diff --git a/src/app/data-table/data-table.component.scss b/src/app/data-table/data-table.component.scss
+index 94a1ae43b801ddbea0fc3d9a3c0eac601e481a41..264233903d679ad7ead25817395167cb560827fe 100644
+--- a/src/app/data-table/data-table.component.scss
++++ b/src/app/data-table/data-table.component.scss
+@@ -8,11 +8,34 @@ $color_1: white;
+   padding: 24px;
+   box-sizing: border-box;
+   width: 1000px;
+-  max-height: 70vh;
++  max-height: 100vh;
+   min-height: 500px;
+   min-width: 500px;
+ }
+ 
++button {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 200px;
++  height: 30px;
++  color: white;
++  border-radius: 4px;
++  background-color: $primaryColor;
++  padding: 6px 8px;
++  outline: none;
++  border: none;
++  font-weight: 600;
++  font-size: 16px;
++  transition: background-color .3s ease-out;
++  cursor: pointer;
++  margin-left: 10px;
++
++  &:hover {
++    background-color: lighten($primaryColor, 8);
++  }
++}
++
+ .form-group {
+   width: 100%;
+   position: relative;
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 6f0f06b7a33d13db7838747c1f07247fd1bcc7a4..01fadc1139f78fcbfd205b0e9ee64b30c0f62e82 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -529,7 +529,7 @@ export class DataTableComponent implements OnInit, OnDestroy {
+         if (titleIndex === 0) {
+           milestoneAgeCell.innerText = '3 - 4 Yaş';
+         } else {
+-          milestoneAgeCell.innerHTML = `${rangeMilestones[titleIndex - 1] + 1} - ${rangeMilestones[titleIndex]}`;
++          milestoneAgeCell.innerHTML = `${rangeMilestones[titleIndex - 1] + 1} - ${rangeMilestones[titleIndex]} Yaş`;
+         }
+ 
+         const totalPropertyName = rangeTotalPropertyNames[titleIndex];
+@@ -1080,8 +1080,20 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     return queryParams;
+   }
+ 
++  moveAgGridColumn(fieldNameToMove: string, fieldNameDestination: string, colDefs: Array<ColDef>) {
++    const indexOfDestination = colDefs.findIndex(colDef => colDef.colId === fieldNameDestination);
++    const fieldToMove = colDefs.find(colDef => colDef.colId === fieldNameToMove);
++
++    const firstPart = colDefs.slice(0, indexOfDestination + 1);
++    const secondPart = colDefs.slice(indexOfDestination + 1, colDefs.length - 1);
++
++    const changedColDefs = [].concat(firstPart, fieldToMove, secondPart);
++
++    return changedColDefs;
++  }
++
+   createColDefs(layer: esri.FeatureLayer) {
+-    const colDefs: Array<ColDef> = [];
++    let colDefs: Array<ColDef> = [];
+     layer.fields.forEach(field => {
+       if (field['get'] === undefined) {
+         const colDef = this.createColDef(field);
+@@ -1095,6 +1107,11 @@ export class DataTableComponent implements OnInit, OnDestroy {
+         colDefs.push(colDef);
+       }
+     });
++
++    if (layer.title === 'Özel Okul Yapılar') { // DATATABLE DA ADRES KODU İLE MERNİS BİNA KODU YANYANA GELMESİ İÇİN
++      colDefs = this.moveAgGridColumn('mernis_bina_kodu', 'mernis_adres_kodu', colDefs);
++    }
++
+     this.agGrid.api.setColumnDefs(colDefs);
+   }
+ 
+@@ -1292,6 +1309,27 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
++  exportTableToExcel() {
++    let filename = '';
++    let downloadLink;
++    const dataType = 'text/csv;charset=utf-8';
++    const tableSelect = document.getElementById('maks-table');
++    const tableHTML = tableSelect.outerHTML.replace(/ /g, '%20');
++    filename = filename ? filename + '.xls' : 'excel_data.xls';
++    downloadLink = document.createElement('a');
++    document.body.appendChild(downloadLink);
++    if (navigator.msSaveOrOpenBlob) {
++      const blob = new Blob(['\ufeff', tableHTML], {
++        type: dataType
++      });
++      navigator.msSaveOrOpenBlob(blob, filename);
++    } else {
++      downloadLink.href = 'data:' + dataType + ',%EF%BB%BF' + encodeURI(tableSelect.outerHTML);
++      downloadLink.download = filename;
++      downloadLink.click();
++    }
++  }
++
+   exportDataAsExcel() {
+     const columns = this.agGrid.columnApi.getAllColumns();
+ 
