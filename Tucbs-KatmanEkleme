@@ -1,0 +1,229 @@
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 872849eff9116b5ed4d0a9856262e0dab17883ea..ef2edb4a3f14a8d4aaba3ed612acb518c0688c9d 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -265,19 +265,23 @@ export class EsriMapComponent implements OnInit {
+   }
+ 
+   registerInterceptor(config: esri.config) {
+-    const urls = ['http://hss.harita.gov.tr/cshgk/csogc.dll/wms'];
++    const urls = [] as Array<RegExp>;
++    const regExp = RegExp(/https:\/\/tucbs-public-api.csb.gov.tr/g);
++    const nregExp = RegExp(/http:\/\/ncbsservis.csb.gov.tr/g);
++    const gisregExp = RegExp(/http:\/\/gis-prod-api.csb.gov.tr/g);
++    urls.push(regExp, nregExp, gisregExp);
+ 
+     const esriRequestInterceptor = <esri.RequestInterceptor>{
+-      urls: urls[0],
++      urls: urls,
+       before: (params) => {
+         const requestOptions = <esri.RequestOptions>params.requestOptions;
+         const urlString = params['url'];
+ 
+         const proxyUrl = environment.ws + 'Cbs/proxy?' + urlString;
+-
+         params['url'] = proxyUrl;
+         requestOptions.headers = {
+-          'Authorization': sessionStorage.getItem('CBSMEBtoken')
++          'Authorization': sessionStorage.getItem('CBSMEBtoken'),
++          'Accept': 'application/xml'
+         };
+       }
+     };
+@@ -295,7 +299,8 @@ export class EsriMapComponent implements OnInit {
+         this.createTKGMLayers(map);
+         this.createMaksLayers(map);
+         this.createMapIstanbulLayers(map);
+-        // this.createHGMLayers(map);
++        this.createMETSLayers(map);
++        this.createSitAlanLayer(map);
+       });
+     } else {
+       this.auth.userPerm = undefined;
+@@ -305,7 +310,8 @@ export class EsriMapComponent implements OnInit {
+       this.createTKGMLayers(map);
+       this.createMaksLayers(map);
+       this.createMapIstanbulLayers(map);
+-      // this.createHGMLayers(map);
++      this.createMETSLayers(map);
++      this.createSitAlanLayer(map);
+     }
+   }
+ 
+@@ -501,11 +507,6 @@ export class EsriMapComponent implements OnInit {
+         proxyUrl: 'http://10.30.1.229/PHPproxy/proxy.php'
+       });
+ 
+-      // proxyUtils.addProxyRule({
+-      //   urlPrefix: 'http://hss.harita.gov.tr/cshgk/csogc.dll/wms',
+-      //   proxyUrl: environment.ws + 'Cbs/proxy'
+-      // });
+-
+       const WMSLayerConstructor = <esri.WMSLayerConstructor>WMSLayer;
+       let wmsLayer = new WMSLayerConstructor({
+         url: 'http://cbsservis.tkgm.gov.tr/tkgm.ows/wms',
+@@ -584,21 +585,40 @@ export class EsriMapComponent implements OnInit {
+     });
+   }
+ 
+-  createHGMLayers(map: esri.Map) {
++  createMETSLayers(map: esri.Map) {
+     loadModules(['esri/layers/WMSLayer']).then(([WMSLayer]) => {
+-      const WMSLayerConstructor = <esri.WMSLayerConstructor>WMSLayer;
++      const WMSLayerConstructor = WMSLayer as esri.WMSLayerConstructor;
+ 
+-      const HGMLayerProperties = <esri.WMSLayerProperties>{
+-        url: 'http://hss.harita.gov.tr/cshgk/csogc.dll/wms?',
+-        title: 'HGM',
+-        visible: true,
+-        customParameters: {
+-          'format': 'application/vnd.ogc.wms_xml'
+-        }
+-      };
+-      const HGMLayer = new WMSLayerConstructor(HGMLayerProperties);
++      const METSLayer = this.createWMSLayer(WMSLayerConstructor, 'https://gis-prod-api.csb.gov.tr/milli_emlak_meb_tahsis_wfs', 'METS');
++      METSLayer.set('METS', true);
+ 
+-      map.add(HGMLayer);
++      map.add(METSLayer);
++    });
++  }
++
++  createWMSLayer(WMSLayerConstructor: esri.WMSLayerConstructor, layerURL: string, title: string) {
++    const wmsLayer = new WMSLayerConstructor({
++      url: layerURL,
++      title: title,
++      opacity: 1,
++      visible: false
++    });
++
++    return wmsLayer;
++  }
++
++  createSitAlanLayer(map: esri.Map) {
++    loadModules(['esri/layers/MapImageLayer']).then(([MapImageLayer]) => {
++      const MapImageLayerConstructor = <esri.MapImageLayerConstructor>MapImageLayer;
++
++      const sitAlanProperties = <esri.MapImageLayerProperties>{
++        title: 'Sit Alanları',
++        url: 'https://cbs.meb.gov.tr/server/rest/services/meb2019/KULTUR/MapServer',
++        visible: false
++      };
++      const sitAlan = new MapImageLayerConstructor(sitAlanProperties);
++      sitAlan.set('sit', true);
++      map.add(sitAlan);
+     });
+   }
+ 
+@@ -944,7 +964,7 @@ export class EsriMapComponent implements OnInit {
+     if (layer.layerName === 'Kurumlar') {
+       if (definitionExpression === '') {
+         definitionExpression += 'kurum_durum <> 2';
+-      } else  {
++      } else {
+         definitionExpression += ' and kurum_durum <> 2';
+       }
+     }
+diff --git a/src/app/other-layer/other-layer.component.html b/src/app/other-layer/other-layer.component.html
+index 26da023f44744cf9a6b23b77b681bcd77e319d74..7598cb6e7e5d61d435cd42bd8d26d73492a369cd 100644
+--- a/src/app/other-layer/other-layer.component.html
++++ b/src/app/other-layer/other-layer.component.html
+@@ -3,6 +3,51 @@
+     <div class="layer-header">
+       <h3>Dış Katmanlar</h3>
+     </div>
++    <div class="collapsible" (click)="onClickCollapsible($event)">
++      <div class="checkbox inline">
++        <app-checkbox [checked]="sitAlanLayers.visible" (changed)="onLayerMainGroupChange(sitAlanLayers)">
++          {{sitAlanLayers.title}}
++        </app-checkbox>
++      </div>
++      <img class="collapsible-img" src="assets/img/dropdown.png">
++    </div>
++    <div class="content-collapse">
++      <ng-container *ngFor="let layer of sitAlanLayers.layers">
++        <ng-container>
++          <div class="checkbox">
++            <input (change)="onSubLayerChange(layer,sitAlanLayers)" type="checkbox" id="checkbox_{{layer.title}}"
++              [checked]="layer.visible">
++            <label for="checkbox_{{layer.title}}">{{layer.title}}</label>
++          </div>
++          <div [ngClass]="{'slidecontainer': true, 'hidden': !layer.visible,'visible': layer.visible}">
++            <input (input)="onChangeLayerOpacity(layer,$event)" (change)="onChangeLayerOpacity(layer,$event)"
++              type="range" min="0" max="100" [value]="layer.opacity * 100" class="slider">
++          </div>
++        </ng-container>
++      </ng-container>
++    </div>
++    <div class="collapsible" (click)="onClickCollapsible($event)">
++      <div class="checkbox inline">
++        <app-checkbox [checked]="METSLayers.visible" (changed)="onLayerMainGroupChange(METSLayers)">{{METSLayers.title}}
++        </app-checkbox>
++      </div>
++      <img class="collapsible-img" src="assets/img/dropdown.png">
++    </div>
++    <div class="content-collapse">
++      <ng-container *ngFor="let layer of METSLayers.layers">
++        <ng-container>
++          <div class="checkbox">
++            <input (change)="onSubLayerChange(layer,METSLayers)" type="checkbox" id="checkbox_{{layer.title}}"
++              [checked]="layer.visible">
++            <label for="checkbox_{{layer.title}}">{{layer.title}}</label>
++          </div>
++          <div [ngClass]="{'slidecontainer': true, 'hidden': !layer.visible,'visible': layer.visible}">
++            <input (input)="onChangeLayerOpacity(layer,$event)" (change)="onChangeLayerOpacity(layer,$event)"
++              type="range" min="0" max="100" [value]="layer.opacity * 100" class="slider">
++          </div>
++        </ng-container>
++      </ng-container>
++    </div>
+     <div class="collapsible" (click)="onClickCollapsible($event)">
+       <div class="checkbox inline">
+         <app-checkbox [checked]="tkgmLayers.visible" (changed)="onLayerMainGroupChange(tkgmLayers)">TKGM
+diff --git a/src/app/other-layer/other-layer.component.ts b/src/app/other-layer/other-layer.component.ts
+index 7b2ef79c1e080e8769f3a94d17c5ee1a8a8e9c4c..22d95d128a3fca7af6ca3b634cdaba66f43b5e07 100644
+--- a/src/app/other-layer/other-layer.component.ts
++++ b/src/app/other-layer/other-layer.component.ts
+@@ -3,9 +3,10 @@ import esri = __esri;
+ import { loadModules } from 'esri-loader';
+ import { NotificationService } from '../notification/notification.service';
+ import { Subject, Subscription } from 'rxjs';
+-import { HttpClient } from '@angular/common/http';
++import { HttpClient, HttpHeaders } from '@angular/common/http';
+ import { NgxXml2jsonService } from 'ngx-xml2json';
+ import { GeoJsonModel, FeatureModel } from '../models/Modules/geojson';
++import { environment } from 'src/environments/environment';
+ @Component({
+   selector: 'app-other-layer',
+   templateUrl: './other-layer.component.html',
+@@ -19,6 +20,8 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+   maksLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
+   tucbsLayers: { title: string, visible: boolean, layers: Array<{ title: string, url: string, visible: boolean } | esri.Layer> };
+   mapIstanbulLayers: { title: string, visible: boolean, layers: Array<esri.TileLayer> };
++  METSLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
++  sitAlanLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
+   originalTUCBSLayers: Array<{ title: string, url: string, visible: boolean } | esri.Layer> = [];
+   @Input()
+   set mapView(mapView) {
+@@ -51,8 +54,19 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+     const mapIstanbulLayers = <Array<esri.TileLayer>>layers.filter(layer => layer.get('MAPISTANBUL') === true).toArray();
+     this.mapIstanbulLayers = { layers: mapIstanbulLayers, title: 'Map Istanbul', visible: false };
+ 
+-    this.http.get('https://tucbs-public-api.csb.gov.tr/cografiveriservishavuzu',
+-      { responseType: 'text' }).subscribe(serviceXML => {
++    const METSLayers = layers.filter(layer => layer.get('METS') === true).toArray();
++    this.METSLayers = { layers: METSLayers, title: 'Milli Emlak Tahsis Servisi', visible: false };
++
++    const sitAlanLayers = layers.filter(layer => layer.get('sit') === true).toArray();
++    this.sitAlanLayers = { layers: sitAlanLayers, title: 'Sit Alanları', visible: false };
++
++    const tucbsUrl = environment.ws + 'Cbs/tucbs';
++    const tucbsHttpOptions = new HttpHeaders({
++      'Authorization': sessionStorage.getItem('CBSMEBtoken')
++    });
++
++    this.http.get(tucbsUrl,
++      { headers: tucbsHttpOptions, responseType: 'text' }).subscribe(serviceXML => {
+         const TUCBSLayers: Array<{ title: string, url: string, visible: boolean } | esri.Layer> = [];
+ 
+         const parser = new DOMParser();
