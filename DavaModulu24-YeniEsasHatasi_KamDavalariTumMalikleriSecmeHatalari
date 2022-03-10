@@ -1,0 +1,63 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index b587a707084912a599c75cd3dc538d7b660aeba8..289464699276dd620398a652b94f111cdf1f28c0 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -106,6 +106,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   progressDialog: DialogRef;
+ 
+   numberTextFields = ['alan', 'ucret', 'birim_ucret', 'icra_bedeli', 'depo_bedeli'];
++  agGridSelectedAllState = false;
+ 
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder, private dialogService: DialogService,
+@@ -182,7 +183,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             if (infoFeature['islem_turu'] === 10 && foundHareketDomain) {
+               if (foundHareketDomain === 39) {
+                 lead = 7;
+-              } else  if (foundHareketDomain === 40) {
++              } else if (foundHareketDomain === 40) {
+                 this.moduleData = moduleForm;
+                 this.moduleFormData = moduleForm.formData[lead];
+                 lead = this.recursiveFormObject(moduleForm.formData[lead], 0, infoFeature);
+@@ -1943,12 +1944,14 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+ 
+       // YENİ ESAS SEÇİLMİŞSE TALEP TÜRÜ O İŞLEMİN TALEP TÜRÜNE GÖRE AÇILIP DEĞİŞTİRİLEMEZ OLACAKMIŞ
+-      const durumu = this.dialogConfig.data['formValues']['durumu'];
+-      if(durumu === 40 && formControlName === 'talep_turu') {
+-        if (this.infoAttributes !== undefined) {
+-          this.formGroup.controls[formControlName].setValue(this.infoAttributes[formControlName]);
++      if (this.dialogConfig.data['formValues'] !== undefined) {
++        const durumu = this.dialogConfig.data['formValues']['durumu'];
++        if (durumu === 40 && formControlName === 'talep_turu') {
++          if (this.infoAttributes !== undefined) {
++            this.formGroup.controls[formControlName].setValue(this.infoAttributes[formControlName]);
++          }
++          this.formGroup.controls[formControlName].disable();
+         }
+-        this.formGroup.controls[formControlName].disable();
+       }
+ 
+       if (recentFormValues !== undefined) {
+@@ -2789,7 +2792,20 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   rowSelected(event: RowClickedEvent) {
+-    if (this.headerCheckboxSelectionState) {
++
++    // Sadece maliklerin hepsini seç yaptığında Progress çıkmalı. aggridde hepsinin seçilip seçilmediği ag-checkbox-checkeddan anlaşıldığı için bu kontrol bunun için yapılıyor.
++    let selectedAllState = false;
++    const cbSelectAll = document.getElementsByClassName('ag-header-select-all');
++    for (let i = 0; i < cbSelectAll.length; i++) {
++      if(!cbSelectAll.item(i).className.includes('ag-hidden')) {
++        if (cbSelectAll.item(i).firstElementChild.className === 'ag-checkbox-checked') {
++          selectedAllState = true;
++          this.agGridSelectedAllState = true;
++        }
++      }
++    }
++
++    if (selectedAllState) {
+       if (this.progressDialog === undefined) {
+         this.progressDialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'Lütfen Bekleyiniz', false, {}, false, 'light');
+         setTimeout(() => {
