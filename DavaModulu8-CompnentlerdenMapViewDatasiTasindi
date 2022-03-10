@@ -1,0 +1,94 @@
+diff --git a/src/app/modules/module-list/multi-module-list/multi-module-list.component.ts b/src/app/modules/module-list/multi-module-list/multi-module-list.component.ts
+index baa3ef8dda34a2c590e79363c244d9941ff4ab42..1e7c941155d3a59c167406c4049cee99bbe32b0c 100644
+--- a/src/app/modules/module-list/multi-module-list/multi-module-list.component.ts
++++ b/src/app/modules/module-list/multi-module-list/multi-module-list.component.ts
+@@ -2,7 +2,6 @@ import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
+ import { AgGridNg2 } from 'ag-grid-angular';
+ import { ColDef, IDatasource, IGetRowsParams } from 'ag-grid-community';
+ import { HttpClient } from '@angular/common/http';
+-import { environment } from 'src/environments/environment';
+ import { map } from 'rxjs/operators';
+ import { DialogRef } from 'src/app/dialog/dialog-ref';
+ import { DialogConfig } from 'src/app/dialog/dialog-config';
+@@ -30,6 +29,7 @@ interface DialogRefData {
+     moduleField?: string;
+     layerField?: string;
+   }>;
++  mapView: esri.MapView;
+ }
+ 
+ @Component({
+@@ -53,12 +53,16 @@ export class MultiModuleListComponent implements OnInit, OnDestroy {
+   fields: Promise<Array<esri.Field>>;
+   // fields: Array<esri.Field> = [];
+   uniqueExtraFields: string[];
++
++  mapView: esri.MapView;
++
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient, private webDataService: WebDataService) { }
+ 
+   ngOnInit() {
+     const data: DialogRefData = this.dialogConfig.data;
+     this.multiModuleData = data;
++    this.mapView = data.mapView;
+     this.modules = this.webDataService.getModules().toPromise();
+     this.fields = this.getLayerFields();
+     const featureDatas = data.featureDatas;
+@@ -91,8 +95,11 @@ export class MultiModuleListComponent implements OnInit, OnDestroy {
+     const uniqueExtraFields = extraFields.filter((v, i) => extraFields.indexOf(v) === i);
+     this.uniqueExtraFields = uniqueExtraFields;
+     const fieldFormData = new FormData();
+-    const islemUrl = `${environment.arcgisMEBURL}FeatureServer/14`;
++    // GAGA BURASI AÇILACAK
++    // const islemUrl = `${environment.arcgisMEBURL}FeatureServer/14`;
++    const islemUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1';
+     fieldFormData.append('f', 'json');
++    fieldFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+     this.http.post(islemUrl, fieldFormData, {}).subscribe((islemResponse: any) => {
+       const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
+         'talep_turu', 'alt_konu', 'touch_by', 'touch_date'];
+@@ -187,8 +194,9 @@ export class MultiModuleListComponent implements OnInit, OnDestroy {
+   }
+ 
+   setDataSourceOfGrid(whereQuery) {
+-
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
+     const queryProperties = <esri.QueryProperties>{
+       outFields: ['*'],
+       where: whereQuery,
+@@ -302,7 +310,9 @@ export class MultiModuleListComponent implements OnInit, OnDestroy {
+ 
+   openModuleDetail(params: any) {
+     const objectid = params.data.objectid;
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
+     const queryProperties = <esri.QueryProperties>{
+       outFields: ['*'],
+       where: `objectid = ${objectid}`,
+@@ -414,7 +424,8 @@ export class MultiModuleListComponent implements OnInit, OnDestroy {
+     this.movementListRef = this.dialogService.open(MovementListComponent, 'Hareketler', true, {
+       data: {
+         moduleData: params.data,
+-        featureData: this.featureData
++        featureData: this.featureData,
++        mapView: this.mapView
+       }
+     }, false, 'light');
+   }
+@@ -512,7 +523,9 @@ export class MultiModuleListComponent implements OnInit, OnDestroy {
+   }
+ 
+   getLayerFields() {
+-    return this.http.get<Array<esri.Field>>(environment.arcgisMEBURL + 'FeatureServer/' + 14, {
++    // GAGA BURASI AÇILACAK
++    // return this.http.get<Array<esri.Field>>(environment.arcgisMEBURL + 'FeatureServer/' + 14, {
++    return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1', {
+       params: {
+         token: sessionStorage.getItem('CBSArcToken'),
+         f: 'pjson',
