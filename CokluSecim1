@@ -1,0 +1,108 @@
+diff --git a/src/app/accept-dialog/accept-dialog.component.html b/src/app/accept-dialog/accept-dialog.component.html
+index c674966c4de103763e2ee49525582f40ba935af5..b1a65647bd05f36302b6b38d675a63a35ea41559 100644
+--- a/src/app/accept-dialog/accept-dialog.component.html
++++ b/src/app/accept-dialog/accept-dialog.component.html
+@@ -2,8 +2,20 @@
+   <p>
+     {{message}}
+   </p>
+-  <div class="button-container">
++  <div *ngIf="!isMultiSelect" class="button-container">
+     <input type="button" value="Evet" (click)="onChoose($event)">
+     <input type="button" value="Hayır" (click)="onChoose($event)">
+   </div>
++
++  <div *ngIf="isMultiSelect">
++    <label style="display: block;">
++      <input type="radio" id="onlyThisProcess" name="multiSelect" (change)="multiSelectOnChoose($event)">
++      {{msText.c1}}
++    </label>
++    <label style="display: block;">
++      <input type="radio" id="allProcess" name="multiSelect" (change)="multiSelectOnChoose($event)"
++        [disabled]="!msIdenticalState">
++      {{msText.c2}}
++    </label>
++  </div>
+ </div>
+diff --git a/src/app/accept-dialog/accept-dialog.component.ts b/src/app/accept-dialog/accept-dialog.component.ts
+index 463c65ceced4d67c6a140034b12b06d5f6c46895..c3865ce6010351167e88aec8e4fed234e664dd06 100644
+--- a/src/app/accept-dialog/accept-dialog.component.ts
++++ b/src/app/accept-dialog/accept-dialog.component.ts
+@@ -9,6 +9,29 @@ import { DialogRef } from '../dialog/dialog-ref';
+ })
+ export class AcceptDialogComponent implements OnInit {
+   message: string;
++  isMultiSelect = false;
++  multiSelectDeleteProcess = false;
++  multiSelectAddMovement = false;
++  multiSelectUpdateMovement = false;
++  multiSelectDeleteMovement = false;
++  msDeleteProcessText = {
++    c1: 'Sadece Bu İşlem Silinsin.',
++    c2: 'Bu İşlemle Birlikte Eklenmiş Tüm İşlemler Silinsin.'
++  };
++  msAddMovementText = {
++    c1: 'Sadece Bu İşlemin Hareketine Eklensin.',
++    c2: 'Bu İşlemle Birlikte Eklenmiş Tüm İşlemlerin Hareketlerine Eklensin.'
++  };
++  msUpdateMovementText = {
++    c1: 'Sadece Bu İşlemin Hareketi Güncellensin.',
++    c2: 'Bu İşlemle Birlikte Eklenmiş Tüm İşlemlerdeki Bu Hareket Güncellensin.'
++  };
++  msDeleteMovementText = {
++    c1: 'Sadece Bu İşlemin Hareketi Silinsin.',
++    c2: 'Bu İşlemle Birlikte Eklenmiş Tüm İşlemlerdeki Bu Hareket Silinsin.'
++  };
++  msText = {c1: '', c2: ''};
++  msIdenticalState = false;
+ 
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef) { }
+ 
+@@ -16,6 +39,34 @@ export class AcceptDialogComponent implements OnInit {
+     const data = this.dialogConfig.data;
+ 
+     this.message = data.message;
++
++    if (data['multiSelectDeleteProcess'] !== undefined) {
++      this.isMultiSelect = true;
++      this.multiSelectDeleteProcess = true;
++      this.msText = this.msDeleteProcessText;
++    }
++
++    if (data['multiSelectAddMovement'] !== undefined) {
++      this.isMultiSelect = true;
++      this.multiSelectAddMovement = true;
++      this.msText = this.msAddMovementText;
++    }
++
++    if (data['multiSelectUpdateMovement'] !== undefined) {
++      this.isMultiSelect = true;
++      this.multiSelectUpdateMovement = true;
++      this.msText = this.msUpdateMovementText;
++    }
++
++    if (data['multiSelectDeleteMovement'] !== undefined) {
++      this.isMultiSelect = true;
++      this.multiSelectDeleteMovement = true;
++      this.msText = this.msDeleteMovementText;
++    }
++
++    if (data['msIdenticalState'] !== undefined) {
++      this.msIdenticalState = data['msIdenticalState'];
++    }
+   }
+ 
+   onChoose(event: Event) {
+@@ -29,4 +80,12 @@ export class AcceptDialogComponent implements OnInit {
+       this.dialog.close(false);
+     }
+   }
++
++  multiSelectOnChoose(event: Event) {
++    const inputElement = <HTMLInputElement>event.target;
++
++    const id = inputElement.id;
++
++    this.dialog.close(id);
++  }
+ }
