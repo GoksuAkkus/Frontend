@@ -1,0 +1,80 @@
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index c3ee809decf35083d5bc86432e2a296d36b208af..806b4dd9d4e9a791c010938f97ec98e6f639d035 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -34,7 +34,7 @@
+ </app-top-right-buttons>
+ <app-right-click-menu *ngIf="rightClickEvent !== undefined" [userPerm]="auth.userPerm" [user]="auth.user"
+   (getLocationCoord)="getLocationCoordEvent($event)" (rightMenuClose)="closeRightMenuEvent()"
+-  (getParcelAtLocation)="getParcelAtLocationEvent()" [event]="rightClickEvent">
++  (getParcelAtLocation)="getParcelAtLocationEvent()" [event]="rightClickEvent" (getMaksBinaKoduAtLocation)="getMaksBinaKoduAtLocationEvent($event)">
+ </app-right-click-menu>
+ <app-search *ngIf="searchWindowState" [userPerm]="auth.userPerm" [user]="auth.user" [mapView]="mapView" (closeSearch)="onCloseSearch()"
+   (searchTKGMParcelInfo)="searchParcelInfoEvent($event)" (searchMAKSAdresBinaKoduInfo)="searchMAKSAdresBinaKoduInfoEvent($event)" (gotoTKGMGeometry)="gotoTKGMGeometryEvent($event)"
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index a7bb4101032e233955986e627c71c750040b1bd2..856b3cd3389ff5382d3ebbdfd22bb21507c18ff1 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -441,6 +441,15 @@ export class MainComponent implements OnInit {
+     }
+   }
+ 
++  getMaksBinaKoduAtLocationEvent() {
++    const mouseEvent = this.rightClickEvent;
++    setTimeout(() => {
++      const mapViewHitTestResult = this.mapView.hitTest(mouseEvent).then(res => {
++        console.log(res);
++      });
++    });
++  }
++
+   mapLeftClickEvent(event: esri.MapViewClickEvent) {
+     this.onCloseInfo();
+     if (this.editMode === true) {
+diff --git a/src/app/mapUtils/layer-utils.service.ts b/src/app/mapUtils/layer-utils.service.ts
+index 257c838af96e2ba06a15ad1f4d1c7187bc1320fa..130024050d91e7a60370cfca83babd497c799cdb 100644
+--- a/src/app/mapUtils/layer-utils.service.ts
++++ b/src/app/mapUtils/layer-utils.service.ts
+@@ -1,6 +1,6 @@
+ import { Injectable } from '@angular/core';
+ import { environment } from 'src/environments/environment';
+-import { HttpClient } from '@angular/common/http';
++import { HttpClient, HttpHeaders } from '@angular/common/http';
+ import { ServiceInfo, LayerInfo } from '../models/ArcgisService/service-info';
+ import { Observable, forkJoin, of } from 'rxjs';
+ import { ServiceLayerInfo, Field } from '../models/ArcgisService/service-layer-info';
+diff --git a/src/app/right-click-menu/right-click-menu.component.html b/src/app/right-click-menu/right-click-menu.component.html
+index 0fd0d8615dc335bb3be4b885baff5581aa3e5687..2bc1cea6694b45a547592a40c2eb829caf362238 100644
+--- a/src/app/right-click-menu/right-click-menu.component.html
++++ b/src/app/right-click-menu/right-click-menu.component.html
+@@ -21,5 +21,7 @@
+     </div>
+     <input class="default-input" *ngIf="event['authorized'] === true && parcelRequestGuiPermission"
+     type="button" value="Parsel Sorgula" (click)="getParcel()">
++    <input class="default-input" *ngIf="event['authorized'] === true"
++    type="button" value="Bina Kodu Sorgula" (click)="getMaksBinaKodu($event)">
+   </div>
+ </div>
+diff --git a/src/app/right-click-menu/right-click-menu.component.ts b/src/app/right-click-menu/right-click-menu.component.ts
+index 9b997888346036b7b3fd5dc08b25e0489baae3fa..fe6a150699821f879c6093acef0845f36bd23fcd 100644
+--- a/src/app/right-click-menu/right-click-menu.component.ts
++++ b/src/app/right-click-menu/right-click-menu.component.ts
+@@ -11,6 +11,7 @@ export class RightClickMenuComponent implements OnInit {
+   @Output() rightMenuClose = new EventEmitter();
+   @Output() getLocationCoord = new EventEmitter<string>();
+   @Output() getParcelAtLocation = new EventEmitter();
++  @Output() getMaksBinaKoduAtLocation = new EventEmitter();
+   _event: esri.MapViewClickEvent;
+   _coordType = 'WGS84';
+   _userPerm: UserPermission;
+@@ -124,6 +125,10 @@ export class RightClickMenuComponent implements OnInit {
+     this.rightMenuClose.emit();
+   }
+ 
++  getMaksBinaKodu(event: Event) {
++    this.getMaksBinaKoduAtLocation.emit();
++  }
++
+   isAuthorized(id: number) {
+     const flattenPermItems = this.userPerm.flattenPermGUI[0];
+     if (flattenPermItems !== undefined) {
