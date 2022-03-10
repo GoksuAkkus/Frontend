@@ -1,0 +1,20 @@
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 970af7ad4d272d377b5fba5bb8caaf2494b50c70..3bf2f41e3ce312398a0950d1bcc30ed1c1351a6c 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -620,8 +620,13 @@ export class MovementCreateComponent implements OnInit {
+       }
+       const formValues = this.formGroup.value;
+       const degisiklik_turu = formValues['degisiklik_turu'];
+-
+-      if (degisiklik_turu !== undefined && degisiklik_turu === '1') {
++      const durumu = formValues['durumu'];
++      const islem_turu = this.moduleData['islem_turu'];
++      // Yatırım Teklif Yeni Teklif Girince Tıpkı Durum Revizyon-Proje Seçilmesi Gibi İşlem Bilgileri Penceresi Gelip Düzenlenebilir Olacak
++      if ((degisiklik_turu !== undefined && degisiklik_turu === '1')) {
++        this.openModuleDetail(this.refValue, url, formValues);
++        return;
++      } else if (islem_turu === 12 && durumu === 35) {
+         this.openModuleDetail(this.refValue, url, formValues);
+         return;
+       }
