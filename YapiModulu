@@ -1,0 +1,1320 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index a91b6c0093d8cdc78a0f52a03c8ddf950d71fea0..1401dfac4163f43394491ad1f249992b168e24b0 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -74,6 +74,8 @@ import { NviSearchComponent } from './search/nvi-search/nvi-search.component';
+ import { NviDialogComponent } from './nvi-dialog/nvi-dialog.component';
+ import { AttachmentEditorComponent } from './attachment-editor/attachment-editor.component';
+ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.component';
++import { YapiBilgileriGenericinfoComponent } from './yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component';
++import { YapiBilgileriInfoComponent } from './yapi-bilgileri-info/yapi-bilgileri-info.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -144,6 +146,8 @@ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.componen
+     NviDialogComponent,
+     AttachmentEditorComponent,
+     AnalysisLayerComponent,
++    YapiBilgileriInfoComponent,
++    YapiBilgileriGenericinfoComponent
+   ],
+   imports: [
+     BrowserAnimationsModule,
+diff --git a/src/app/data-table/data-table.component.html b/src/app/data-table/data-table.component.html
+index 99451baf65e3cfa68f0db7aee3beb7b42554b9cc..bb82de7f63310be474d510b66f73b6485a1caa4a 100644
+--- a/src/app/data-table/data-table.component.html
++++ b/src/app/data-table/data-table.component.html
+@@ -12,7 +12,10 @@
+         </svg>
+       </div>
+       <div class="layer-select">
+-        <span class="option" *ngFor="let layer of filteredLayers"
++        <span class="option"   (mousedown)="onSelectLayer($event)"> Yapı::Enerji</span>
++          <span class="option"  (mousedown)="onSelectLayer($event)">Yapı::Yapısal Durum</span>
++          <span class="option"  (mousedown)="onSelectLayer($event)">Yapı::Yapısal Bilgi</span>
++          <span class="option" *ngFor="let layer of filteredLayers"
+           (mousedown)="onSelectLayer($event)">{{layer.title}}</span>
+       </div>
+     </div>
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 678ad040aea5896efb1a4117ff9616a05d168fca..6943b34e8e87e7828caf0ae89aa35f47132a552e 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -14,6 +14,8 @@ import { UserPermission } from '../models/Login/user-permission';
+ import { HttpClient, HttpHeaders } from '@angular/common/http';
+ import { environment } from 'src/environments/environment';
+ import { ProgressInfoComponent } from '../progress-info/progress-info.component';
++import { ModelData } from '../yapi-info';
++import { WebDataService } from '../services/web-data.service';
+ @Component({
+   selector: 'app-data-table',
+   templateUrl: './data-table.component.html',
+@@ -36,7 +38,8 @@ export class DataTableComponent implements OnInit, OnDestroy {
+   bufferAnalysisState: boolean;
+   bufferGraphic: esri.Graphic;
+ 
+-  constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService, private http: HttpClient) { }
++  infoData: ModelData;
++  constructor(private webDataService: WebDataService, public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService, private http: HttpClient) { }
+ 
+   ngOnInit() {
+     const data = this.dialogConfig.data;
+@@ -44,6 +47,7 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     const mapView: esri.MapView = data.mapView;
+     const selectedLayer = data.selectedLayer;
+     const userPermission = data.userPerm;
++    this.infoData = data.infoData;
+     const bufferAnalysisState = <boolean>data.bufferAnalysisState;
+     this.bufferGraphic = data.bufferGraphic;
+ 
+@@ -177,8 +181,8 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       inRange: 'Aralık',
+       contains: 'İçeren',
+       notContains: 'İçermez',
+-      endsWith: '-ile Başlayan',
+-      startsWith: '-ile Biten',
++      startsWith: '-ile Başlayan',
++      endsWith: '-ile Biten',
+       filters: 'Filtreler',
+       noRowsToShow: 'Veri bulunamadı',
+     };
+@@ -275,6 +279,92 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     listButton.click();
+   }
+ 
++
++
++  createWhereQueryOfYapiFilter(filterObject: Object) {
++    const filter = filterObject['filter'];
++    const type = filterObject['type'];
++    let filterTo = 0;
++
++    switch (type) {
++      case 'contains': {
++        const contains = ` LIKE '%${filter}%' `;
++        return contains;
++      }
++      case 'notContains': {
++        const notContains = ` NOT LIKE '%${filter}%' `;
++        return notContains;
++      }
++      case 'endsWith': {
++        const endsWith = ` LIKE '%${filter}' `;
++        return endsWith;
++      }
++      case 'startsWith': {
++        const startsWith = ` LIKE '${filter}'% `;
++        return startsWith;
++      }
++      case 'equals': {
++        const equal = ` = ${filter} `;
++        return equal;
++      }
++      case 'notEqual': {
++        const notEqual = ` <> ${filter} `;
++        return notEqual;
++      }
++      case 'lessThan': {
++        const lessThan = ` < ${filter} `;
++        return lessThan;
++      }
++      case 'lessThanOrEqual': {
++        const lessThanOrEqual = ` <= ${filter} `;
++        return lessThanOrEqual;
++      }
++      case 'greaterThan': {
++        const greaterThan = ` > ${filter} `;
++        return greaterThan;
++      }
++      case 'greaterThanOrEqual': {
++        const greaterThanOrEqual = ` >= ${filter} `;
++        return greaterThanOrEqual;
++      }
++      case 'inRange': {
++        if (filterObject['filterTo']) {
++          filterTo = filterObject['filterTo'];
++        }
++        const inRange = ` BETWEEN ${filter} AND ${filterTo} `;
++        return inRange;
++      }
++    }
++
++  }
++
++  filterYapi(filterModelElement: string, filterModelProperties: Object, operator?) {
++    const type = filterModelProperties['type'];
++    const filter = filterModelProperties['filter'];
++
++    const filterType = filterModelProperties['filterType'];
++    let whereQuery = '';
++    let firstConditionWhereQuery = '';
++    let secondConditionWhereQuery = '';
++
++    if (filterType === 'text') {
++      filterModelProperties['filter'] = filter.toLocaleUpperCase();
++      filterModelElement = ` tr_upper(${filterModelElement}) `;
++    }
++
++    // OPERATOR VARSA
++    if (operator !== undefined) {
++
++      firstConditionWhereQuery = this.createWhereQueryOfYapiFilter(filterModelProperties['condition1']);
++      secondConditionWhereQuery = this.createWhereQueryOfYapiFilter(filterModelProperties['condition2']);
++      whereQuery = filterModelElement + ' ' + firstConditionWhereQuery + operator + ' ' + filterModelElement + secondConditionWhereQuery;
++
++    } else {
++      whereQuery =  filterModelElement + ' ' + this.createWhereQueryOfYapiFilter(filterModelProperties);
++    }
++    return whereQuery;
++
++  }
+   filterData(event: Event) {
+     const grid = document.getElementById('agGrid');
+ 
+@@ -290,6 +380,78 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     const queryLayer: esri.FeatureLayer = this.selectedLayer;
+ 
+     let queryProperties: esri.QueryProperties;
++
++    const layerInnerContainer = inputContainer.parentElement;
++    const layerDropdownContainer = layerInnerContainer.previousElementSibling;
++    const formGroup = layerDropdownContainer.firstElementChild;
++    const deneme = formGroup.firstElementChild;
++    const value = deneme['value'];
++
++    if (value === 'Yapı::Enerji') {
++      const colDefs = this.createColumnDefinitionsForYapi('yapi_enerji');
++      this.agGrid.api.setColumnDefs(colDefs);
++
++      const dataSourceYapi = {
++        getRows: (params) => {
++          const start = params.startRow;
++          const end = params.endRow;
++          const count = end - start;
++          let whereQuery = '';
++          let where = '1=1';
++          console.log(params);
++          if (params.filterModel !== {}) {
++
++            const filterModel = params.filterModel;
++
++            for (const element in filterModel) {
++
++              if (element) {
++                const filterModelElement = filterModel[element];
++                console.log(filterModelElement);
++
++                if (filterModelElement.operator) {
++                  const operator = filterModelElement.operator;
++                  whereQuery += this.filterYapi(element, filterModelElement, operator) + ' AND ';
++                } else {
++                  whereQuery += this.filterYapi(element, filterModelElement) + ' AND ';
++                }
++              }
++            }
++            const deleteString = whereQuery.length - 4;
++            whereQuery = whereQuery.substring(0, deleteString);
++          }
++          if (whereQuery !== '') {
++            where = whereQuery;
++          }
++          this.http.get<number>(environment.yapiURL + 'grid/countDataForYapi', {
++            params: {
++              where: where,
++              layerName: 'yapi_enerji'
++            }
++          }).subscribe(countData => {
++            const istek = this.http.get<Array<any>>(environment.yapiURL + 'gridDetayliArama', {
++              params: {
++                layerName: 'yapi_enerji',
++                start: start.toString(),
++                count: count.toString(),
++                where: where
++              }
++            }).subscribe(gridData => {
++              params.successCallback(gridData, countData);
++            });
++          });
++        }
++      } as IDatasource;
++
++      this.agGrid.api.setDatasource(dataSourceYapi);
++      return;
++    }
++    // if (queryLayer.title === 'Yapı::Yapısal Durum') {
++
++    // }
++    // if (queryLayer.title === 'Yapı::Yapısal Bilgi') {
++
++    // }
+     if (this.bufferAnalysisState !== true) {
+       queryProperties = {
+         where: textArea.value,
+@@ -413,6 +575,10 @@ export class DataTableComponent implements OnInit, OnDestroy {
+   }
+ 
+   onRowClickedEvent(event: RowClickedEvent) {
++    if (this.infoData !== undefined) {
++      this.infoData = undefined;
++    }
++
+     const selectedLayer = this.selectedLayer;
+     const selectedLayerTitle = selectedLayer.title;
+ 
+@@ -776,4 +942,123 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     this.closeQueryBuilder();
+     this.closeSymbologyBuilder();
+   }
++
++  createColumnDefinitionsForYapi(layerName: string) {
++    const columnDefs: Array<ColDef> = [];
++    if (layerName === 'yapi_enerji') {
++      const temel_isinma_kaynagi = this.createColDefForYapi('Temel Isınma Kaynağı', 'temel_isinma_kaynagi', 'domain');
++      const iklimlendirme_ekipmanlari = this.createColDefForYapi('İklimlendirme Ekipmanları', 'iklimlendirme_ekipmanlari', 'domain');
++      const bina_isi_yalitimi = this.createColDefForYapi('Bina Isı Yalıtımı', 'bina_isi_yalitimi', 'domain');
++      const cati_isi_yalitimi = this.createColDefForYapi('Çatı Isı Yalıtımı', 'cati_isi_yalitimi', 'domain');
++      const pencere_dogramalari = this.createColDefForYapi('Pencere Doğramaları', 'pencere_dogramalari', 'domain');
++      const dogalgaz_donusum_durumu = this.createColDefForYapi('Doğalgaz Dönüşüm Durumu', 'dogalgaz_donusum_durumu', 'domain');
++      const elektrik_aboneno = this.createColDefForYapi('Elektrik Abone No', 'elektrik_aboneno', 'number');
++      const su_aboneno = this.createColDefForYapi('Su Abone No', 'su_aboneno', 'number');
++      const dogalgaz_aboneno = this.createColDefForYapi('Doğalgaz Abone No', 'dogalgaz_aboneno', 'number');
++      const tesisat_no = this.createColDefForYapi('Tesisat No', 'tesisat_no', 'number');
++      const bina_sira_no = this.createColDefForYapi('Bina Sıra No', 'bina_sira_no', 'number');
++
++      columnDefs.push(bina_sira_no, temel_isinma_kaynagi,
++        iklimlendirme_ekipmanlari,
++        bina_isi_yalitimi,
++        cati_isi_yalitimi,
++        pencere_dogramalari,
++        dogalgaz_donusum_durumu,
++        elektrik_aboneno,
++        su_aboneno,
++        dogalgaz_aboneno,
++        tesisat_no);
++
++      return columnDefs;
++    }
++    if (layerName === 'yapisal_bilgi') {
++      const bina_yapim_tipi = this.createColDefForYapi('Bina Yapım Tipi', 'bina_yapim_tipi', 'domain');
++      const bina_tescili = this.createColDefForYapi('Bina tescili', 'bina_tescili', 'domain');
++      const bina_yapim_amaci = this.createColDefForYapi('Bina Yapım Amacı', 'bina_yapim_amaci', 'domain');
++      const yapim_yili = this.createColDefForYapi('Yapım Yılı', 'yapim_yili', 'number');
++      const bina_kullanim = this.createColDefForYapi('Bina Kullanım', 'bina_kullanim', 'domain');
++      const koy_okulu = this.createColDefForYapi('Köy Okulu', 'koy_okulu', 'domain');
++      const kat_adedi = this.createColDefForYapi('Kat Adedi', 'kat_adedi', 'number');
++      const kat_yuksekligi = this.createColDefForYapi('kat_yuksekligi', 'kat_yuksekligi', 'number');
++      const kot_adedi = this.createColDefForYapi('Kot Adedi', 'kot_adedi', 'number');
++      const kot_yuksekligi = this.createColDefForYapi('Kot Yüksekliği', 'kot_yuksekligi', 'number');
++      const kat_asansoru = this.createColDefForYapi('Kat Asansörü', 'kat_asansoru', 'domain');
++      const yangin_merdiveni = this.createColDefForYapi('Yangın Merdiveni', 'yangin_merdiveni', 'domain');
++      const yangin_sondurme_sistemi = this.createColDefForYapi('Yangın Söndürme Sistemi', 'yangin_sondurme_sistemi', 'domain');
++      const siginak = this.createColDefForYapi('Sığınak', 'siginak', 'domain');
++      const engelli_asansoru = this.createColDefForYapi('Engelli Asansörü', 'engelli_asansoru', 'domain');
++      const engelli_rampasi = this.createColDefForYapi('Engelli Rampası', 'engelli_rampasi', 'domain');
++      const engelli_wc = this.createColDefForYapi('Engelli Wc', 'engelli_wc', 'domain');
++      const mescid = this.createColDefForYapi('Mescit', 'mescid', 'domain');
++      const proje_derslik_sayisi = this.createColDefForYapi('Proje Derslik Sayısı', 'proje_derslik_sayisi', 'number');
++      const fiziksel_derslik_sayisi = this.createColDefForYapi('Fiziksel Derslik Sayısı', 'fiziksel_derslik_sayisi', 'number');
++      const tasarim_ve_beceri_atolyesi = this.createColDefForYapi('Tasarım ve Beceri Atölyesi', 'tasarim_ve_beceri_atolyesi', 'domain');
++      const cok_amacli_salon = this.createColDefForYapi('Çok Amaçlı Salon', 'cok_amacli_salon', 'domain');
++      const spor_salonu = this.createColDefForYapi('Spor Salonu', 'spor_salonu', 'domain');
++      const havuz = this.createColDefForYapi('Havuz', 'havuz', 'domain');
++      const yemekhane = this.createColDefForYapi('Yemekhane', 'yemekhane', 'domain');
++      const kantin = this.createColDefForYapi('Kantin', 'kantin', 'domain');
++      const wc_durumu = this.createColDefForYapi('Wc Durumu', 'wc_durumu', 'domain');
++
++      columnDefs.push(bina_yapim_tipi,
++        bina_tescili,
++        bina_yapim_amaci,
++        yapim_yili,
++        bina_kullanim,
++        koy_okulu,
++        kat_adedi,
++        kat_yuksekligi,
++        kot_adedi,
++        kot_yuksekligi,
++        kat_asansoru,
++        yangin_merdiveni,
++        yangin_sondurme_sistemi,
++        siginak,
++        engelli_asansoru,
++        engelli_rampasi,
++        engelli_wc,
++        mescid,
++        proje_derslik_sayisi,
++        fiziksel_derslik_sayisi,
++        tasarim_ve_beceri_atolyesi,
++        cok_amacli_salon,
++        spor_salonu,
++        havuz,
++        yemekhane,
++        kantin,
++        wc_durumu);
++
++      return columnDefs;
++    }
++    if (layerName === 'yapisal_durum') {
++      const deprem_tahkiki = this.createColDefForYapi('Deprem Tahkiki', 'deprem_tahkiki', 'domain');
++      const tahkik_tarihi = this.createColDefForYapi('Tahkik Tarihi', 'tahkik_tarihi', 'number');
++      const deprem_tahkiki_yaptiran_idare = this.createColDefForYapi('Deprem Tahkiki Yaptıran İdare',
++        'deprem_tahkiki_yaptiran_idare', 'domain');
++      const deprem_tahkikini_yapan_kurulus = this.createColDefForYapi('Deprem Tahkiki Yapan Kuruluş',
++        'deprem_tahkikini_yapan_kurulus', 'domain');
++      const tahkik_sonucu = this.createColDefForYapi('Tahkik Sonucu', 'tahkik_sonucu', 'domain');
++      const yapilan_islem = this.createColDefForYapi('Tahkik Sonucu Yapılan İşlem', 'yapilan_islem', 'domain');
++
++
++      columnDefs.push(deprem_tahkiki, tahkik_tarihi, deprem_tahkiki_yaptiran_idare,
++        deprem_tahkikini_yapan_kurulus, tahkik_sonucu, yapilan_islem);
++
++      return columnDefs;
++    }
++
++  }
++  createColDefForYapi(alias: string, fieldName: string, type: 'number' | 'text' | 'domain') {
++
++    const colDef = {
++      headerName: alias,
++      colId: fieldName,
++      field: fieldName,
++    } as ColDef;
++    if (type === 'number') {
++      colDef.filter = 'agNumberColumnFilter';
++    }
++    return colDef;
++  }
++
+ }
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 55caf429445cf049e9a75a2e27136e4f62673313..d0ab1efe7c303e68da7cdb83429efe6d71358a59 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -298,7 +298,7 @@ export class EsriMapComponent implements OnInit {
+         this.createOtherLayers(map, FeatureLayer, GraphicsLayer);
+         this.createTKGMLayers(map);
+         this.createMaksLayers(map);
+-        this.createMapIstanbulLayers(map);
++        // this.createMapIstanbulLayers(map);
+         this.createMETSLayers(map);
+         this.createSitAlanLayer(map);
+       });
+@@ -309,7 +309,7 @@ export class EsriMapComponent implements OnInit {
+       this.createOtherLayers(map, FeatureLayer, GraphicsLayer);
+       this.createTKGMLayers(map);
+       this.createMaksLayers(map);
+-      this.createMapIstanbulLayers(map);
++      // this.createMapIstanbulLayers(map);
+       this.createMETSLayers(map);
+       this.createSitAlanLayer(map);
+     }
+diff --git a/src/app/info/generic-info/generic-info.component.html b/src/app/info/generic-info/generic-info.component.html
+index 377c8979e32edb6f43c9ada199f865e8308e79db..84f0d6bdeb89c5da55d761573888b10f28fc95af 100644
+--- a/src/app/info/generic-info/generic-info.component.html
++++ b/src/app/info/generic-info/generic-info.component.html
+@@ -95,6 +95,13 @@
+           Bu Veri Değiştirildi, Onay Beklenmektedir
+         </p>
+         <input type="button" class="additional-buttons" value="Veriyi Sisteme Ekle" (click)="onClickAddSystem()">
++
++
++
++        <input *ngIf="_tabData.features[0].layer['infoTitle'] === 'Kurumlar'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()">
++
++
++
+         <div *ngIf="historyData.length > 1" style="display: flex;align-items: center;">
+           <svg (click)="onFirstClick()" style="padding-right: 5px" xmlns="http://www.w3.org/2000/svg" width="12.448"
+             height="12.358" viewBox="0 0 12.448 12.358">
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index 3ab625ee9e6e4b2c0a9864095a1d04665c3df51e..d443b08c9e0160b6e952b874b6b0ea2218d70fc8 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -28,6 +28,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   @Output() finalizeEdit = new EventEmitter<{ feature: esri.Graphic, operation: number }>();
+   @Output() closeInfo = new EventEmitter();
+   @Output() addSystem = new EventEmitter<esri.Graphic>();
++  @Output() yapiBilgileri = new EventEmitter<number>();
+ 
+   _tabData: esri.FeatureSet;
+   _showStatus = false;
+@@ -1291,4 +1292,11 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+       graphic.symbol = symbolProperties;
+     }
+   }
++
++  onClickYapiBilgileri() {
++    this._tabData.set('yapibilgileri', true);
++    console.log(this._tabData.features[0].attributes);
++     this.yapiBilgileri.emit(this._tabData.features[0].attributes['bina_refid']);
++    // this.yapiBilgileri.emit(this._tabData.features[0].attributes['kurum_kodu']);
++  }
+ }
+diff --git a/src/app/info/info.component.html b/src/app/info/info.component.html
+index 9f1c0894de383586433a7ff7616921479a0338ef..e01ee5a9d9c9005a686ab85023722a83d7e6aca4 100644
+--- a/src/app/info/info.component.html
++++ b/src/app/info/info.component.html
+@@ -41,7 +41,7 @@
+       <app-module-stat></app-module-stat>
+       <app-analysis-info></app-analysis-info>
+       <app-generic-info (initEdit)="onInitEdit($event)" (finalizeEdit)="onFinalizeEdit($event)"
+-        (closeInfo)="closeInfo()" (addSystem)="onAddSystem($event)"></app-generic-info>
++        (closeInfo)="closeInfo()" (addSystem)="onAddSystem($event)" (yapiBilgileri) = "onYapiBilgileri($event)"></app-generic-info>
+       <app-object-info (addSystem)="onAddSystem($event)"></app-object-info>
+       <app-diff-info (acceptRejectChanges)="onAcceptRejectChanges($event)" (finalizeEdit)="onFinalizeEdit($event)"
+         (closeTabEvent)="onCloseDiffComponent($event)">
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index 45793fbbdf12450e2730ade3a5f54b952fda395d..da6d886cd2128667323ebfb7b4ca891ecb7fb573 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -22,7 +22,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   @Output() finalizeEdit = new EventEmitter<{ feature: esri.Graphic, operation: number }>();
+   @Output() districtSelect = new EventEmitter<esri.FeatureSet>();
+   @Output() acceptRejectChanges = new EventEmitter<{ features: Array<esri.Graphic>, isDelete: boolean }>();
+-
++  @Output() kurumKodu = new EventEmitter<number>();
+   @Output() schoolTypeSelect =
+     new EventEmitter<{
+       header: string, layer: esri.FeatureLayer, queryString: string,
+@@ -902,4 +902,11 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   onCloseDiffComponent(event: Event) {
+     this.closeInfo();
+   }
++
++  onYapiBilgileri(kurum_kodu: number) {
++    if (kurum_kodu !== undefined && kurum_kodu !== null) {
++      this.kurumKodu.emit(kurum_kodu);
++    }
++  }
++
+ }
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index 198661870d9b33acaaeee52956569d20021d98af..1f55553cae7ffef78747d306a964fd46256281a0 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -47,8 +47,9 @@
+   [hitTestResult]="hitTestResult" [infoObject]="infoObject" (infoClose)="onCloseInfo()" [userPerm]="auth.userPerm"
+   (initEdit)="initEditEvent($event)" (finalizeEdit)="finalizeEditEvent($event)"
+   (acceptRejectChanges)="acceptRejectChangesEvent($event)" (otherSchoolTypeSelect)="otherSchoolTypeSelectEvent($event)"
+-  (schoolTypeSelect)="schoolTypeSelectEvent($event)" (districtSelect)="convertAndOpenInfoWithFeatureSet($event)">
++  (schoolTypeSelect)="schoolTypeSelectEvent($event)" (districtSelect)="convertAndOpenInfoWithFeatureSet($event)" (kurumKodu) = "getYapiBilgileri($event)"> 
+ </app-info>
++<app-yapi-bilgileri-info *ngIf="infoData !== undefined" [infoData]="infoData" (infoClose)="onCloseYapiInfo()" (yapiInfoBack) = "onClickBackYapi()"></app-yapi-bilgileri-info>
+ <app-reports *ngIf="reportsWindowState" [mapView]="mapView" (openInfoDialog)="openInfoDialogEvent($event)"
+   (clickSayistayRow)="onClickedGoToSayistayParcelEvent($event)">
+ </app-reports>
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 92428a032139ee1a9d7a8a9d3d37b4dc3e4a451b..8467621122bc9881f36a6919bf34e841b959dd54 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -29,6 +29,7 @@ import { GeoJsonModel } from '../models/Modules/geojson';
+ import { Subject, forkJoin } from 'rxjs';
+ import { HttpClient } from '@angular/common/http';
+ import { NviDialogComponent } from '../nvi-dialog/nvi-dialog.component';
++import { ModelData } from '../yapi-info';
+ 
+ @Component({
+   selector: 'app-main',
+@@ -77,6 +78,9 @@ export class MainComponent implements OnInit {
+   exportMapImageUrl: string;
+ 
+   geojsonGraphicsLayerImportSubject: Subject<any>;
++
++  infoData: ModelData;
++
+   constructor(private projectionService: ProjectionService, public mapService: MapService,
+     public measureService: MeasureService, private dialogService: DialogService, public auth: AuthService,
+     private webDataService: WebDataService, private notify: NotificationService, private editService: EditService,
+@@ -1356,10 +1360,15 @@ export class MainComponent implements OnInit {
+       data: {
+         mapView: this.mapView,
+         userPerm: this.auth.userPerm,
++        infoData: this.infoData
+       }
+     }, undefined, 'red-to-light');
+ 
+     this.dataTableDialogRef.emitEvent.subscribe(event => {
++
++      if (this.infoData !== undefined) {
++        this.infoData = undefined;
++      }
+       const featureSet = <esri.FeatureSet>event;
+       this.convertAndOpenInfoWithFeatureSet(featureSet);
+     });
+@@ -1431,6 +1440,7 @@ export class MainComponent implements OnInit {
+   }
+ 
+   onCloseInfo() {
++    this.onCloseYapiInfo();
+     if (this.editMode === true) {
+       this.mapService.clearSelectedGraphics('edit', true);
+       this.editService.removeEvents();
+@@ -1439,13 +1449,18 @@ export class MainComponent implements OnInit {
+ 
+     this.hitTestResult = [];
+     this.infoObject = undefined;
++
+     this.mapService.clearSelectedGraphics('type', 'editGeometry');
+     this.mapService.clearSelectedGraphics('type', 'TKGMParcel');
+     this.mapService.clearSelectedGraphics('history', true);
+ 
+     this.detailWindowState = false;
+-  }
+ 
++
++  }
++  onCloseYapiInfo() {
++    this.infoData = undefined;
++  }
+   onClickedSearchBtn() {
+     if (this.editMode === true) {
+       return;
+@@ -1458,7 +1473,9 @@ export class MainComponent implements OnInit {
+     this.reportsWindowState = false;
+     this.analysisLayerWindowState = false;
+   }
+-
++  onClickBackYapi() {
++    this.infoData = undefined;
++  }
+   onCloseSearch() {
+     this.searchWindowState = false;
+   }
+@@ -1708,4 +1725,11 @@ export class MainComponent implements OnInit {
+   }
+   onDispatchOtherLayerView() { }
+ 
++  getYapiBilgileri(kurumKodu: number) {
++    this.webDataService.getBinaSiraNoileInfo(kurumKodu).subscribe(dd => {
++      this.infoData = dd;
++      console.log(this.infoData);
++    });
++  }
++
+ }
+diff --git a/src/app/mapUtils/map.service.ts b/src/app/mapUtils/map.service.ts
+index 3b762d0417a17e8ad5e098cd494b82cf9dfe9782..9d93563a275ca0205f2ae9450cd04f704186065d 100644
+--- a/src/app/mapUtils/map.service.ts
++++ b/src/app/mapUtils/map.service.ts
+@@ -76,7 +76,8 @@ export class MapService {
+ 
+   clearSelectedGraphics(propertyName: string, value: any) {
+     const selectedGraphic = this.mapView.graphics.filter(graphic => graphic.get(propertyName) === value);
+-
++    console.log(selectedGraphic);
++    console.log(this.mapView.graphics);
+     if (selectedGraphic.length > 0) {
+       this.mapView.graphics.removeMany(selectedGraphic);
+     }
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index ca6011eb1be54843277cea7ba9203b6ccfbfb1d1..0404f4466d6f5e302bdd7a69d6bd16c4a04ae9d8 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -8,12 +8,14 @@ import { TKGMPassiveParcelRequest } from '../models/TKGM/TKGMPassiveParcelReques
+ import { SerhMalik, SerhList } from '../models/TKGM/serh-malik';
+ import { ModulesModel } from '../models/Info/modules-model';
+ import { NVIObject } from '../models/NVI/nviobject';
++import { ModelData } from '../yapi-info';
+ 
+ @Injectable({
+   providedIn: 'root'
+ })
+ export class WebDataService {
+   tkgmURL = environment.ws + 'TKGM/';
++  yapiURL = environment.yapiURL;
+ 
+   constructor(private auth: AuthService, private http: HttpClient) { }
+ 
+@@ -91,4 +93,25 @@ export class WebDataService {
+     const requestParams = { 'kimlikNo': tcKimlikNo };
+     return this.http.get<NVIObject>(this.tkgmURL + 'getAdresBilgi', { headers: this.auth.createHeader(), params: requestParams });
+   }
++
++  getBinaSiraNoileInfo(kurumKodu: number) {
++    const url = this.yapiURL + 'binaSiraNoileInfoGetir/' + kurumKodu;
++    const response = this.http.get<ModelData>(url);
++    return response;
++  }
++
++  getPropertiesForYapi(layerName: string) {
++    const url = this.yapiURL + 'gridDetayliArama';
++    const response = this.http.get(url, {
++      params: {
++        layerName: layerName,
++        where: '1=1',
++        start: '0',
++        count: '100',
++
++      }
++    });
++    console.log(response);
++    return response;
++  }
+ }
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..44bab15dcaa1dd9dfbd72e7f9832160e4cd70d64
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html
+@@ -0,0 +1,16 @@
++<div class="info-container" [ngClass]="{'over-flow': _tabData !== undefined}" >
++
++  <table class="info-table">
++    <tbody>
++      <tr *ngFor="let field of _tabData.fields">
++        <!-- <ng-container *ngIf="field.fieldName !== 'tahkik_sonucu'"> -->
++        <ng-container>
++          <td>{{field.alias}}</td>
++          <td *ngIf="field.type !== 'date' && field.type !== 'domain'">{{tabData.properties[field.fieldName]}}</td>
++          <td *ngIf="field.type === 'domain'">{{getDomainString(field)}}</td>
++          <td *ngIf="field.type === 'date'">{{getDateString(field.fieldName)}}</td>
++        </ng-container>
++      </tr>
++    </tbody>
++  </table>
++</div>
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..b31416f1758fd78223a2e0723a126baeb59f21ec
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss
+@@ -0,0 +1,106 @@
++input[type=number] {
++    &::-webkit-inner-spin-button, &::-webkit-outer-spin-button {
++      -webkit-appearance: none;
++      margin: 0;
++    }
++  }
++  
++  .info-container {
++    > {
++      .info-title {
++        font-size: 18px;
++        text-align: center;
++        padding-top: 0.731rem;
++      }
++  
++      .no-data-container {
++        margin-top: 1.462rem;
++        color: #757575;
++        display: flex;
++        flex-direction: column;
++        text-align: center;
++      }
++  
++      .missing-data-container {
++        font-size: 18px;
++        color: #007eff;
++        font-weight: bold;
++        display: flex;
++        flex-direction: column;
++        text-align: center;
++      }
++    }
++  
++    .info-table {
++      margin-top: 1.462rem;
++      width: 100%;
++      color: #757575;
++      border-collapse: collapse;
++      font-size: 14px;
++  
++      > tbody > tr {
++        border-top: solid 1px #e0e0e0;
++  
++        &:nth-of-type(odd) {
++          background-color: rgba(237, 237, 237, 0.3);
++        }
++  
++        > td {
++          text-align: left;
++          padding: 0.572rem;
++          width: 100px;
++        }
++      }
++    }
++  
++    overflow: auto;
++    max-height: 60vh;
++  }
++  
++  .additional-buttons {
++    padding: 3px;
++    color: #d1000f;
++    border: 1px solid #d1000f;
++    background: white;
++    border-radius: 5px;
++    box-shadow: 0px 3px 0px rgba(0, 0, 0, 0.1);
++    margin: 10px 0px 10px 0px;
++  }
++  
++  .deprem-note {
++    margin-top: 10px;
++    font-size: 15px;
++    color: black;
++    font-weight: bold;
++  
++    /* animation: warning-red 1s ease-in-out infinite; */
++  }
++  
++  #helper-label, #select-helper-label, #checkbox-helper {
++    color: #007eff;
++    font-style: italic;
++    font-size: 13px;
++  }
++  
++  #missing-note {
++    margin-bottom: 10px;
++    color: #007eff;
++    font-weight: bold;
++    text-align: center;
++    font-size: 15px;
++    animation: warning-blue 1s ease-in-out infinite;
++  }
++  
++  @keyframes warning-blue {
++    0% {
++      color: #007eff;
++    }
++  
++    50% {
++      color: #007eff;
++    }
++  
++    100% {
++      color: #e0cece;
++    }
++  }
+\ No newline at end of file
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.spec.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d028c5bce99234f17393a5fc4dd331b721a74410
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { YapiBilgileriGenericinfoComponent } from './yapi-bilgileri-genericinfo.component';
++
++describe('YapiBilgileriGenericinfoComponent', () => {
++  let component: YapiBilgileriGenericinfoComponent;
++  let fixture: ComponentFixture<YapiBilgileriGenericinfoComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ YapiBilgileriGenericinfoComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(YapiBilgileriGenericinfoComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..da3ea234dec7e9a605f5703e6949a03a0cc1d8e0
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
+@@ -0,0 +1,79 @@
++import { Component, OnInit, Input } from '@angular/core';
++import { DialogConfig } from '../../dialog/dialog-config';
++import { InfoData, FieldInfo } from '../../yapi-info';
++
++@Component({
++  selector: 'app-yapi-bilgileri-genericinfo',
++  templateUrl: './yapi-bilgileri-genericinfo.component.html',
++  styleUrls: ['./yapi-bilgileri-genericinfo.component.scss']
++})
++export class YapiBilgileriGenericinfoComponent implements OnInit {
++
++  _tabData: InfoData;
++  @Input()
++  set tabData(tabData: InfoData) {
++    this._tabData = tabData;
++    if (this._tabData !== undefined) {
++      if (this._tabData.tabName === 'Yapısal Bilgi') {
++
++        const katYuksekligiIndexes = [];
++        const kotYuksekligiIndexes = [];
++
++        const katYuksekligiFields = this._tabData.fields.filter(field => field.fieldName.includes('kat_yuksekligi_'));
++        const kotYuksekligiFields = this._tabData.fields.filter(field => field.fieldName.includes('kot_yuksekligi_'));
++
++        if (katYuksekligiFields.length !== 0) {
++
++          for (let i = 0; i < katYuksekligiFields.length; i++) {
++
++            const index = this._tabData.fields.indexOf(katYuksekligiFields[i]);
++            katYuksekligiIndexes.push(index);
++
++          }
++          this.tabData.fields.splice(katYuksekligiIndexes[0], (katYuksekligiIndexes.length));
++        }
++        if (kotYuksekligiFields.length !== 0) {
++
++          for (let i = 0; i < kotYuksekligiFields.length; i++) {
++
++            const index = this._tabData.fields.indexOf(kotYuksekligiFields[i]);
++            kotYuksekligiIndexes.push(index);
++
++          }
++          this.tabData.fields.splice(kotYuksekligiIndexes[0], (kotYuksekligiIndexes.length));
++        }
++      }
++    }
++  }
++  get tabData() {
++    return this._tabData;
++  }
++  constructor() { }
++
++  ngOnInit() {
++  }
++  getDateString(fieldName: string) {
++    return new Date(this.tabData.properties[fieldName]).toLocaleDateString();
++  }
++
++  getDomainString(field: FieldInfo) {
++    const fieldName = field.fieldName;
++    const tabData = this.tabData;
++    const properties = tabData.properties;
++    const fieldValue = properties[fieldName];
++    const numberFieldValue = Number(fieldValue);
++    if (field.domain[0]['code_text'] !== undefined) {
++      const domains = field.domain;
++
++      const foundDomain = domains.find(domain => {
++        if (Number(domain['code_text']) === numberFieldValue) {
++          return true;
++        }
++      });
++
++      return foundDomain['value'];
++    } else {
++      return fieldValue;
++    }
++  }
++}
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..99abc108736e9499ed10d61d18ab17d97d378ebd
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
+@@ -0,0 +1,28 @@
++<div class="info-panel">
++  <div class="layer-info-panel">
++    <div class="layer-info-header">
++      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="back-button" height="32px" id="Layer_1"
++        style="enable-background:new 0 0 32 32;" version="1.1" viewBox="0 0 32 32" width="32px" xml:space="preserve" (click)="onClickBackButton()">
++        <g transform="translate(48 384)">
++          <path
++            d="M-30.999-376.5c-4.907,0-9.252,2.366-11.987,6.012l-5.013-5.012v16h16l-5.442-5.443c1.446-4.387,5.571-7.557,10.44-7.557   
++            c6.078,0,11,4.926,11,11C-16.001-369.786-22.716-376.5-30.999-376.5z"  fill="#d1000f" ></path>
++        </g>
++      </svg>
++      <h3 class="title">{{infoTitle}}</h3>
++      <svg _ngcontent-acq-c16="" class="close" viewBox="0 0 20.667 20.667" width="21" xmlns="http://www.w3.org/2000/svg"
++        (click)="closeInfo()">
++        <path _ngcontent-acq-c16=""
++          d="M2928.129,71.214l-5,.033-.032-4.98a.638.638,0,0,0-.192-.453.61.61,0,0,0-.46-.2h-2.02a.662.662,0,0,0-.656.656l.033,5-4.98.032a.64.64,0,0,0-.453.192.61.61,0,0,0-.2.46v2.021a.661.661,0,0,0,.656.656l5-.033.034,4.979a.642.642,0,0,0,.191.453.613.613,0,0,0,.46.2h2.021a.626.626,0,0,0,.462-.194.618.618,0,0,0,.194-.462l-.033-5,4.98-.033a.64.64,0,0,0,.452-.191.614.614,0,0,0,.2-.46l0-2.022a.663.663,0,0,0-.656-.655Z"
++          fill="#d1000f" transform="translate(-2107.027 2024.568) rotate(-45)"></path>
++      </svg>
++    </div>
++
++    <div class="layer-info-content">
++      <div #tabBar class="tab-bar">
++        <div (click)="tabChange($event)" class="tab" *ngFor="let tab of tabs">{{tab}}</div>
++        <div style="display: none;" class="tab-ink"></div>
++      </div>
++      <app-yapi-bilgileri-genericinfo [tabData]="_tabData"></app-yapi-bilgileri-genericinfo>
++    </div>
++  </div>
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..973586873b1a84069035d6f90e0fc04b19d5436a
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
+@@ -0,0 +1,145 @@
++.info-panel {
++    position: absolute;
++    top: 110px;
++    left: 15px;
++    min-width: 380px;
++    border: 2px solid #f3273c;
++  
++    > .layer-info-panel {
++      flex-direction: column;
++      background-color: #fff;
++      display: block;
++      animation: 0.5s fadeIn;
++      -webkit-animation: 0.5s fadeIn;
++      min-height: 760px;
++      > {
++        .layer-info-header {
++          padding: 12px;
++          color: #f44336;
++          font-weight: 400;
++          font-size: 18px;
++          border-bottom: 1px solid #fff;
++          display: flex;
++          align-items: center;
++  
++          > {
++            .title {
++              flex: 1;
++              text-align: center;
++            }
++            .back-button {
++              cursor: pointer;
++            }
++  
++            .close {
++              cursor: pointer;
++            }
++          }
++        }
++  
++        .layer-info-content {
++          color: #757575;
++          padding: 20px;
++  
++          > .tab-bar {
++            display: flex;
++            flex-direction: row;
++            height: 40px;
++            align-items: center;
++            position: relative;
++            margin-bottom: 2px;
++            box-shadow: 0 2px 3px 0px rgba(0, 0, 0, 0.1);
++  
++            > {
++              .tab {
++                display: flex;
++                position: relative;
++                flex-direction: row;
++                align-items: center;
++                justify-content: center;
++                text-align: center;
++                max-width: 120px;
++                min-width: 32px;
++                color: #757575;
++                font-size: 14px;
++                flex: 1 1 0;
++                height: 100%;
++                box-sizing: border-box;
++                transition: 0.5s;
++                font-size: 18px;
++                background-color: #edeef8;
++                color: #b6b6bf;
++                cursor: pointer;
++                user-select: none;
++                margin: 0 6px;
++  
++                &:after {
++                  content: " ";
++                  position: absolute;
++                  background-color: inherit;
++                  color: inherit;
++                  transform-origin: bottom left;
++                  width: 10px;
++                  height: 100%;
++                  right: 0;
++                  transform: skewX(-10deg);
++                }
++  
++                &:before {
++                  content: " ";
++                  position: absolute;
++                  background-color: inherit;
++                  color: inherit;
++                  transform-origin: bottom left;
++                  width: 10px;
++                  height: 100%;
++                  left: 0;
++                  transform: skewX(-10deg) translateX(-10px);
++                }
++  
++                &:nth-child(1) {
++                  margin-left: 0;
++  
++                  &:before {
++                    transform: none;
++                  }
++                }
++  
++                &:nth-last-child(2) {
++                  margin-right: 0;
++  
++                  &:after {
++                    transform: none;
++                  }
++                }
++  
++                &.active {
++                  background-color: #d1000f;
++                  color: #f3f3f3;
++                }
++              }
++  
++              .tab-ink {
++                position: absolute;
++                height: 2px;
++                left: 0;
++                bottom: 0;
++                background-color: #3f51b5;
++                transition: 0.5s;
++              }
++            }
++          }
++        }
++      }
++    }
++  }
++  
++  @keyframes fadeIn {
++    from {
++      opacity: 0;
++    }
++  
++    to {
++      opacity: 1;
++    }
++  }
+\ No newline at end of file
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.spec.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c6929ca247674e0218b1aa332ea8e8ed998067d
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { YapiBilgileriInfoComponent } from './yapi-bilgileri-info.component';
++
++describe('YapiBilgileriInfoComponent', () => {
++  let component: YapiBilgileriInfoComponent;
++  let fixture: ComponentFixture<YapiBilgileriInfoComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ YapiBilgileriInfoComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(YapiBilgileriInfoComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..da078e6fdb0f93b426357b7902ee3a66f7e32b70
+--- /dev/null
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
+@@ -0,0 +1,138 @@
++import { Component, OnInit, Input, Output, EventEmitter, ViewChild, ElementRef, OnDestroy } from '@angular/core';
++import { InfoData, ModelData } from '../yapi-info';
++import { HttpClient } from '@angular/common/http';
++import { environment } from 'src/environments/environment';
++import { DialogService } from '../dialog/dialog.service';
++import { AcceptDialogComponent } from '../accept-dialog/accept-dialog.component';
++import { DialogRef } from '../dialog/dialog-ref';
++import { MessageDialogComponent } from '../message-dialog/message-dialog.component';
++
++@Component({
++  selector: 'app-yapi-bilgileri-info',
++  templateUrl: './yapi-bilgileri-info.component.html',
++  styleUrls: ['./yapi-bilgileri-info.component.scss']
++})
++
++
++
++export class YapiBilgileriInfoComponent implements OnInit {
++  @ViewChild('tabBar', { static: true }) private tabBarEl: ElementRef;
++
++  @Output() infoClose = new EventEmitter();
++  @Output() tabNames = new EventEmitter();
++  @Output() yapiInfoBack = new EventEmitter();
++
++  infoTitle = 'YAPI BİLGİLERİ';
++  tabs: Array<string> = [];
++  _infoData: ModelData;
++
++  _tabData: InfoData;
++  _tableName: string;
++  _personel_KurumKodu: number;
++  guncellikDurumDialogRef: DialogRef;
++  @Input()
++  set personel_KurumKodu(personel_KurumKodu: number) {
++    this._personel_KurumKodu = personel_KurumKodu;
++  }
++  get personel_KurumKodu() {
++    return this._personel_KurumKodu;
++  }
++  @Input()
++  set infoData(infoData: ModelData) {
++    this._infoData = infoData;
++    console.log(infoData);
++
++    if (this._infoData !== undefined) {
++        this.tabs = ['Bina', 'Yapısal Bilgi', 'Deprem', 'Enerji'];
++      }
++
++      this._tabData = this._infoData.mainInformation;
++      this._tabData.tabName = 'Bina';
++
++      setTimeout(this.defaultTabInit.bind(this));
++
++  }
++  get infoData() {
++    return this._infoData;
++  }
++
++  constructor(private http: HttpClient, private dialogService: DialogService) { }
++
++  ngOnInit() {
++
++  }
++
++  defaultTabInit() {
++    if (this.tabBarEl !== undefined) {
++      const tabBar: HTMLElement = this.tabBarEl.nativeElement;
++      const defaultTab: HTMLElement = tabBar.firstElementChild as HTMLElement;
++      if (defaultTab.classList.contains('tab')) {
++        const activeTabs = tabBar.querySelectorAll('.active');
++        if (activeTabs.length > 0) {
++
++          const activeTabArray = Array.from(activeTabs);
++          activeTabArray.forEach(tab => {
++            if (tab.previousElementSibling !== null) {
++              tab.classList.toggle('active');
++            }
++          });
++        }
++
++        if (!defaultTab.classList.contains('active')) {
++          defaultTab.classList.toggle('active');
++        }
++
++        const tabInk: HTMLElement = tabBar.lastElementChild as HTMLElement;
++        tabInk.style.left = '0';
++        tabInk.style.width = defaultTab.offsetWidth + 'px';
++      }
++    }
++  }
++
++  closeInfo() {
++    this.infoClose.emit();
++  }
++
++  tabChange(event: Event) {
++
++    if (this.guncellikDurumDialogRef !== undefined) {
++      return;
++    }
++    const targetElement: HTMLElement = event.target as HTMLElement;
++    if (!targetElement.classList.contains('active')) {
++      const tabBar: HTMLElement = this.tabBarEl.nativeElement;
++      const activeElemenmt = tabBar.querySelector('.active');
++
++      if (activeElemenmt !== null) {
++        activeElemenmt.classList.toggle('active');
++      }
++
++      targetElement.classList.toggle('active');
++
++      switch (targetElement.innerHTML) {
++        case 'Bina':
++          this._tabData = this._infoData.mainInformation;
++          this._tableName = undefined;
++          break;
++        case 'Yapısal Bilgi':
++          this._tabData = this._infoData.extraInformation.yapisal_bilgi;
++          this._tableName = 'yapisal_bilgi';
++          this._tabData.tabName = 'Yapısal Bilgi';
++          break;
++        case 'Deprem':
++          this._tabData = this._infoData.extraInformation.yapisal_durum;
++          this._tableName = 'yapisal_durum';
++          this._tabData.tabName = 'Deprem';
++          break;
++        case 'Enerji':
++          this._tabData = this._infoData.extraInformation.yapi_enerji;
++          this._tableName = 'yapi_enerji';
++          this._tabData.tabName = 'Enerji';
++      }
++    }
++  }
++  onClickBackButton() {
++    this.yapiInfoBack.emit();
++  }
++}
++
+diff --git a/src/app/yapi-info.ts b/src/app/yapi-info.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d4b01ba856d87961f8b276119873b6965cfa43f5
+--- /dev/null
++++ b/src/app/yapi-info.ts
+@@ -0,0 +1,24 @@
++export interface ModelData {
++    extraInformation: ExtraInfoData;
++    mainInformation: InfoData;
++}
++
++export interface ExtraInfoData {
++    yapisal_bilgi: InfoData;
++    yapisal_durum: InfoData;
++    yapi_enerji: InfoData;
++}
++
++export interface InfoData {
++    // tslint:disable-next-line:ban-types
++    properties: Object;
++    fields: Array<FieldInfo>;
++    tabName: string;
++}
++
++export interface FieldInfo {
++    alias: string;
++    fieldName: string;
++    type: 'number' | 'text' | 'date' | 'domain';
++    domain: Array<string>;
++}
+diff --git a/src/environments/environment.hetzner.ts b/src/environments/environment.hetzner.ts
+index 4e45f037daba552fbfc1b52edc8f4f9203d77097..3261da196778e96168239d5bbe53c75d434f2cdb 100644
+--- a/src/environments/environment.hetzner.ts
++++ b/src/environments/environment.hetzner.ts
+@@ -6,5 +6,6 @@ export const environment = {
+     arcgisSQL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/sql/',
+     arcgisMEBPendingURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebpending/',
+     arcgisMEBHistoryURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebhistory/',
+-    arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer'
++    arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer',
++    yapiURL: 'http://localhost:443/'
+ };
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index 5bef3bab7df5cdc4d92901ba46d50ebe6bbc222a..fc83def647540b110e9369f652ce82d2b5c543cd 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -10,7 +10,8 @@ export const environment = {
+   arcgisSQL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/sql/',
+   arcgisMEBPendingURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebpending/',
+   arcgisMEBHistoryURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebhistory/',
+-  arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer'
++  arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer',
++  yapiURL: 'http://localhost:443/'
+ };
+ 
+ /*
