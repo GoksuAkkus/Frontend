@@ -1,0 +1,2971 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index a795aa9b58fe6004e2c0c126be40a59b82982657..697a48aaf44fc328ee2707b9b3cec31eb4002863 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -77,6 +77,7 @@ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.componen
+ import { YapiBilgileriGenericinfoComponent } from './yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component';
+ import { YapiBilgileriInfoComponent } from './yapi-bilgileri-info/yapi-bilgileri-info.component';
+ import { ReportTableComponent } from './report-table/report-table.component';
++import { DenemeComponent } from './deneme/deneme.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -150,6 +151,7 @@ import { ReportTableComponent } from './report-table/report-table.component';
+     YapiBilgileriInfoComponent,
+     YapiBilgileriGenericinfoComponent,
+     ReportTableComponent,
++    DenemeComponent,
+   ],
+   imports: [
+     BrowserAnimationsModule,
+diff --git a/src/app/deneme/deneme.component.html b/src/app/deneme/deneme.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..6abf5da081ce94f78afbf4a4d580fafa77a4937b
+--- /dev/null
++++ b/src/app/deneme/deneme.component.html
+@@ -0,0 +1 @@
++<button (click)="onClickDeneme()"> DENEME </button>
+\ No newline at end of file
+diff --git a/src/app/deneme/deneme.component.scss b/src/app/deneme/deneme.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..76188a86f55824380a3ced2ea793443eb536f9fb
+--- /dev/null
++++ b/src/app/deneme/deneme.component.scss
+@@ -0,0 +1,8 @@
++button {
++    width: 100px;
++    height: 100px;
++    z-index: 1;
++    position: absolute;
++    left: 0;
++    bottom: 0;
++}
+\ No newline at end of file
+diff --git a/src/app/deneme/deneme.component.spec.ts b/src/app/deneme/deneme.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..94d87b8e440ca080e2ba7fa6e5ba0e6fed721cec
+--- /dev/null
++++ b/src/app/deneme/deneme.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { DenemeComponent } from './deneme.component';
++
++describe('DenemeComponent', () => {
++  let component: DenemeComponent;
++  let fixture: ComponentFixture<DenemeComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ DenemeComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(DenemeComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/deneme/deneme.component.ts b/src/app/deneme/deneme.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..898386714d8c043632329d9bdf0d514e32a525cc
+--- /dev/null
++++ b/src/app/deneme/deneme.component.ts
+@@ -0,0 +1,42 @@
++import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
++import { EsriMapComponent } from '../esri-map/esri-map.component';
++import esri = __esri;
++import { DialogRef } from '../dialog/dialog-ref';
++import { DialogService } from '../dialog/dialog.service';
++import { InfoComponent } from '../info/info.component';
++@Component({
++  selector: 'app-deneme',
++  templateUrl: './deneme.component.html',
++  styleUrls: ['./deneme.component.scss']
++})
++export class DenemeComponent implements OnInit {
++  _mapView: esri.MapView;
++  @Output() featureSet = new EventEmitter<esri.FeatureSet>();
++  @Input()
++  set mapView(mapView) {
++    this._mapView = mapView;
++  }
++
++  get mapView() {
++    return this._mapView;
++  }
++
++  constructor(private dialogService: DialogService) { }
++
++  ngOnInit() {
++
++  }
++  onClickDeneme() {
++    const selectedLayer = <esri.FeatureLayer>this._mapView.map.layers.find(layer => layer.title === 'Yapılar');
++    const queryProperties: esri.QueryProperties = {
++      where: `objectid= 6328`,
++      outFields: ['*'],
++      returnGeometry: true
++    };
++
++    selectedLayer.queryFeatures(queryProperties).then(result => {
++      this.featureSet.emit(result);
++    });
++  }
++}
++
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index a8b8d8a30ca9bff130011f5fac92b090afbc1972..15be89a709291bbb4b4899dba77841aa534a78a5 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -64,3 +64,4 @@
+ <app-buffer-analysis (bufferAnalysisToggle)="bufferAnalysisToggleEvent()"
+   (bufferAnalysisCompleted)="bufferAnalysisCompletedEvent()">
+ </app-buffer-analysis>
++<app-deneme (featureSet)="deneme($event)" [mapView]="mapView"></app-deneme>
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 43255bded8240bf327f6d2dad2d501e03e2144f9..32220cc34e55d9d121ee236ea1e7e38a06d9129b 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -1828,5 +1828,9 @@ export class MainComponent implements OnInit {
+     this.drawMode = false;
+   }
+   onDispatchOtherLayerView() { }
++  
++  deneme(featureSet: esri.FeatureSet) {
++    this.convertAndOpenInfoWithFeatureSet(featureSet);
++  }
+ 
+ }
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 8d2ac722a670b3fae56a4c7eb6c7b98083c15388..9bb900054879be895a1c84b062d11fbd7c7093c3 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -68,7 +68,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   formAttachmentData: File;
+   allMalikArray: Array<any> = [];
+   selectedMalikArray: Array<any> = [];
+-  atolyeIslemPreviousSelections: Array<AtolyeIslem> = [];
+   onChangeFormElement: any;
+   lead: number;
+ 
+@@ -144,32 +143,11 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       this.acceptanceDialog.close();
+     }
+   }
+-  setAtolyeIslemPreviousSelections(formElement: any) {
+ 
+-    const updatedName = formElement.name;
+-    const updatedPreviousValue = formElement.value;
+-
+-    const foundIndex = this.atolyeIslemPreviousSelections.findIndex(data => data.name === updatedName);
+-
+-    if (foundIndex !== -1) {
+-      this.atolyeIslemPreviousSelections[foundIndex].previousValue = updatedPreviousValue;
+-    } else {
+-      this.atolyeIslemPreviousSelections.push({ name: updatedName, previousValue: updatedPreviousValue });
+-    }
+-  }
+-  // GAGA
+-  // initializeAtolyeIslemPreviousSelections() {
+-  //   const controls = this.formGroup.controls;
+-  //   for (const propertyName in controls) {
+-  //     if (propertyName.includes('atolye_islem')) {
+-  //       if (controls.hasOwnProperty(propertyName)) {
+-  //         const value = controls[propertyName].value;
+-  //         this.atolyeIslemPreviousSelections.push({ name: propertyName, previousValue: value });
+-  //       }
+-  //     }
+-  //   }
+-  // }
+   onChangeFormControl(event: Event) {
++    const moduleData = this.moduleData;
++    const formObject = this.formGroup.value;
++    const formGroup = this.formGroup;
+     const target = <HTMLElement>event.target;
+     let formElement: HTMLInputElement | HTMLSelectElement;
+ 
+@@ -178,52 +156,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     } else {
+       formElement = <HTMLSelectElement>target;
+     }
+-    if (this.moduleData.value === 14) {
+-
+-      if (formElement.name === 'talep_eden_kurum') {
+-        this.formGroup.value['detay'] = -1;
+-        this.formGroup.value['avukat_adi'] = -1;
+-
+-        // const formGroupValues = this.formGroup.value;
+-        // const formArray = [{name: '', value: 0}];
+-        // for (const propertyName in formGroupValues) {
+-        //   if (formGroupValues.hasOwnProperty(propertyName)) {
+-        //     const value = formGroupValues[propertyName];
+-        //     formArray.push({ name: propertyName, value: value });
+-        //   }
+-        // }
+-        // const maliyetFieldArray = formArray.filter( data => data['name'].includes('_no'));
+-
+-
+-        // const deleteArray: Array<string> = [];
+-        // for (const element in this.formGroup.value) {
+-        //   if (element.includes('amaci')) {
+-        //     this.formGroup.value[element] = -1;
+-        //   } else if (element.includes('_no')) {
+-        //     deleteArray.push(element);
+-
+-        //   }
+-        // }
+-        // deleteArray.forEach(element => this.formGroup.removeControl(element) );    
+-      }
+-    }
+-
+-    const moduleData = this.moduleData;
+-    const formObject = this.formGroup.value;
+-    const formGroup = this.formGroup;
+-
+-    this.onChangeFormElement = formElement;
+ 
+     if (formElement.type === 'file') {
+       this.formAttachmentData = (<HTMLInputElement>formElement).files.item(0);
+       this.formGroup.value.attachment = (<HTMLInputElement>formElement).files.item(0);
+-    } else if (formElement.name === 'bina_sayi') {
+-      const count = Number(formElement.value);
+-      this.addOrRemoveDynamicFields(count, formElement.name, count, formObject);
+-    } else if (this.moduleData.value === 14 && formElement.name.includes('talep_amaci')) {
+-      this.addOrRemoveDynamicFields(1, formElement.name, formElement.value, formObject);
+-      this.setAtolyeIslemPreviousSelections(formElement);
+     } else if (formElement.type === 'number') {
++
++      if (formElement.name === 'bina_sayi') {
++        const count = Number(formElement.value);
++        this.addOrRemoveDynamicFields(count, formObject);
++      }
++
+       const formValue = formElement.value;
+       if (formValue && formValue.indexOf('.') !== -1) {
+         this.formGroup.controls[formElement.name].patchValue(Number(formValue));
+@@ -234,6 +177,23 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     const formData = this.findFormData(formControlName);
+ 
++    if (this.moduleData.value === 14) {
++      const tadilatMaliyetControl = this.formGroup.controls['esas_no'];
++
++      if (formElement.name === 'talep_amaci') {
++        if (formElement.value === 'Sadece Mal Alımı') {
++          if (tadilatMaliyetControl.enabled) {
++            this.formGroup.controls['esas_no'].disable();
++          }
++
++        } else if (formElement.value === 'Tadilat ve Mal Alımı') {
++          if (tadilatMaliyetControl.disabled) {
++            this.formGroup.controls['esas_no'].enable();
++          }
++        }
++      }
++    }
++
+     const formGroupControl = formGroup.controls[formControlName];
+     if (formGroupControl && formGroupControl.valid === true) {
+       formElement.classList.remove('error');
+@@ -245,19 +205,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         const lead = this.findLead(formElementValue, formData);
+         if (lead !== undefined) {
+           const leadingFormData = moduleData.formData[lead];
+-          if (leadingFormData.length !== 4) {
+-            const deleteNumber = leadingFormData.length - 4;
+-            if (deleteNumber > 0) {
+-              for (let j = 4; j <= deleteNumber; j++) {
+-                const controlName = leadingFormData[j].name;
+-                this.formGroup.removeControl(controlName);
+-              }
+-            }
+-            for (let i = 0; i < deleteNumber; i++) {
+-              lead
+-              leadingFormData.pop();
+-            }
+-          }
++
+           this.createInitializedForm();
+           this.moduleFormData = leadingFormData;
+           this.initalizeWithFormData(leadingFormData, formObject);
+@@ -266,389 +214,116 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         }
+       }
+     } else {
+-      if (formData.chosen_values.length > 0) {
+-        this.resetFormData(moduleData, formObject);
+-        formElement.classList.add('error');
+-      }
+-    }
+-    this.checkAndUpdateCalculateFuntions(moduleData, formGroup);
+-  }
+-
+-  addOrRemoveDynamicFieldsForAtolyeIslem(formControlName: string, formData: FormData, fieldValue: any, control?: number) {
+-    const index = this.moduleFormData.findIndex(moduleFormData => moduleFormData.name === this.onChangeFormElement.name);
+-
+-    const fieldFormControl = this.createFormControl(formData.name, formData.type, true, fieldValue);
+-
+-    this.formGroup.addControl(formData.name, fieldFormControl);
+-
+-    let firstPart = [];
+-    let secondPart = [];
+-
+-    // if (formControlName.includes('tm_malAlimi')) {
+-    if (control !== undefined) {
+-      firstPart = this.moduleFormData.slice(0, (index + 2));
+-    } else {
+-      firstPart = this.moduleFormData.slice(0, (index + 1));
++      this.resetFormData(moduleData, formObject);
++      formElement.classList.add('error');
+     }
+ 
+-    firstPart.push(formData);
+-
+-    // if (formControlName.includes('tm_malAlimi')) {
+-    if (control !== undefined) {
+-      secondPart = this.moduleFormData.slice(index + 2);
+-    } else {
+-      secondPart = this.moduleFormData.slice(index + 1);
+-    }
+-
+-    const foundFirstAtolyeTuruFieldIndex = secondPart.findIndex(a => a.name.includes('yatirim'));
+-
+-    if (secondPart.length > 0 && foundFirstAtolyeTuruFieldIndex >= 0) {
+-
+-      // Bulunan ilk atölye türü fielddan itibaren secondPart olarak eklencek
+-      secondPart = secondPart.slice(foundFirstAtolyeTuruFieldIndex);
+-
+-      for (let i = 0; i < secondPart.length; i++) {
+-        firstPart.push(secondPart[i]);
+-      }
+-    }
+-    this.moduleFormData = firstPart;
+-    this.moduleData.formData[this.lead] = firstPart;
+-
++    this.checkAndUpdateCalculateFuntions(moduleData, formGroup);
+   }
+ 
+-  getAtolyeTuruDomains() {
+-    return [{
+-      name: 'Görsel Sanatlar Atölyesi',
+-      value: 'Görsel Sanatlar Atölyesi',
+-    },
+-    {
+-      name: 'Ahşap ve Metal Atölyesi',
+-      value: 'Ahşap ve Metal Atölyesi'
+-    },
+-    {
+-      name: 'Müzik Atölyesi',
+-      value: 'Müzik Atölyesi'
+-    },
+-    {
+-      name: 'Drama, Dil ve Eleştirel Düşünce Atölyesi',
+-      value: 'Drama, Dil ve Eleştirel Düşünce Atölyesi'
+-    },
+-    {
+-      name: 'Yaşam Becerileri Atölyesi',
+-      value: 'Yaşam Becerileri Atölyesi'
+-    },
+-    {
+-      name: 'Salon Sporları Atölyesi',
+-      value: 'Salon Sporları Atölyesi'
+-    },
+-    {
+-      name: 'FeTeMM',
+-      value: 'FeTeMM'
+-    },
+-    {
+-      name: 'Yazılım ve Tasarım Atölyesi',
+-      value: 'Yazılım ve Tasarım Atölyesi'
+-    },
+-    {
+-      name: 'Bahçe ve Hayvan Bakımı Atölyesi',
+-      value: 'Bahçe ve Hayvan Bakımı Atölyesi'
+-    },
+-    {
+-      name: 'Açık Hava Sporları Atölyesi',
+-      value: 'Açık Hava Sporları Atölyesi'
+-    },
+-    {
+-      name: 'Bilim ve Kültür Sanat Atölyesi',
+-      value: 'Bilim ve Kültür Sanat Atölyesi'
+-    }];
+-  }
++  addOrRemoveDynamicFields(count: number, recentFormValues?: Object) {
++    const karakteristikFieldName = 'karakteristik';
++    const kapasiteFieldName = 'kapasite';
+ 
+-  getAtolyeIslemDomains() {
+-    return [{
+-      name: 'Tadilat ve Mal Alımı',
+-      value: 'Tadilat ve Mal Alımı',
+-    },
+-    {
+-      name: 'Sadece Mal Alımı',
+-      value: 'Sadece Mal Alımı',
+-    }];
+-  }
++    let karakteristikValue: any;
++    let kapasiteValue: any;
+ 
+-  addOrRemoveDynamicFields(count: number, formControlName?: string, formControlValue?: string | number, recentFormValues?: Object) {
+-    let field1Name: string;
+-    let field2Name: string;
+-    let field1Value: any;
+-    let field2Value: any;
+-    let field1FormData: FormData;
+-    let field2FormData: FormData;
+     let startIndex = 1;
+ 
+-    if (this.moduleData.value === 14) {
+-      if (formControlName === 'bina_sayi') {
+-        field1Name = 'yatirim_ad';
+-        field2Name = 'talep_amaci';
+-      } else if (formControlName.includes('talep_amaci')) {
+-        if (formControlValue === 'Sadece Mal Alımı') {
+-          field1Name = 'karar_no';
+-        } else if (formControlValue === 'Tadilat ve Mal Alımı') {
+-          field1Name = 'esas_no';
+-          field2Name = 'karar_no';
+-        } else {
+-          const moduleFormData = this.moduleFormData;
+-
+-          const foundIndex = this.moduleFormData.findIndex(formControl => formControl.name === formControlName);
++    const filteredFormControls = this.moduleFormData
++      .filter(formControl => formControl.name.includes('karakteristik'));
+ 
+-          for (let i = 1; i <= 2; i++) {
+-            const formData = moduleFormData[foundIndex + i];
+-            if (formData !== undefined && !formData.name.includes('yatirim_ad')) {
+-              moduleFormData.splice(foundIndex + i, 1);
++    const dynamicFieldLength = filteredFormControls.length;
+ 
+-              this.formGroup.removeControl(formData.name);
+-              this.moduleFormData = moduleFormData;
+-              i--;
+-            } else {
+-              break;
+-            }
+-          }
+-          return;
+-        }
+-      }
+-    } else {
+-      field1Name = 'karakteristik';
+-      field2Name = 'kapasite';
+-    }
+-
+-    if (!formControlName.includes('talep_amaci')) {
+-      const filteredFormControls = this.moduleFormData
+-        .filter(formControl => formControl.name.includes(field1Name));
+-      const dynamicFieldLength = filteredFormControls.length;
+-
+-      if (dynamicFieldLength === count) {
+-        return;
+-      } else if (dynamicFieldLength > count) {
+-        const deleteIndex = count + 1;
+-        this.removeDynamicFields([field1Name, field2Name], deleteIndex, dynamicFieldLength);
+-        startIndex = dynamicFieldLength;
+-      } else if (dynamicFieldLength < count) {
+-        startIndex = count - (count - dynamicFieldLength) + 1;
+-      }
++    if (dynamicFieldLength === count) {
++      return;
++    } else if (dynamicFieldLength > count) {
++      const deleteIndex = count + 1;
++      this.removeDynamicFields(deleteIndex, dynamicFieldLength);
++      startIndex = dynamicFieldLength;
++    } else if (dynamicFieldLength < count) {
++      startIndex = count - (count - dynamicFieldLength) + 1;
+     }
+ 
+-    if (field2Name !== undefined) {
+-      for (let i = startIndex; i <= count; i++) {
+-
+-        let field1Field;
+-        let field2Field;
+-        let index;
+-
+-        if (formControlName.includes('talep_amaci')) {
+-          const indexStr = formControlName.slice(11);
+-          index = Number(indexStr);
+-
+-          field1Field = field1Name + index;
+-          field2Field = field2Name + index;
+-        } else {
+-          field1Field = field1Name + i;
+-          field2Field = field2Name + i;
+-        }
+-
+-        if (this.moduleData.value === 14) {
+-          if (formControlValue === 'Tadilat ve Mal Alımı') {
+-            field1FormData = {
+-              alias: `Atölye ${index} Tadilat Maliyet`,
+-              name: field1Field,
+-              type: 'number',
+-              required: true,
+-              chosen_values: [],
+-              domain_values: []
+-            };
+-
+-            field2FormData = {
+-              alias: `Atölye ${index} Mal Alımı Maliyet`,
+-              name: field2Field,
+-              type: 'number',
+-              required: true,
+-              chosen_values: [],
+-              domain_values: []
+-            };
+-          } else {
+-            field1FormData = {
+-              alias: `Atölye ${i} Türü`,
+-              name: field1Field,
+-              type: 'localDomain',
+-              required: true,
+-              chosen_values: [],
+-              domain_values: this.getAtolyeTuruDomains()
+-            };
+-
+-            field2FormData = {
+-              alias: `Atölye ${i} Islem`,
+-              name: field2Field,
+-              type: 'localDomain',
+-              required: true,
+-              chosen_values: [],
+-              domain_values: this.getAtolyeIslemDomains()
+-            };
+-          }
+-        } else {
+-          field1FormData = <FormData>{
+-            alias: `Bina ${i} Karakteristik`,
+-            name: field1Field,
+-            type: 'localDomain',
+-            required: true,
+-            chosen_values: [],
+-            domain_values: this.getKarakteristikDomains()
+-          };
+-
+-          field2FormData = <FormData>{
+-            alias: `Bina ${i} Kapasite`,
+-            name: field2Field,
+-            type: 'number',
+-            required: true,
+-            chosen_values: [],
+-            domain_values: []
+-          };
+-        }
+-
+-        const field1FormControlName = field1FormData.name;
+-        const field2FormControlName = field2FormData.name;
+-        const field1FormControlType = field1FormData.type;
+-        const field2FormControlType = field2FormData.type;
+-        const required = true;
+-
+-        if (recentFormValues !== undefined) {
+-          field1Value = recentFormValues[field1FormControlName];
+-          field2Value = recentFormValues[field2FormControlName];
+-        }
+-
+-        if (this.processState === 0) {
+-          const field1ValueArray = (<string>recentFormValues[field1Name]).split(',');
+-          const field2ValueArray = (<string>recentFormValues[field2Name]).split(',');
+-
+-          field1Value = field1ValueArray[i - 1];
+-          field2Value = field2ValueArray[i - 1];
+-          if (this.moduleData.value === 14 && formControlName.includes('talep_amaci')) {
+-
+-            const lastcharacter = Number(formControlName[formControlName.length - 1]);
+-            const secondLastCharacter = Number(formControlName[formControlName.length - 2]);
+-
+-            if (isNaN(secondLastCharacter)) {
+-              field1Value = field1ValueArray[lastcharacter - 1];
+-              field2Value = field2ValueArray[lastcharacter - 1];
+-            } else {
+-              const mergedNumber = Number(`${secondLastCharacter}${lastcharacter}`);
+-              
+-              field1Value = field1ValueArray[mergedNumber - 1];
+-              field2Value = field2ValueArray[mergedNumber - 1];
+-            }
+-          }
+-        }
+-        if (formControlName.includes('talep_amaci')) {
+-          this.addOrRemoveDynamicFieldsForAtolyeIslem(field1FormControlName, field1FormData, field1Value);
+-          this.addOrRemoveDynamicFieldsForAtolyeIslem(field2FormControlName, field2FormData, field2Value, 1);
+-          return;
+-        }
+-        const field1FormControl = this.createFormControl(field1FormControlName, field1FormControlType
+-          , required, field1Value);
+-
+-        this.formGroup.addControl(field1FormControlName, field1FormControl);
++    for (let i = startIndex; i <= count; i++) {
++      const karakteristikField = karakteristikFieldName + i;
++      const kapasiteField = kapasiteFieldName + i;
+ 
+-        const field2FormControl = this.createFormControl(field2FormControlName, field2FormControlType, required, field2Value);
+-        this.formGroup.addControl(field2FormControlName, field2FormControl);
+-
+-        if (this.processState === 0) {
+-          this.formGroup.controls[field1FormControlName].disable();
+-          this.formGroup.controls[field2FormControlName].disable();
+-        }
+-
+-        this.moduleFormData.push(field1FormData);
+-        this.moduleFormData.push(field2FormData);
+-      }
+-    } else {
+-
+-      const indexStr = formControlName.slice(11);
+-      const index = Number(indexStr);
+-      const field1Field = field1Name + index;
++      const karakteristikFormData = <FormData>{
++        alias: `Bina ${i} Karakteristik`,
++        name: karakteristikField,
++        type: 'localDomain',
++        required: true,
++        chosen_values: [],
++        domain_values: this.getKarakteristikDomains()
++      };
+ 
+-      field1FormData = {
+-        alias: `Atölye ${index} Mal Alımı Maliyet`,
+-        name: field1Field,
++      const kapasiteFormData = <FormData>{
++        alias: `Bina ${i} Kapasite`,
++        name: kapasiteField,
+         type: 'number',
+         required: true,
+         chosen_values: [],
+         domain_values: []
+       };
+ 
+-
+-      const field1FormControlName = field1FormData.name;
+-      const field1FormControlType = field1FormData.type;
++      const karakteristikFormControlName = karakteristikFormData.name;
++      const kapasiteFormControlName = kapasiteFormData.name;
++      const karakteristikFormControlType = karakteristikFormData.type;
++      const kapasiteFormControlType = kapasiteFormData.type;
+       const required = true;
+ 
+       if (recentFormValues !== undefined) {
+-        field1Value = recentFormValues[field1FormControlName];
++        karakteristikValue = recentFormValues[karakteristikFormControlName];
++        kapasiteValue = recentFormValues[kapasiteFormControlName];
+       }
+ 
+       if (this.processState === 0) {
+-        const field1ValueArray = (<string>recentFormValues[field1Name]).split(',');
++        const karakteristikValueArray = (<string>recentFormValues['karakteristik']).split(',');
++        const kapasiteValueArray = (<string>recentFormValues['kapasite']).split(',');
+ 
+-        field1Value = field1ValueArray[index - 1];
++        karakteristikValue = karakteristikValueArray[i - 1];
++        kapasiteValue = kapasiteValueArray[i - 1];
+       }
+-      if (formControlName.includes('talep_amaci')) {
+-        this.addOrRemoveDynamicFieldsForAtolyeIslem(formControlName, field1FormData, field1Value);
+-        return;
+-      }
+-      const field1FormControl = this.createFormControl(field1FormControlName, field1FormControlType
+-        , required, field1Value);
+ 
+-      this.formGroup.addControl(field1FormControlName, field1FormControl);
++      const karakteristikFormControl = this.createFormControl(karakteristikFormControlName, karakteristikFormControlType
++        , required, karakteristikValue);
++
++      this.formGroup.addControl(karakteristikFormControlName, karakteristikFormControl);
++
++      const kapasiteFormControl = this.createFormControl(kapasiteFormControlName, kapasiteFormControlType, required, kapasiteValue);
++      this.formGroup.addControl(kapasiteFormControlName, kapasiteFormControl);
+ 
+       if (this.processState === 0) {
+-        this.formGroup.controls[field1FormControlName].disable();
++        this.formGroup.controls[karakteristikFormControlName].disable();
++        this.formGroup.controls[kapasiteFormControlName].disable();
+       }
+ 
+-      this.moduleFormData.push(field1FormData);
+-
++      this.moduleFormData.push(karakteristikFormData);
++      this.moduleFormData.push(kapasiteFormData);
+     }
+   }
+ 
+-  removeDynamicFields(fieldNames: Array<string>, startingIndex: number, dynamicFieldLength: number) {
+-    const field1Name = fieldNames[0];
+-    const field2Name = fieldNames[1];
++  removeDynamicFields(startingIndex: number, dynamicFieldLength: number) {
++    const karakteristikFieldName = 'karakteristik';
++    const kapasiteFieldName = 'kapasite';
+ 
+     const moduleFormData = this.moduleFormData;
+ 
+     for (let i = startingIndex; i <= dynamicFieldLength; i++) {
+-      const d1FieldName = field1Name + i;
+-      const d2FieldName = field2Name + i;
++      const karakteristikField = karakteristikFieldName + i;
++      const kapasiteField = kapasiteFieldName + i;
+ 
+-      this.formGroup.removeControl(d1FieldName);
+-      this.formGroup.removeControl(d2FieldName);
++      this.formGroup.removeControl(karakteristikField);
++      this.formGroup.removeControl(kapasiteField);
+     }
+ 
+-    const firstField1 = field1Name + startingIndex;
++    const firstKarakteristikField = karakteristikFieldName + startingIndex;
+ 
+-    const field1Index = moduleFormData.findIndex(formData => formData.name === firstField1);
+-    moduleFormData.length = field1Index;
++    const karakteristikIndex = moduleFormData.findIndex(formData => formData.name === firstKarakteristikField);
++    moduleFormData.length = karakteristikIndex;
+   }
+-  removeDynamicFieldsForAtolye(startingIndex: number, dynamicFieldLength: number) {
+-    const atolyeTuruFieldName = 'yatirim_ad';
+-    const atolyeIslemFieldName = 'talep_amaci';
+-
+-    const moduleFormData = this.moduleFormData;
+-
+-    for (let i = startingIndex; i <= dynamicFieldLength; i++) {
+-      const atolyeTuruField = atolyeTuruFieldName + i;
+-      const atolyeIslemField = atolyeIslemFieldName + i;
+-
+-      this.formGroup.removeControl(atolyeTuruField);
+-      this.formGroup.removeControl(atolyeIslemField);
+-    }
+ 
+-    const firstAtolyeTuruField = atolyeTuruFieldName + startingIndex;
+-
+-    const atolyeTuruIndex = moduleFormData.findIndex(formData => formData.name === firstAtolyeTuruField);
+-    moduleFormData.length = atolyeTuruIndex;
+-  }
+ 
+   checkAndUpdateCalculateFuntions(moduleData: ModuleFormData, formGroup: FormGroup): any {
+     const foundLead = this.recursiveFormLead(moduleData.formData[0], 0);
+@@ -736,6 +411,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         formControl.enable();
+       }
+     }
++    if( this.moduleData.value === 14 ) {
++      const atolyeIslemValue = this.formGroup.controls['talep_amaci'].value;
++      if(atolyeIslemValue.includes('Sadece')) {
++        this.formGroup.controls['esas_no'].disable();
++      }
++    }
+   }
+ 
+   onMultiSubmit() {
+@@ -1165,6 +846,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     formData.forEach(formControl => {
+       const formControlName = formControl.name;
+       const required = formControl.required;
++
+       if (formControl.type === 'domain') {
+         this.bindFieldDomainValues(formControl);
+       } else if (formControl.type === 'malik') {
+@@ -1194,14 +876,15 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           this.attachmentData = attachmentData;
+         });
+       }
+-      if (this.moduleData.value === 14) {
+-        if (formControl.name.includes('yatirim_ad') || formControl.name.includes('talep_amaci')) {
+-          value = -1;
+-        }
+-      }
+ 
+       const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
+-
++      
++      if (this.moduleData.value === 14 && recentFormValues!== undefined && formControlName === 'esas_no') {
++        const atolyeIslemValue = recentFormValues['talep_amaci'];
++        if (atolyeIslemValue.includes('Sadece')) {
++          createdFormControl.disable();
++        }
++      }
+       this.formGroup.addControl(formControlName, createdFormControl);
+       if (this.processState === 0) {
+         this.formGroup.controls[formControlName].disable();
+@@ -1212,43 +895,9 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     if (foundBinaSayiField !== undefined && recentFormValues !== undefined) {
+       const binaSayiValue = Number(recentFormValues[foundBinaSayiField.name]);
+-      if (this.moduleData.value === 14) {
+-        for (let i = 1; i <= binaSayiValue; i++) {
+-          const fieldName1 = 'talep_amaci';
+-          const fieldName2 = 'yatirim_ad';
+-
+-          recentFormValues[fieldName1 + i] = -1;
+-          recentFormValues[fieldName2 + i] = -1;
+-        }
+-      }
+-      this.addOrRemoveDynamicFields(binaSayiValue, foundBinaSayiField.name, binaSayiValue, recentFormValues);
+-    }
+-    if (this.processState === 0) {
+-      const foundAtolyeIslemFields = formData.filter(formControl => formControl.name.includes('talep_amaci'));
+-
+-      foundAtolyeIslemFields.forEach((atolyeIslemField, i) => {
+-        this.onChangeFormElement = { name: atolyeIslemField.name };
+-        const atolyeIslemValue = recentFormValues['talep_amaci'].split(',')[i];
+-        this.addOrRemoveDynamicFields(1, atolyeIslemField.name, atolyeIslemValue, recentFormValues);
+-      });
++      this.addOrRemoveDynamicFields(binaSayiValue, recentFormValues);
+     }
+-    // else {
+-    //   const foundMaliyetFields = formData.filter(formControl => formControl.name.includes('_no'));
+-    //   if (foundMaliyetFields.length > 0) {
+-    //     const foundAtolyeIslemFields = formData.filter(formControl => formControl.name.includes('talep_amaci'));
+-    //     foundAtolyeIslemFields.forEach((atolyeIslemField, i) => {
+-    //       this.onChangeFormElement = { name: atolyeIslemField.name };
+-    //       const atolyeIslemValue = recentFormValues[atolyeIslemField.name];
+-    //       this.addOrRemoveDynamicFields(1, atolyeIslemField.name, atolyeIslemValue, recentFormValues);
+-    //     });
+-    //   }
+-    // }
+   }
+-  // if (this.processState === 0) {
+-  //   atolyeIslemValue = recentFormValues['talep_amaci'].split(',')[i];
+-  // } else {
+-  //   atolyeIslemValue = recentFormValues[atolyeIslemField.name];
+-  // }
+   bindFieldDomainValues(formControl: FormData) {
+     const formControlName = formControl.name;
+     const foundField = this.fields.find(field => field.name === formControlName);
+@@ -1424,21 +1073,11 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       let kapasiteFieldValue = '';
+       let karakteristikFieldValue = '';
+-      let atolyeTuruFieldValue = '';
+-      let atolyeIslemFieldValue = '';
+       let tadilatMaliyetFieldValue = '';
+       let malAlimiMaliyetFieldValue = '';
+ 
+       for (let i = 1; i <= binaCount; i++) {
+         if (this.moduleData.value === 14) {
+-          const atolyeTuruField = 'yatirim_ad' + i;
+-          const atolyeIslemField = 'talep_amaci' + i;
+-
+-          const atolyeTuruValue = formData[atolyeTuruField];
+-          const atolyeIslemValue = formData[atolyeIslemField];
+-
+-          atolyeTuruFieldValue += atolyeTuruValue + ',';
+-          atolyeIslemFieldValue += atolyeIslemValue + ',';
+ 
+           const tadilatMaliyetField = 'esas_no' + i;
+           const malAlimiMaliyetField = 'karar_no' + i;
+@@ -1469,11 +1108,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         formData['karakteristik'] = karakteristikFieldValue;
+         formData['kapasite'] = kapasiteFieldValue;
+       } else {
+-        atolyeTuruFieldValue = atolyeTuruFieldValue.slice(0, -1);
+-        atolyeIslemFieldValue = atolyeIslemFieldValue.slice(0, -1);
+-        formData['yatirim_ad'] = atolyeTuruFieldValue;
+-        formData['talep_amaci'] = atolyeIslemFieldValue;
+-
+         tadilatMaliyetFieldValue = tadilatMaliyetFieldValue.slice(0, -1);
+         malAlimiMaliyetFieldValue = malAlimiMaliyetFieldValue.slice(0, -1);
+         formData['esas_no'] = tadilatMaliyetFieldValue;
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 1315c071e87760023d97d5339b18aaf9f733085e..41d5890bd3d5df31c05b4e9baa375d6fc29f90ae 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -3,9 +3,1151 @@
+     "value": 14,
+     "formData": [
+       [{
+-          "alias": "Atölye Sayısı",
+-          "name": "bina_sayi",
+-          "type": "number",
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "İmam Hatip Ortaokulu",
++              "value": "İmam Hatip Ortaokulu"
++            },
++            {
++              "name": "Anadolu İmam Hatip Lisesi",
++              "value": "Anadolu İmam Hatip Lisesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Halk Eğitim Merkezi",
++            "value": "Halk Eğitim Merkezi"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Mesleki ve Teknik Anadolu Lisesi",
++              "value": "Mesleki ve Teknik Anadolu Lisesi"
++            },
++            {
++              "name": "Çok programlı Lise",
++              "value": "Çok programlı Lise"
++            },
++            {
++              "name": "Güzel Sanatlar Lisesi",
++              "value": "Güzel Sanatlar Lisesi"
++            },
++            {
++              "name": "Spor Lisesi",
++              "value": "Spor Lisesi"
++            },
++            {
++              "name": "Mesleki Eğitim Merkezi",
++              "value": "Mesleki Eğitim Merkezi"
++            }
++
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Anadolu Lisesi",
++              "value": "Anadolu Lisesi"
++            },
++            {
++              "name": "Fen lisesi",
++              "value": "Fen lisesi"
++            },
++            {
++              "name": "Sosyal Bilimler Lisesi",
++              "value": "Sosyal Bilimler Lisesi"
++            },
++            {
++              "name": "Lise",
++              "value": "Lise"
++            }
++
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Anaokul",
++              "value": "Anaokul"
++            },
++            {
++              "name": "İlkokul",
++              "value": "İlkokul"
++            },
++            {
++              "name": "Ortaokul",
++              "value": "Ortaokul"
++            },
++            {
++              "name": "Yatılı Bölge Ortaokulu",
++              "value": "Yatılı Bölge Ortaokulu"
++            }
++
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -47,22 +1189,22 @@
+           "chosen_values": [{
+             "values": ["Din Öğretimi Genel Müdürlüğü"],
+             "lead": 1
+-          },{
++          }, {
+             "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+             "lead": 2
+-          },{
++          }, {
+             "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+             "lead": 3
+-          },{
++          }, {
+             "values": ["Ortaöğretim Genel Müdürlüğü"],
+             "lead": 4
+-          },{
++          }, {
+             "values": ["Temel Eğitim Genel Müdürlüğü"],
+             "lead": 5
+-          },{
++          }, {
+             "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+             "lead": 6
+-          },{
++          }, {
+             "values": ["Valilik"],
+             "lead": 7
+           }]
+@@ -72,645 +1214,283 @@
+           "name": "detay",
+           "type": "localDomain",
+           "required": true,
++          "domain_values": [{
++              "name": "Bilim ve Sanat Merkezi",
++              "value": "Bilim ve Sanat Merkezi"
++            },
++            {
++              "name": "Özel Eğitim Anaokulu",
++              "value": "Özel Eğitim Anaokulu"
++            },
++            {
++              "name": "Uygulama Okulu 1. Kademe",
++              "value": "Uygulama Okulu 1. Kademe"
++            },
++            {
++              "name": "Uygulama Okulu 2. Kademe",
++              "value": "Uygulama Okulu 2. Kademe"
++            },
++            {
++              "name": "Uygulama Okulu 3. Kademe",
++              "value": "Uygulama Okulu 3. Kademe"
++            },
++            {
++              "name": "işitme Engelliler İlkokulu",
++              "value": "işitme Engelliler İlkokulu"
++            },
++            {
++              "name": "işitme Engelliler Ortaokulu",
++              "value": "işitme Engelliler Ortaokulu"
++            },
++            {
++              "name": "işitme Engelliler Meslek Lisesi",
++              "value": "işitme Engelliler Meslek Lisesi"
++            },
++            {
++              "name": "Görme Engelliler İlkokulu",
++              "value": "Görme Engelliler İlkokulu"
++            },
++            {
++              "name": "Görme Engelliler Ortaokulu",
++              "value": "Görme Engelliler Ortaokulu"
++            },
++            {
++              "name": "Görme Engelliler Meslek Okulu",
++              "value": "Görme Engelliler Meslek Okulu"
++            },
++            {
++              "name": "Bedensel Engelliler  İlkokulu",
++              "value": "Bedensel Engelliler  İlkokulu"
++            },
++            {
++              "name": "Bedensel Engelliler Ortaokulu",
++              "value": "Bedensel Engelliler Ortaokulu"
++            },
++            {
++              "name": "Bedensel Engelliler Meslek Lise",
++              "value": "Bedensel Engelliler Meslek Lise"
++            },
++            {
++              "name": "Zihinsel Engelliler İlkokulu",
++              "value": "Zihinsel Engelliler İlkokulu"
++            },
++            {
++              "name": "Zihinsel Engelliler Ortaokulu",
++              "value": "Zihinsel Engelliler Ortaokulu"
++            },
++            {
++              "name": "Zihinsel Engelliler Meslek Okulu",
++              "value": "Zihinsel Engelliler Meslek Okulu"
++            },
++            {
++              "name": "Otizmli Öğrenciler Meslek Okulu",
++              "value": "Otizmli Öğrenciler Meslek Okulu"
++            }
++
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Finans Kaynağı",
++          "name": "avukat_adi",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
++          ],
++          "chosen_values": []
++        }
++      ],
++      [{
++          "alias": "Atölye Türü",
++          "name": "yatirim_ad",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Görsel Sanatlar Atölyesi",
++              "value": "Görsel Sanatlar Atölyesi"
++            },
++            {
++              "name": "Ahşap ve Metal Atölyesi",
++              "value": "Ahşap ve Metal Atölyesi"
++            },
++            {
++              "name": "Müzik Atölyesi",
++              "value": "Müzik Atölyesi"
++            },
++            {
++              "name": "Drama, Dil ve Eleştirel Düşünce Atölyesi",
++              "value": "Drama, Dil ve Eleştirel Düşünce Atölyesi"
++            },
++            {
++              "name": "Yaşam Becerileri Atölyesi",
++              "value": "Yaşam Becerileri Atölyesi"
++            },
++            {
++              "name": "Salon Sporları Atölyesi",
++              "value": "Salon Sporları Atölyesi"
++            },
++            {
++              "name": "FeTeMM",
++              "value": "FeTeMM"
++            },
++            {
++              "name": "Yazılım ve Tasarım Atölyesi",
++              "value": "Yazılım ve Tasarım Atölyesi"
++            },
++            {
++              "name": "Bahçe ve Hayvan Bakımı Atölyesi",
++              "value": "Bahçe ve Hayvan Bakımı Atölyesi"
++            },
++            {
++              "name": "Açık Hava Sporları Atölyesi",
++              "value": "Açık Hava Sporları Atölyesi"
++            },
++            {
++              "name": "Bilim ve Kültür Sanat Atölyesi",
++              "value": "Bilim ve Kültür Sanat Atölyesi"
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Atölye İşlem",
++          "name": "talep_amaci",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++            "name": "Tadilat ve Mal Alımı",
++            "value": "Tadilat ve Mal Alımı"
++          }, {
++            "name": "Sadece Mal Alımı",
++            "value": "Sadece Mal Alımı"
++          }],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tadilat Maliyet",
++          "name": "esas_no",
++          "type": "text",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Mal Alımı Maliyet",
++          "name": "karar_no",
++          "type": "text",
++          "required": true,
+           "domain_values": [],
+           "chosen_values": []
+         },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "talep_eden_kurum",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Din Öğretimi Genel Müdürlüğü",
++              "value": "Din Öğretimi Genel Müdürlüğü"
++            },
++            {
++              "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
++              "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
++            },
++            {
++              "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
++              "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Ortaöğretim Genel Müdürlüğü",
++              "value": "Ortaöğretim Genel Müdürlüğü"
++            },
++            {
++              "name": "Temel Eğitim Genel Müdürlüğü",
++              "value": "Temel Eğitim Genel Müdürlüğü"
++            },
++            {
++              "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
++              "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
++            },
++            {
++              "name": "Valilik",
++              "value": "Valilik"
++            }
++          ],
++          "chosen_values": [{
++            "values": ["Din Öğretimi Genel Müdürlüğü"],
++            "lead": 1
++          }, {
++            "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
++            "lead": 2
++          }, {
++            "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
++            "lead": 3
++          }, {
++            "values": ["Ortaöğretim Genel Müdürlüğü"],
++            "lead": 4
++          }, {
++            "values": ["Temel Eğitim Genel Müdürlüğü"],
++            "lead": 5
++          }, {
++            "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
++            "lead": 6
++          }, {
++            "values": ["Valilik"],
++            "lead": 7
++          }]
++        },
++        {
++          "alias": "Okul Türü",
++          "name": "detay",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "name": "Milli Eğitim Müdürlüğü",
++              "value": "Milli Eğitim Müdürlüğü"
++            },
++            {
++              "name": "İlçe Milli Eğitim Müdürlüğü",
++              "value": "İlçe Milli Eğitim Müdürlüğü"
++            },
++            {
++              "name": "Diğer",
++              "value": "Diğer"
++            }
++          ],
++          "chosen_values": []
++        },
+         {
+           "alias": "Finans Kaynağı",
+           "name": "avukat_adi",
+           "type": "localDomain",
+           "required": true,
+-          "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-            
++          "domain_values": [{
++              "value": "Bağışçı",
++              "name": "Bağışçı"
++            }, {
++              "value": "Genel Bütçe",
++              "name": "Genel Bütçe"
++            }, {
++              "value": "Proje Kapsamında",
++              "name": "Proje Kapsamında"
++            }
++
+           ],
+           "chosen_values": []
+         }
+-      ], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "İmam Hatip Ortaokulu", "value": "İmam Hatip Ortaokulu" },
+-          { "name": "Anadolu İmam Hatip Lisesi", "value": "Anadolu İmam Hatip Lisesi" }
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "Halk Eğitim Merkezi", "value": "Halk Eğitim Merkezi" }
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "Mesleki ve Teknik Anadolu Lisesi", "value": "Mesleki ve Teknik Anadolu Lisesi" },
+-          { "name": "Çok programlı Lise", "value": "Çok programlı Lise" },
+-          { "name": "Güzel Sanatlar Lisesi", "value": "Güzel Sanatlar Lisesi" },
+-          { "name": "Spor Lisesi", "value": "Spor Lisesi" },
+-          { "name": "Mesleki Eğitim Merkezi", "value": "Mesleki Eğitim Merkezi" }
+-          
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "Anadolu Lisesi", "value": "Anadolu Lisesi" },
+-          { "name": "Fen lisesi", "value": "Fen lisesi" },
+-          { "name": "Sosyal Bilimler Lisesi", "value": "Sosyal Bilimler Lisesi" },
+-          { "name": "Lise", "value": "Lise" }
+-          
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "Anaokul", "value": "Anaokul" },
+-          { "name": "İlkokul", "value": "İlkokul" },
+-          { "name": "Ortaokul", "value": "Ortaokul" },
+-          { "name": "Yatılı Bölge Ortaokulu", "value": "Yatılı Bölge Ortaokulu"}
+-          
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "Bilim ve Sanat Merkezi", "value": "Bilim ve Sanat Merkezi"},
+-          { "name": "Özel Eğitim Anaokulu", "value": "Özel Eğitim Anaokulu" },
+-          { "name": "Uygulama Okulu 1. Kademe", "value": "Uygulama Okulu 1. Kademe" },
+-          { "name": "Uygulama Okulu 2. Kademe", "value": "Uygulama Okulu 2. Kademe" },
+-          { "name": "Uygulama Okulu 3. Kademe", "value": "Uygulama Okulu 3. Kademe" },
+-          { "name": "işitme Engelliler İlkokulu", "value": "işitme Engelliler İlkokulu" },
+-          { "name": "işitme Engelliler Ortaokulu", "value": "işitme Engelliler Ortaokulu" },
+-          { "name": "işitme Engelliler Meslek Lisesi", "value": "işitme Engelliler Meslek Lisesi" },
+-          { "name": "Görme Engelliler İlkokulu", "value": "Görme Engelliler İlkokulu" },
+-          { "name": "Görme Engelliler Ortaokulu", "value": "Görme Engelliler Ortaokulu" },
+-          { "name": "Görme Engelliler Meslek Okulu", "value": "Görme Engelliler Meslek Okulu" },
+-          { "name": "Bedensel Engelliler  İlkokulu", "value": "Bedensel Engelliler  İlkokulu" },
+-          { "name": "Bedensel Engelliler Ortaokulu", "value": "Bedensel Engelliler Ortaokulu" },
+-          { "name": "Bedensel Engelliler Meslek Lise", "value": "Bedensel Engelliler Meslek Lise" },
+-          { "name": "Zihinsel Engelliler İlkokulu", "value": "Zihinsel Engelliler İlkokulu" },
+-          { "name": "Zihinsel Engelliler Ortaokulu", "value": "Zihinsel Engelliler Ortaokulu" },
+-          { "name": "Zihinsel Engelliler Meslek Okulu", "value": "Zihinsel Engelliler Meslek Okulu" },
+-          { "name": "Otizmli Öğrenciler Meslek Okulu", "value": "Otizmli Öğrenciler Meslek Okulu" }
+-          
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }], [{
+-        "alias": "Atölye Sayısı",
+-        "name": "bina_sayi",
+-        "type": "number",
+-        "required": true,
+-        "domain_values": [],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Bağlı Olduğu Genel Müdürlük",
+-        "name": "talep_eden_kurum",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [{
+-            "name": "Din Öğretimi Genel Müdürlüğü",
+-            "value": "Din Öğretimi Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Hayat Boyu Öğrenme Genel Müdürlüğü",
+-            "value": "Hayat Boyu Öğrenme Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Mesleki ve Teknik Eğitim Genel Müdürlüğü",
+-            "value": "Mesleki ve Teknik Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Ortaöğretim Genel Müdürlüğü",
+-            "value": "Ortaöğretim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Temel Eğitim Genel Müdürlüğü",
+-            "value": "Temel Eğitim Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü",
+-            "value": "Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"
+-          },
+-          {
+-            "name": "Valilik",
+-            "value": "Valilik"
+-          }
+-        ],
+-        "chosen_values": [{
+-          "values": ["Din Öğretimi Genel Müdürlüğü"],
+-          "lead": 1
+-        },{
+-          "values": ["Hayat Boyu Öğrenme Genel Müdürlüğü"],
+-          "lead": 2
+-        },{
+-          "values": ["Mesleki ve Teknik Eğitim Genel Müdürlüğü"],
+-          "lead": 3
+-        },{
+-          "values": ["Ortaöğretim Genel Müdürlüğü"],
+-          "lead": 4
+-        },{
+-          "values": ["Temel Eğitim Genel Müdürlüğü"],
+-          "lead": 5
+-        },{
+-          "values": ["Özel Eğitim ve Rehberlik Hizmetleri Genel Müdürlüğü"],
+-          "lead": 6
+-        },{
+-          "values": ["Valilik"],
+-          "lead": 7
+-        }]
+-      },
+-      {
+-        "alias": "Okul Türü",
+-        "name": "detay",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [
+-          { "name": "Milli Eğitim Müdürlüğü", "value": "Milli Eğitim Müdürlüğü" },
+-          { "name": "İlçe Milli Eğitim Müdürlüğü", "value": "İlçe Milli Eğitim Müdürlüğü" },
+-          { "name": "Diğer", "value": "Diğer" }
+-        ],
+-        "chosen_values": []
+-      },
+-      {
+-        "alias": "Finans Kaynağı",
+-        "name": "avukat_adi",
+-        "type": "localDomain",
+-        "required": true,
+-        "domain_values": [ {"value": "Bağışçı", "name": "Bağışçı"},{"value": "Genel Bütçe", "name": "Genel Bütçe"},{"value": "Proje Kapsamında", "name": "Proje Kapsamında"},{"value": "Belirsiz", "name": "Belirsiz"}
+-          
+-        ],
+-        "chosen_values": []
+-      }]
++      ]
+     ]
+   },
+-
+   {
+     "type": "İrtifak",
+     "value": 2,
