@@ -1,0 +1,21 @@
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index 860165b719dafd526f0e606b413fca116a371d0c..3a28400778d5020fd9e1a85ec3cfce3e9fad737e 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -100,11 +100,14 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+           });
+         }
+ 
++        // Hiç İl Yetkisi Olmayan Durum
+         if (this.permittedCities.length === 0) {
+           this.ilArray = [];
+         }
+-
+-        this.ilArray = this.ilArray.filter(il => this.permittedCities.find(city => Number(city) === il.uavtil));
++        // Tüm Türkiye Yetkisi
++        if (this.permittedCities[0] !== '*') {
++          this.ilArray = this.ilArray.filter(il => this.permittedCities.find(city => Number(city) === il.uavtil));
++        }
+         this.dataArray[0].iller = this.ilArray;
+         this.filterArray[0].iller = this.ilArray;
+       });
