@@ -1,0 +1,162 @@
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index b36658b8905edd2427d767512a6f02f48903ac37..1a1440b03338fe222e86f0d85e0f88031f680075 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -2048,17 +2048,17 @@ export class MainComponent implements OnInit, OnDestroy {
+           r: this.getRandomColorCode(),
+           g: this.getRandomColorCode(),
+           b: this.getRandomColorCode(),
+-          a: 0.5,
++          a: 1,
+         },
+         outline: {
+           color: {
+             r: this.getRandomColorCode(),
+             g: this.getRandomColorCode(),
+             b: this.getRandomColorCode(),
+-            a: 0.5,
++            a: 1,
+           },
+         },
+-        size: 3,
++        size: 10,
+       };
+     }
+   }
+@@ -2155,8 +2155,13 @@ export class MainComponent implements OnInit, OnDestroy {
+                 break;
+               case 'LineString':
+                 geom = new Polyline({
+-                  paths: [feature.geometry.coordinates],
++                  paths: feature.geometry.coordinates,
+                 });
++                // WGS84 ise 20.1231 gibi olması gerekiyor. Bu yüzden ilk parçanın lengthi en fazla 2 olabilir gibi düşünülmüştü.
++                // Ancak - koordinat olması durumunda length 3 olacak.
++                if (geom['paths'][0][0].toString().split('.')[0].length > 3) {
++                  this.projectionService.convertEPSG3857PolylineGeomToWGS84ForFile(geom);
++                }
+                 symbol = lineSymbol;
+                 break;
+               case 'MultiLineString':
+@@ -2166,7 +2171,7 @@ export class MainComponent implements OnInit, OnDestroy {
+                 symbol = lineSymbol;
+                 break;
+               case 'Polygon':
+-                if (feature.geometry.coordinates[0][0]['length'] === 2) {
++                if (feature.geometry.coordinates[0][0]['length'] === 2 || feature.geometry.coordinates[0][0]['length'] === 3) {
+                   geom = new Polygon({
+                     rings: feature.geometry.coordinates,
+                   });
+@@ -2174,7 +2179,7 @@ export class MainComponent implements OnInit, OnDestroy {
+                   const rings = geom.get('rings');
+                   const ringsFirstElement = rings[0];
+ 
+-                  if (ringsFirstElement[0][0].toString().split('.')[0].length > 2) {
++                  if (ringsFirstElement[0][0].toString().split('.')[0].length > 3) {
+                     this.projectionService.convertEPSG3857PolygonGeomToWGS84(geom);
+                   }
+ 
+diff --git a/src/app/mapUtils/projection.service.ts b/src/app/mapUtils/projection.service.ts
+index 974e4e983566c22232842e70a7e2c7454fa198c8..e80ffc420e9c0dd7fb7ecb714975d32a0592003d 100644
+--- a/src/app/mapUtils/projection.service.ts
++++ b/src/app/mapUtils/projection.service.ts
+@@ -103,6 +103,40 @@ export class ProjectionService {
+     return pointData;
+   }
+ 
++  convertEPSG3857PolylineGeomToWGS84ForFile(geometry: any) {
++    const geometryPaths = geometry.get('paths');
++
++    const convertedWGS84Paths = [];
++
++    geometryPaths[0].forEach(path => {
++
++      const convertedRing = this.toWGS84PointArray(path[0], path[1]);
++
++      convertedWGS84Paths.push(convertedRing);
++    });
++
++    geometry.set('paths', [convertedWGS84Paths]);
++  }
++
++  convertEPSG3857PolygonGeomToWGS84ForFile(geometry: any) {
++    const geometryRings = geometry.get('rings');
++
++    const convertedWGS84Rings = [];
++
++    geometryRings[0].forEach(ring => {
++
++      const convertedRing = this.toWGS84PointArray(ring[0], ring[1]);
++
++      convertedWGS84Rings.push(convertedRing);
++    });
++
++    // Loop olması için ilk point aynı zamanda ringsin sonunda da olmalı.
++    convertedWGS84Rings.push(convertedWGS84Rings[0]);
++
++    geometry.set('rings', [convertedWGS84Rings]);
++  }
++
++
+   convertEPSG3857PolygonGeomToWGS84(geometry: esri.Polygon) {
+     const geometryRings = geometry.get('rings');
+ 
+diff --git a/src/app/other-layer/other-layer.component.ts b/src/app/other-layer/other-layer.component.ts
+index 9833ef76c5ac3520cd69bed08256051bcff9a102..0f8722b683a6cfb72adcb5a6a0790daf4e46673b 100644
+--- a/src/app/other-layer/other-layer.component.ts
++++ b/src/app/other-layer/other-layer.component.ts
+@@ -36,7 +36,7 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+ 
+   @Input() graphicsLayerImportSubject: Subject<{ layer: any, name: string }>;
+   graphicsLayerImportSubscription: Subscription;
+-// tslint:disable-next-line:max-line-length
++  // tslint:disable-next-line:max-line-length
+   constructor(private notify: NotificationService, private http: HttpClient, private ngxXml2jsonService: NgxXml2jsonService, public webMapService: WebMapService, private projectionService: ProjectionService) { }
+ 
+   ngOnInit() {
+@@ -292,11 +292,14 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+ 
+       const geometryType = graphic.geometry.type;
+       const geometry = graphic.geometry;
++
++      const isWGS84 = geometry.spatialReference.isWGS84;
++
+       if (geometryType === 'point') {
+         const geom = <esri.Point>geometry;
+-
++        // Diğer geojson viewerlarda doğru sonuç alınması için lat ve lon yerleri değiştirilerek dosyaya kaydedilecek
+         featureData.geometry = {
+-          coordinates: [geom.latitude, geom.longitude],
++          coordinates: [geom.longitude, geom.latitude],
+           type: 'Point'
+         };
+       } else if (geometryType === 'multipoint') {
+@@ -310,6 +313,17 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+         featureData.geometry.coordinates = geom.points;
+         featureData.geometry.type = 'MultiPoint';
+       } else if (geometryType === 'polyline') {
++        // Bazı durumlarda geojson dosyasında EPSG3857ye göre kayıt ediliyor.
++        // Genelde nokta çiz ve poligon çiz araçlarında 3857 geldiği test edildi. 
++        // MEB sistemin sürükleyip bırakıldığında bu durum düzeltilebiliyor çünkü filedrop metodunda epsg3857 ise wgs84e convert ediliyor.
++        // Ancak dosyada 3857ye göre kayıt edilmiş koordinat olduğu zaman bu başka geojson viewerlarında görüntülenemiyor.
++        // Bu yüzden dosyaya her zaman wgs84 haliyle kayıt edilecek.
++        // Bu durum sadece polygon ve linestringde problem oluşturmuş gibi gözüküyor. Multilerde sonuç her zaman wgs84 geliyor.
++
++        if (isWGS84 === false) {
++          this.projectionService.convertEPSG3857PolylineGeomToWGS84ForFile(graphic.geometry);
++        }
++
+         const geom = <esri.Polyline>geometry;
+ 
+         featureData.geometry = {
+@@ -321,6 +335,10 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+           featureData.geometry.type = 'MultiLineString';
+         }
+       } else if (geometryType === 'polygon') {
++        if (isWGS84 === false) {
++          this.projectionService.convertEPSG3857PolygonGeomToWGS84ForFile(graphic.geometry);
++        }
++
+         const geom = <esri.Polygon>geometry;
+ 
+         featureData.geometry = {
