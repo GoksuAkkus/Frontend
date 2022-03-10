@@ -1,0 +1,1338 @@
+diff --git a/package-lock.json b/package-lock.json
+index 5d840767f9b030c9cf9149f1eb89ecbbefc18a46..05405b46687a68afa52571de8fd708859c6de0ca 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -3716,9 +3716,9 @@
+       }
+     },
+     "esri-loader": {
+-      "version": "2.9.2",
+-      "resolved": "https://registry.npmjs.org/esri-loader/-/esri-loader-2.9.2.tgz",
+-      "integrity": "sha512-spTueQm02qxRBry0nv68fhxgvrzHaKweZCiP8pgVSgAT3OwRx6xOyATRGg/9VGOX0/9RBsktARQ63iEhvkjvlQ=="
++      "version": "2.14.0",
++      "resolved": "https://registry.npmjs.org/esri-loader/-/esri-loader-2.14.0.tgz",
++      "integrity": "sha512-ptDU9FyYeiY3etp3WaQNRJ6gIo3+R6umQ9r00QF96OkRjtZReEvKdbje5KbKLuAs/LKLwbivddL2izKvL4HSoQ=="
+     },
+     "estraverse": {
+       "version": "4.2.0",
+@@ -4338,8 +4338,8 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "delegates": "1.0.0",
+-            "readable-stream": "2.3.6"
++            "delegates": "^1.0.0",
++            "readable-stream": "^2.0.6"
+           }
+         },
+         "balanced-match": {
+@@ -4356,7 +4356,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "balanced-match": "1.0.0",
++            "balanced-match": "^1.0.0",
+             "concat-map": "0.0.1"
+           }
+         },
+@@ -4402,7 +4402,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "ms": "2.1.1"
++            "ms": "^2.1.1"
+           }
+         },
+         "deep-extend": {
+@@ -4433,7 +4433,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "minipass": "2.3.5"
++            "minipass": "^2.2.1"
+           }
+         },
+         "fs.realpath": {
+@@ -4450,14 +4450,14 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "aproba": "1.2.0",
+-            "console-control-strings": "1.1.0",
+-            "has-unicode": "2.0.1",
+-            "object-assign": "4.1.1",
+-            "signal-exit": "3.0.2",
+-            "string-width": "1.0.2",
+-            "strip-ansi": "3.0.1",
+-            "wide-align": "1.1.3"
++            "aproba": "^1.0.3",
++            "console-control-strings": "^1.0.0",
++            "has-unicode": "^2.0.0",
++            "object-assign": "^4.1.0",
++            "signal-exit": "^3.0.0",
++            "string-width": "^1.0.1",
++            "strip-ansi": "^3.0.1",
++            "wide-align": "^1.1.0"
+           }
+         },
+         "glob": {
+@@ -4467,12 +4467,12 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "fs.realpath": "1.0.0",
+-            "inflight": "1.0.6",
+-            "inherits": "2.0.3",
+-            "minimatch": "3.0.4",
+-            "once": "1.4.0",
+-            "path-is-absolute": "1.0.1"
++            "fs.realpath": "^1.0.0",
++            "inflight": "^1.0.4",
++            "inherits": "2",
++            "minimatch": "^3.0.4",
++            "once": "^1.3.0",
++            "path-is-absolute": "^1.0.0"
+           }
+         },
+         "has-unicode": {
+@@ -4489,7 +4489,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "safer-buffer": "2.1.2"
++            "safer-buffer": ">= 2.1.2 < 3"
+           }
+         },
+         "ignore-walk": {
+@@ -4499,7 +4499,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "minimatch": "3.0.4"
++            "minimatch": "^3.0.4"
+           }
+         },
+         "inflight": {
+@@ -4509,8 +4509,8 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "once": "1.4.0",
+-            "wrappy": "1.0.2"
++            "once": "^1.3.0",
++            "wrappy": "1"
+           }
+         },
+         "inherits": {
+@@ -4534,7 +4534,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "number-is-nan": "1.0.1"
++            "number-is-nan": "^1.0.0"
+           }
+         },
+         "isarray": {
+@@ -4551,7 +4551,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "brace-expansion": "1.1.11"
++            "brace-expansion": "^1.1.7"
+           }
+         },
+         "minimist": {
+@@ -4568,8 +4568,8 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "safe-buffer": "5.1.2",
+-            "yallist": "3.0.3"
++            "safe-buffer": "^5.1.2",
++            "yallist": "^3.0.0"
+           }
+         },
+         "minizlib": {
+@@ -4579,7 +4579,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "minipass": "2.3.5"
++            "minipass": "^2.2.1"
+           }
+         },
+         "mkdirp": {
+@@ -4606,9 +4606,9 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "debug": "4.1.1",
+-            "iconv-lite": "0.4.24",
+-            "sax": "1.2.4"
++            "debug": "^4.1.0",
++            "iconv-lite": "^0.4.4",
++            "sax": "^1.2.4"
+           }
+         },
+         "node-pre-gyp": {
+@@ -4618,16 +4618,16 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "detect-libc": "1.0.3",
+-            "mkdirp": "0.5.1",
+-            "needle": "2.3.0",
+-            "nopt": "4.0.1",
+-            "npm-packlist": "1.4.1",
+-            "npmlog": "4.1.2",
+-            "rc": "1.2.8",
+-            "rimraf": "2.6.3",
+-            "semver": "5.7.0",
+-            "tar": "4.4.8"
++            "detect-libc": "^1.0.2",
++            "mkdirp": "^0.5.1",
++            "needle": "^2.2.1",
++            "nopt": "^4.0.1",
++            "npm-packlist": "^1.1.6",
++            "npmlog": "^4.0.2",
++            "rc": "^1.2.7",
++            "rimraf": "^2.6.1",
++            "semver": "^5.3.0",
++            "tar": "^4"
+           }
+         },
+         "nopt": {
+@@ -4637,8 +4637,8 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "abbrev": "1.1.1",
+-            "osenv": "0.1.5"
++            "abbrev": "1",
++            "osenv": "^0.1.4"
+           }
+         },
+         "npm-bundled": {
+@@ -4655,8 +4655,8 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "ignore-walk": "3.0.1",
+-            "npm-bundled": "1.0.6"
++            "ignore-walk": "^3.0.1",
++            "npm-bundled": "^1.0.1"
+           }
+         },
+         "npmlog": {
+@@ -4666,10 +4666,10 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "are-we-there-yet": "1.1.5",
+-            "console-control-strings": "1.1.0",
+-            "gauge": "2.7.4",
+-            "set-blocking": "2.0.0"
++            "are-we-there-yet": "~1.1.2",
++            "console-control-strings": "~1.1.0",
++            "gauge": "~2.7.3",
++            "set-blocking": "~2.0.0"
+           }
+         },
+         "number-is-nan": {
+@@ -4693,7 +4693,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "wrappy": "1.0.2"
++            "wrappy": "1"
+           }
+         },
+         "os-homedir": {
+@@ -4717,8 +4717,8 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "os-homedir": "1.0.2",
+-            "os-tmpdir": "1.0.2"
++            "os-homedir": "^1.0.0",
++            "os-tmpdir": "^1.0.0"
+           }
+         },
+         "path-is-absolute": {
+@@ -4742,10 +4742,10 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "deep-extend": "0.6.0",
+-            "ini": "1.3.5",
+-            "minimist": "1.2.0",
+-            "strip-json-comments": "2.0.1"
++            "deep-extend": "^0.6.0",
++            "ini": "~1.3.0",
++            "minimist": "^1.2.0",
++            "strip-json-comments": "~2.0.1"
+           },
+           "dependencies": {
+             "minimist": {
+@@ -4764,13 +4764,13 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "core-util-is": "1.0.2",
+-            "inherits": "2.0.3",
+-            "isarray": "1.0.0",
+-            "process-nextick-args": "2.0.0",
+-            "safe-buffer": "5.1.2",
+-            "string_decoder": "1.1.1",
+-            "util-deprecate": "1.0.2"
++            "core-util-is": "~1.0.0",
++            "inherits": "~2.0.3",
++            "isarray": "~1.0.0",
++            "process-nextick-args": "~2.0.0",
++            "safe-buffer": "~5.1.1",
++            "string_decoder": "~1.1.1",
++            "util-deprecate": "~1.0.1"
+           }
+         },
+         "rimraf": {
+@@ -4780,7 +4780,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "glob": "7.1.3"
++            "glob": "^7.1.3"
+           }
+         },
+         "safe-buffer": {
+@@ -4832,9 +4832,9 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "code-point-at": "1.1.0",
+-            "is-fullwidth-code-point": "1.0.0",
+-            "strip-ansi": "3.0.1"
++            "code-point-at": "^1.0.0",
++            "is-fullwidth-code-point": "^1.0.0",
++            "strip-ansi": "^3.0.0"
+           }
+         },
+         "string_decoder": {
+@@ -4844,7 +4844,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "safe-buffer": "5.1.2"
++            "safe-buffer": "~5.1.0"
+           }
+         },
+         "strip-ansi": {
+@@ -4854,7 +4854,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "ansi-regex": "2.1.1"
++            "ansi-regex": "^2.0.0"
+           }
+         },
+         "strip-json-comments": {
+@@ -4871,13 +4871,13 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "chownr": "1.1.1",
+-            "fs-minipass": "1.2.5",
+-            "minipass": "2.3.5",
+-            "minizlib": "1.2.1",
+-            "mkdirp": "0.5.1",
+-            "safe-buffer": "5.1.2",
+-            "yallist": "3.0.3"
++            "chownr": "^1.1.1",
++            "fs-minipass": "^1.2.5",
++            "minipass": "^2.3.4",
++            "minizlib": "^1.1.1",
++            "mkdirp": "^0.5.0",
++            "safe-buffer": "^5.1.2",
++            "yallist": "^3.0.2"
+           }
+         },
+         "util-deprecate": {
+@@ -4894,7 +4894,7 @@
+           "dev": true,
+           "optional": true,
+           "requires": {
+-            "string-width": "1.0.2"
++            "string-width": "^1.0.2 || 2"
+           }
+         },
+         "wrappy": {
+diff --git a/package.json b/package.json
+index 073cb96ccac38e00e227d93d6131c7d07491547f..0313239989297b22291b11b88241bdbd656d8a7c 100644
+--- a/package.json
++++ b/package.json
+@@ -27,7 +27,7 @@
+     "ag-grid-angular": "^20.2.0",
+     "ag-grid-community": "^20.2.0",
+     "core-js": "^2.6.8",
+-    "esri-loader": "^2.9.2",
++    "esri-loader": "^2.14.0",
+     "ngx-xml2json": "^1.0.2",
+     "proj4": "^2.5.0",
+     "rxjs": "~6.5.2",
+diff --git a/src/app/TKGM/malik-serh/malik-serh.component.ts b/src/app/TKGM/malik-serh/malik-serh.component.ts
+index d2362c76090f317a4acddbc2acf1d7f38c01590c..db54b3a998f8aca9d137b6d2a472ca000542d2d7 100644
+--- a/src/app/TKGM/malik-serh/malik-serh.component.ts
++++ b/src/app/TKGM/malik-serh/malik-serh.component.ts
+@@ -422,7 +422,6 @@ export class MalikSerhComponent implements OnInit, OnDestroy {
+         }
+       }, true, 'blue');
+ 
+-      console.log('s b i list', result);
+     });
+   }
+ 
+diff --git a/src/app/app.component.ts b/src/app/app.component.ts
+index cd9c8da4b36355029c2300f5ff7b9a82c46aff11..ea056a9fee3978999ed58ecc45669082a1b01c5f 100644
+--- a/src/app/app.component.ts
++++ b/src/app/app.component.ts
+@@ -1,4 +1,6 @@
+ import { Component } from '@angular/core';
++import { setDefaultOptions } from 'esri-loader';
++setDefaultOptions({ version: '4.11' });
+ 
+ @Component({
+   selector: 'app-root',
+@@ -7,4 +9,5 @@ import { Component } from '@angular/core';
+ })
+ export class AppComponent {
+   title = 'MEBGIS-CBS';
++
+ }
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index fd4063e888087e16da34d8b5e7e32b7345fa3735..d12b0028907df0431f04ffe3e05d7380a099c16d 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -79,6 +79,7 @@ import { YapiBilgileriInfoComponent } from './yapi-bilgileri-info/yapi-bilgileri
+ import { ReportTableComponent } from './report-table/report-table.component';
+ import { DynamicDataTableComponent } from './dynamic-data-table/dynamic-data-table.component';
+ import { TkgmparcellistDatatableComponent } from './search/tkgmparcellist-datatable/tkgmparcellist-datatable.component';
++import { CreateQuadComponent } from './drawing-tools/create-quad/create-quad.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -154,6 +155,7 @@ import { TkgmparcellistDatatableComponent } from './search/tkgmparcellist-datata
+     ReportTableComponent,
+     DynamicDataTableComponent,
+     TkgmparcellistDatatableComponent,
++    CreateQuadComponent,
+   ],
+   imports: [
+     BrowserAnimationsModule,
+@@ -175,7 +177,7 @@ import { TkgmparcellistDatatableComponent } from './search/tkgmparcellist-datata
+     MalikSerhComponent, AcceptDialogComponent, PendingTableComponent, MessageDialogComponent,
+     KisiTasinmazSearchComponent, ModuleReportComponent, SayistayReportComponent, MultiModuleListComponent,
+     HisseSerhComponent, NviDialogComponent, AttachmentEditorComponent, ReportTableComponent, DynamicDataTableComponent,
+-    TkgmparcellistDatatableComponent],
++    TkgmparcellistDatatableComponent, CreateQuadComponent],
+   providers: [],
+   bootstrap: [AppComponent]
+ })
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 85a42bab020e3411d9e29ca8e9e2cb6ccbdfeb49..0b5f762d84054f18f5a95de3292b89913da9920c 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -107,7 +107,11 @@ export class DataTableComponent implements OnInit, OnDestroy {
+ 
+   addFilterableLayers(mapView: esri.MapView, userPermission: UserPermission) {
+     const operationalLayers = [];
+-    const permZone = userPermission.permZone;
++    let permZone: any;
++    if (userPermission !== undefined) {
++      permZone = userPermission.permZone;
++    }
++
+ 
+     mapView.map.layers.forEach(layer => {
+       if (layer['isActiveLayer']) {
+@@ -128,7 +132,7 @@ export class DataTableComponent implements OnInit, OnDestroy {
+           const fields = <Array<esri.Field>>layer['fields'];
+           fields.forEach(field => field.set('rAuthorized', true));
+           operationalLayers.push(layer);
+-        } else {
++        } else if ( permZone !== undefined) {
+           const findIstZone = permZone.some(zone => zone.zone.slice(0, 2) === '34');
+           if (permZone[0].zone === '*' || findIstZone) {
+             const subLayers = layer['sublayers'];
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.html b/src/app/drawing-tools/create-quad/create-quad.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b20326f40ea6b752c0308bb849776b5bc23613d
+--- /dev/null
++++ b/src/app/drawing-tools/create-quad/create-quad.component.html
+@@ -0,0 +1,15 @@
++<div class="container">
++        <div class="content">
++            <div class="label"><label>En Giriniz: </label>
++                <label>Boy Giriniz: </label></div>
++              <div class="input">
++                <input type="number" name="en" id="en">
++                <input type="number" name="boy" id="boy">
++              </div>
++        </div>
++        <div class="button">
++            <button (click)="onClickCreate($event)">Oluştur</button>
++            <button (click)="addToMebDetay()">MEB Detay'a Ekle</button>
++        </div>
++</div>
++<div id="deneme" style="width: 1000px height: 1000px; position: absolute"> deneme </div>
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.scss b/src/app/drawing-tools/create-quad/create-quad.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..2834bd6f06562494983d3d0113617692d2a36f6f
+--- /dev/null
++++ b/src/app/drawing-tools/create-quad/create-quad.component.scss
+@@ -0,0 +1,65 @@
++.container {
++  display: flex;
++  flex-direction: column;
++
++  >.content {
++    display: flex;
++    color: black;
++    width: 100%;
++    position: relative;
++    flex-direction: row;
++    color: #D1000F;
++    margin-left: 10px;
++
++    >.label {
++      display: flex;
++      align-items: self-end;
++      flex-direction: column;
++
++      >label {
++        margin: 3px;
++      }
++    }
++
++    >.input {
++      display: flex;
++      align-items: center;
++      flex-direction: column;
++      margin-left: 10px;
++
++      >input {
++        margin: 3px;
++        width: 100px;
++        border-color: white;
++        border-radius: 4px;
++        outline: none;
++        border: none;
++        height: 20px;
++      }
++    }
++  }
++
++  >.button {
++    display: flex;
++    justify-content: space-evenly;
++    align-items: center;
++    margin-top: 10px;
++    margin-bottom: 10px;
++    padding: 5px;
++
++    >button {
++      width: 100px;
++      height: 20px;
++      background: #D1000F;
++      color: white;
++      border-radius: 4px;
++      border: none;
++      outline: none;
++      font-weight: 600;
++      font-size: 11px;
++      cursor: pointer;
++    }
++  }
++
++
++}
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.spec.ts b/src/app/drawing-tools/create-quad/create-quad.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..452ee45a8052dc450f92715ae52f249221eb41e9
+--- /dev/null
++++ b/src/app/drawing-tools/create-quad/create-quad.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { CreateQuadComponent } from './create-quad.component';
++
++describe('CreateQuadComponent', () => {
++  let component: CreateQuadComponent;
++  let fixture: ComponentFixture<CreateQuadComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ CreateQuadComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(CreateQuadComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.ts b/src/app/drawing-tools/create-quad/create-quad.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..a37dd295432e00123b6f758b5db9da7d6d3a8e21
+--- /dev/null
++++ b/src/app/drawing-tools/create-quad/create-quad.component.ts
+@@ -0,0 +1,250 @@
++import { Component, OnInit, OnDestroy } from '@angular/core';
++import esri = __esri;
++import { DialogConfig } from 'src/app/dialog/dialog-config';
++import { loadModules } from 'esri-loader';
++import { MapService } from 'src/app/mapUtils/map.service';
++import { DialogRef } from 'src/app/dialog/dialog-ref';
++
++@Component({
++  selector: 'app-create-quad',
++  templateUrl: './create-quad.component.html',
++  styleUrls: ['./create-quad.component.scss']
++})
++export class CreateQuadComponent implements OnInit, OnDestroy {
++  mapView: esri.MapView;
++  polygonModule: esri.PolygonConstructor;
++  graphicModule: esri.GraphicConstructor;
++  graphicsLayerModule: esri.GraphicsLayerConstructor;
++  spinStatus: -1 | 1;
++  geometryEngine: esri.geometryEngine;
++  feature: esri.Graphic;
++  en: number;
++  boy: number;
++  vertices: Array<Array<number>> = [];
++  dragStartStatus = false;
++  dragRotateStatus = false;
++  previousMapPoint: esri.Point;
++  previousScreenPoint: esri.ScreenPoint;
++  constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef, private mapService: MapService) {
++  }
++
++  ngOnInit() {
++    const data = this.dialogConfig.data;
++    this.mapView = data.view;
++    loadModules(['esri/geometry/Polygon', 'esri/Graphic', 'esri/layers/GraphicsLayer', 'esri/geometry/geometryEngine'])
++      .then(([Polygon, Graphic, GraphicsLayer, GeometryEngine]) => {
++        this.polygonModule = Polygon;
++        this.graphicModule = Graphic;
++        this.graphicsLayerModule = GraphicsLayer;
++        this.geometryEngine = GeometryEngine;
++      });
++
++  }
++
++  ngOnDestroy() {
++    this.mapService.clearSelectedGraphics('drawBox', true);
++  }
++
++  onClickCreate(event: Event) {
++    if (this.feature !== undefined) {
++      return;
++    }
++    const target = <HTMLElement>event.target;
++    const buttonClassElement = target.parentElement as HTMLDivElement;
++    const contentElement = buttonClassElement.previousElementSibling as HTMLDivElement;
++    const inputClassElement = contentElement.lastElementChild as HTMLDivElement;
++    const enInputElement = inputClassElement.firstChild as HTMLInputElement;
++    const boyInputElement = inputClassElement.lastChild as HTMLInputElement;
++    this.en = enInputElement.valueAsNumber;
++    this.boy = boyInputElement.valueAsNumber;
++    const { x, y } = this.mapView.center;
++    this.vertices = [[x, y], [this.en + x, y], [this.en + x, -this.boy + y], [x, -this.boy + y]];
++    this.addPolygonGraphic(this.vertices);
++
++    this.mapView.on('pointer-move', (pointerMoveEvent) => {
++      if (this.dragRotateStatus === true) {
++        return;
++      }
++
++      const screenPoint = { x: pointerMoveEvent.x, y: pointerMoveEvent.y };
++      this.mapView.hitTest(screenPoint).then(hitTestResult => {
++        const foundResult = hitTestResult.results.find(result => result.graphic.get('drawBox') === true);
++        if (foundResult !== undefined) {
++          this.dragStartStatus = true;
++        } else {
++          this.dragStartStatus = false;
++        }
++      });
++    });
++
++    this.mapView.on('drag', (dragEvent) => {
++      if (dragEvent.action === 'start' && this.dragStartStatus === false) {
++        this.mapService.changeDrawBoxStyle(this.feature);
++        const geometry = <esri.Polygon>this.feature.geometry;
++        const currentRings = (<esri.Polygon>this.feature.geometry).rings;
++        const dragEventX = dragEvent.x;
++        const dragEventY = dragEvent.y;
++        currentRings[0].forEach((ring, index) => {
++          const ringPoint = geometry.getPoint(0, index);
++          const screenPoint = this.mapView.toScreen(ringPoint);
++          const differenceInXAxis = dragEventX - screenPoint.x;
++          const differenceInYAxis = dragEventY - screenPoint.y;
++          const distance = Math.sqrt(Math.pow(differenceInXAxis, 2) + Math.pow(differenceInYAxis, 2));
++          if (distance < 15) {
++            this.previousScreenPoint = screenPoint;
++            this.dragRotateStatus = true;
++            dragEvent.stopPropagation();
++          }
++        });
++      }
++      if (dragEvent.action === 'start' && this.dragStartStatus === true) {
++        const mapPoint = this.mapView.toMap(dragEvent);
++        this.previousMapPoint = mapPoint;
++        dragEvent.stopPropagation();
++      } else if (dragEvent.action === 'update' && this.dragStartStatus === true) {
++        const currentMapPoint = this.mapView.toMap(dragEvent);
++        const xDifference = currentMapPoint.x - this.previousMapPoint.x;
++        const yDifference = currentMapPoint.y - this.previousMapPoint.y;
++        this.moveGraphic(xDifference, yDifference);
++        this.previousMapPoint = currentMapPoint;
++      } else if (dragEvent.action === 'update' && this.dragRotateStatus === true) {
++        // const differenceXScreenPoint = dragEvent.x - this.previousScreenPoint.x;
++        // const differenceYScreenPoint = dragEvent.y - this.previousScreenPoint.y;
++        const centerPoint = (<esri.Polygon>this.feature.geometry).centroid;
++        const centerXY = this.mapView.toScreen(centerPoint);
++
++        const currentScreenPoint = <esri.ScreenPoint>{ x: dragEvent.x, y: dragEvent.y };
++        const currentPrevObject = { current: currentScreenPoint, other: this.previousScreenPoint };
++        const currentCenterObject = { current: currentScreenPoint, other: centerXY };
++        // previous screen ile current screen pointler arasındaki uzaklık;
++        const prevAndCurrentDistance = this.differenceBetweenTwoPoint(currentPrevObject);
++        const currentAndCenterDistance = this.differenceBetweenTwoPoint(currentCenterObject, true);
++        this.setRotation(currentScreenPoint, this.previousScreenPoint, centerXY);
++        // center ile current screen pointler arasındaki uzaklık
++        const angleResult = this.findArcTan(prevAndCurrentDistance, currentAndCenterDistance);
++        const rotatedGeometry = this.geometryEngine.rotate(this.feature.geometry, this.spinStatus * angleResult);
++        this.feature.geometry = rotatedGeometry;
++
++        this.previousScreenPoint = { x: dragEvent.x, y: dragEvent.y };
++      } else if (dragEvent.action === 'end') {
++        this.dragRotateStatus = false;
++        this.dragStartStatus = false;
++      }
++    });
++  }
++
++  findArcTan(currentPrev: number, currentCenter: number) {
++    const angle = Math.atan2(currentCenter, currentPrev);
++    return angle;
++  }
++
++  setRotation(currentScreenPoint, previousScreenPoint, centerScreenPoint) {
++    const centerXDifference = currentScreenPoint.x - centerScreenPoint.x;
++    const centerYDifference = centerScreenPoint.y - currentScreenPoint.y;
++
++    const differenceX = currentScreenPoint.x - previousScreenPoint.x;
++    const differenceY = previousScreenPoint.y - currentScreenPoint.y;
++    if (centerXDifference > 0 && centerYDifference > 0) {
++      if (differenceX > 0 || differenceY < 0) {
++        this.spinStatus = -1;
++      } else {
++        this.spinStatus = +1;
++      }
++    } else if (centerXDifference < 0 && centerYDifference > 0) {
++      if (differenceX > 0 || differenceY > 0) {
++        this.spinStatus = -1;
++      } else {
++        this.spinStatus = +1;
++      }
++    } else if (centerXDifference < 0 && centerYDifference < 0) {
++      if (differenceX < 0 || differenceY > 0) {
++        this.spinStatus = -1;
++      } else {
++        this.spinStatus = +1;
++      }
++    } else if (centerXDifference > 0 && centerYDifference < 0) {
++      if (differenceX < 0 || differenceY < 0) {
++        this.spinStatus = -1;
++      } else {
++        this.spinStatus = +1;
++      }
++    }
++  }
++
++  differenceBetweenTwoPoint(screenPoints: { current: esri.ScreenPoint, other: esri.ScreenPoint }, calculateTurn = false) {
++    const currentScreenPoint = screenPoints.current;
++    const previousScreenPoint = screenPoints.other;
++    const xDifferenceSquare = Math.pow(currentScreenPoint.x - previousScreenPoint.x, 2);
++    const yDifferenceSquare = Math.pow(currentScreenPoint.y - previousScreenPoint.y, 2);
++    const distance = Math.sqrt(xDifferenceSquare + yDifferenceSquare);
++
++    return distance;
++  }
++
++  moveGraphic(x: number, y: number) {
++    const geometry = this.feature.geometry.clone() as esri.Polygon;
++    geometry.rings[0].forEach(ring => {
++      ring[0] = ring[0] + x;
++      ring[1] = ring[1] + y;
++    });
++    this.feature.geometry = geometry;
++
++  }
++
++  addPolygonGraphic(vertices: Array<Array<number>>) {
++    const mapView: esri.MapView = this.mapView;
++    const polygon: esri.Polygon = this.createPolygon(vertices);
++
++    const symbolProperties = <esri.SimpleFillSymbol>{
++      type: 'simple-fill',
++      color: {
++        r: 226,
++        g: 119,
++        b: 40,
++        a: 0.3
++      },
++      outline: {
++        color: {
++          r: 255,
++          g: 255,
++          b: 0,
++          a: 0.3
++        },
++        width: 3
++      }
++    };
++
++    const graphicProperties: esri.GraphicProperties = {
++      geometry: polygon,
++      symbol: symbolProperties,
++    };
++
++    const graphic: esri.Graphic = new this.graphicModule(graphicProperties);
++    graphic.set('drawBox', true);
++    mapView.graphics.add(graphic);
++    this.feature = graphic;
++  }
++
++  createPolygon(vertices: Array<Array<number>>): esri.Polygon {
++    const polygonProperties: esri.PolygonProperties = {
++      rings: [vertices],
++      spatialReference: this.mapView.spatialReference
++    };
++
++    const polygon: esri.Polygon = new this.polygonModule(polygonProperties);
++    return polygon;
++  }
++
++  addToMebDetay() {
++    const mebDetayLayer = <esri.GraphicsLayer>this.mapView.map.layers.find(layer => layer.title === 'MEB Detay');
++    if (mebDetayLayer !== undefined && this.feature !== undefined) {
++      this.feature.set('drawBox', false);
++      const cloneFeature = this.feature.clone();
++      cloneFeature.layer = mebDetayLayer;
++      mebDetayLayer.add(cloneFeature);
++      this.mapService.clearSelectedGraphics('drawBox', false);
++      this.dialogRef.close();
++    }
++  }
++
++}
+diff --git a/src/app/drawing-tools/drawing-tools.component.html b/src/app/drawing-tools/drawing-tools.component.html
+index 02fc62ca4aac07a6306314a1115f835168256a14..cb68e6c94b1b5310a74b506e9e3d904ad5a8c1a0 100644
+--- a/src/app/drawing-tools/drawing-tools.component.html
++++ b/src/app/drawing-tools/drawing-tools.component.html
+@@ -30,6 +30,10 @@
+     </svg>
+   </div>
+   <div class="pipe"></div>
++  <div class="drawing-btn" (click)="dispatchQuadDraw()" title="Dörtgen Oluştur">
++    <img src="assets/img/quad.png">
++  </div>
++  <div class="pipe"></div>
+   <div class="drawing-btn" (click)=dispatchClearDrawMode() title="Sil">
+     <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 19.525 23.443">
+       <path
+diff --git a/src/app/drawing-tools/drawing-tools.component.scss b/src/app/drawing-tools/drawing-tools.component.scss
+index c2e9a94ffd06f3980c0ae8da7942b6294ffe9fc4..01f3322774ec9590005f67b08e37426ebb900fe7 100644
+--- a/src/app/drawing-tools/drawing-tools.component.scss
++++ b/src/app/drawing-tools/drawing-tools.component.scss
+@@ -11,7 +11,7 @@ $drawingToolsRadiusValue: 50px;
+   background-color: $secondaryColor;
+   border-top-right-radius: $drawingToolsRadiusValue;
+   border-bottom-right-radius: $drawingToolsRadiusValue;
+-  left: (-1 * $measureIconWidth * 4.2);
++  left: (-1 * $measureIconWidth * 5.2);
+   transition: left .3s ease-out;
+ 
+   .drawing-btn {
+@@ -23,7 +23,10 @@ $drawingToolsRadiusValue: 50px;
+     width: $measureIconWidth;
+     padding: 8px 0;
+     transition: background-color .3s ease-out;
+-
++    >img {
++      width: 25px;
++      height: 19px;
++    }
+     &:hover {
+       background-color: $secondaryDarkColor;
+     }
+diff --git a/src/app/drawing-tools/drawing-tools.component.ts b/src/app/drawing-tools/drawing-tools.component.ts
+index 9724fb6fc9b777466592d88600024f89c4798728..c558105794d44f7fb89f73de3f30e8a27d81dbe8 100644
+--- a/src/app/drawing-tools/drawing-tools.component.ts
++++ b/src/app/drawing-tools/drawing-tools.component.ts
+@@ -1,4 +1,5 @@
+ import { Component, OnInit, Output, EventEmitter } from '@angular/core';
++import { DialogService } from '../dialog/dialog.service';
+ 
+ @Component({
+   selector: 'app-drawing-tools',
+@@ -8,8 +9,10 @@ import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+ export class DrawingToolsComponent implements OnInit {
+   @Output() initDrawAndEdit = new EventEmitter<string>();
+   @Output() deleteGraphicMode = new EventEmitter();
++  @Output() createQuad = new EventEmitter();
+   show = false;
+-  constructor() { }
++
++  constructor(private dialogService: DialogService) { }
+ 
+   ngOnInit() {
+   }
+@@ -26,9 +29,14 @@ export class DrawingToolsComponent implements OnInit {
+     this.initDrawAndEdit.emit('polygon');
+   }
+ 
++  dispatchQuadDraw() {
++    this.createQuad.emit();
++  }
++
+   dispatchClearDrawMode() {
+     this.deleteGraphicMode.emit();
+   }
++
+   slideMenu() {
+     this.show = !this.show;
+   }
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index f56f9cf1551ef48431f5d171c17642ee5164fd6e..6cf2c85273c616d6bc0c930c3d3c4575a093708b 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -9,6 +9,7 @@ import { environment } from 'src/environments/environment';
+ import esri = __esri;
+ import { UserPermission, PermLayer, PermZone, PermZoneTKGMObject, DistrictPermTKGM } from '../models/Login/user-permission';
+ import { MapService } from '../mapUtils/map.service';
++import { NotificationService } from '../notification/notification.service';
+ 
+ @Component({
+   selector: 'app-esri-map',
+@@ -23,7 +24,7 @@ export class EsriMapComponent implements OnInit {
+   @Output() mapRightClicked = new EventEmitter<esri.MapViewClickEvent>();
+   @ViewChild('mapViewNode', { static: true }) private mapViewEl: ElementRef;
+   @ViewChild('dropArea', { static: true }) private dropArea: ElementRef;
+-
++  mapView: esri.MapView;
+   private _basemap: esri.Basemap;
+   defaultBasemap: esri.Basemap;
+ 
+@@ -37,7 +38,7 @@ export class EsriMapComponent implements OnInit {
+   }
+ 
+   constructor(private layerService: LayerUtilsService, private auth: AuthService, private mapService: MapService,
+-    private web_data_service: WebDataService, private http: HttpClient) { }
++    private web_data_service: WebDataService, private http: HttpClient, private notificationService: NotificationService) { }
+ 
+   ngOnInit() {
+     this.initializeMap();
+@@ -73,7 +74,6 @@ export class EsriMapComponent implements OnInit {
+       };
+ 
+       const map: esri.Map = new Map(mapProperties);
+-
+       const mapViewProperties: esri.MapViewProperties = {
+         container: this.mapViewEl.nativeElement,
+         extent: extent,
+@@ -228,6 +228,7 @@ export class EsriMapComponent implements OnInit {
+         }
+       };
+       const mapView: esri.MapView = new EsriMapView(mapViewProperties);
++      this.mapView = mapView;
+ 
+       mapView.when(() => {
+         const outputObject: Object = {
+@@ -381,7 +382,7 @@ export class EsriMapComponent implements OnInit {
+       serhWatchHandle.remove();
+     });
+ 
+-    const yapisalDurumLayerProperties = <esri.FeatureLayerProperties> {
++    const yapisalDurumLayerProperties = <esri.FeatureLayerProperties>{
+       title: 'Yapısal Durum',
+       url: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/4',
+       visible: false,
+@@ -391,8 +392,8 @@ export class EsriMapComponent implements OnInit {
+     yapisalDurumLayer.set('authorized', true);
+     const yapisalDurumWatchHandle = yapisalDurumLayer.watch('fields', (fields: Array<esri.Field>) => {
+       const disabledFields = ['objectid', 'objectid_1'];
+-      fields.forEach( field => {
+-        if (disabledFields.includes (field.name)) {
++      fields.forEach(field => {
++        if (disabledFields.includes(field.name)) {
+           field.set('disabled', true);
+         }
+ 
+@@ -401,7 +402,7 @@ export class EsriMapComponent implements OnInit {
+       yapisalDurumWatchHandle.remove();
+     });
+ 
+-    const yapisalBilgiLayerProperties = <esri.FeatureLayerProperties> {
++    const yapisalBilgiLayerProperties = <esri.FeatureLayerProperties>{
+       title: 'Yapısal Bilgi',
+       url: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/3',
+       visible: false,
+@@ -411,8 +412,8 @@ export class EsriMapComponent implements OnInit {
+     yapisalBilgiLayer.set('authorized', true);
+     const yapisalBilgiWatchHandle = yapisalBilgiLayer.watch('fields', (fields: Array<esri.Field>) => {
+       const disabledFields = ['objectid', 'objectid_1'];
+-      fields.forEach( field => {
+-        if (disabledFields.includes (field.name)) {
++      fields.forEach(field => {
++        if (disabledFields.includes(field.name)) {
+           field.set('disabled', true);
+         }
+ 
+@@ -421,7 +422,7 @@ export class EsriMapComponent implements OnInit {
+       yapisalBilgiWatchHandle.remove();
+     });
+ 
+-    const yapiEnerjiLayerProperties = <esri.FeatureLayerProperties> {
++    const yapiEnerjiLayerProperties = <esri.FeatureLayerProperties>{
+       title: 'Yapı Enerji',
+       url: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/1',
+       visible: false,
+@@ -431,8 +432,8 @@ export class EsriMapComponent implements OnInit {
+     yapiEnerjiLayer.set('authorized', true);
+     const yapiEnerjiWatchHandle = yapiEnerjiLayer.watch('fields', (fields: Array<esri.Field>) => {
+       const disabledFields = ['objectid', 'objectid_1'];
+-      fields.forEach( field => {
+-        if (disabledFields.includes (field.name)) {
++      fields.forEach(field => {
++        if (disabledFields.includes(field.name)) {
+           field.set('disabled', true);
+         }
+ 
+@@ -584,6 +585,7 @@ export class EsriMapComponent implements OnInit {
+       const mapIstanbul4B = new TileLayerConstructor(mapIstanbul4BProperties);
+       mapIstanbul4B.set('MAPISTANBUL', true);
+ 
++
+       map.addMany([tadilat2B, mapIstanbul3B, mapIstanbul4B]);
+     });
+   }
+@@ -797,6 +799,8 @@ export class EsriMapComponent implements OnInit {
+           this.addLayersToMap(map, FeatureLayer, layerDesign);
+         });
+       }
++    }, (error) => {
++      this.notificationService.open('SİSTEM BAKIMA ALINMIŞTIR. LÜTFEN DAHA SONRA TEKRAR DENEYİNİZ.', 'danger', 100);
+     });
+   }
+ 
+@@ -844,7 +848,6 @@ export class EsriMapComponent implements OnInit {
+       let districtPerm: Array<number> = [];
+ 
+       let permObject;
+-
+       if (permission !== undefined) {
+         const zonePermission = permission.permZone;
+         zoneExpression = this.getZonePermString(zonePermission, layer);
+@@ -888,8 +891,27 @@ export class EsriMapComponent implements OnInit {
+ 
+     layer.featureLayer = featureLayer;
+ 
+-    const layerCreateHandle = featureLayer.on('layerview-create', () => {
++    const layerCreateHandle = featureLayer.on('layerview-create', (param) => {
+       featureLayer.set('authorized', layer.authorized);
++      if (featureLayer.title === 'İlçe') {
++        if (userPerm.permZone.length === 1 && userPerm.permZone[0].zone.length > 2) { //SADECE 1 İLDEKİ İLÇE YETKİLERİ
++          const params: esri.QueryProperties = {
++            where: `kodilce IN(${userPerm.permZone[0].zone})`
++          };
++          featureLayer.queryExtent(params).then(value => {
++            this.mapView.extent = value.extent;
++          });
++        }
++      } else if (featureLayer.title === 'İl') {
++        if (userPerm.permZone.length === 1 && userPerm.permZone[0].zone.length === 1) { //Tek kodlu sadece il yetkililer için
++          const params: esri.QueryProperties = {
++            where: `uavtil=${userPerm.permZone[0].zone}`
++          };
++          featureLayer.queryExtent(params).then(value => {
++            this.mapView.extent = value.extent;
++          });
++        }
++      }
+       if (this.auth.user.nameid !== 1) {
+         if (layer.authorized) {
+           this.prepareFieldAuthorization(userPerm, featureLayer, layer);
+@@ -1348,9 +1370,24 @@ export class EsriMapComponent implements OnInit {
+       copyright: 'Google, 2017',
+     };
+ 
++    const hgmAtlasWebTileLayerProp: esri.WebTileLayerProperties = {
++      id: 'hgmAtlas',
++      urlTemplate: 'https://atlas.harita.gov.tr/webservis/harita/yolorta_uydu/{level}/{col}/{row}.png?apikey=AlkVjf0YFkkDuvu58l7Ndc1oiHk71IbF',
++      copyright: 'Harita Genel Müdürlüğü',
++    };
++    const hgmOrtofotoWebTileLayerProp: esri.WebTileLayerProperties = {
++      id: 'hgmOrtofoto',
++      urlTemplate: 'https://atlas{subDomain}.harita.gov.tr/wms/ortofoto/ortho_layer/{level}/{col}/{row}.jpg?apikey=AlkVjf0YFkkDuvu58l7Ndc1oiHk71IbF',
++      subDomains: ['1', '2', '3', '4'],
++      copyright: 'Harita Genel Müdürlüğü',
++    };
++
+     const googleHybridWebTileLayer: esri.WebTileLayer = new EsriWebTileLayer(googleHybridWebTileLayerProp);
+     const googleSatelliteWebTileLayer: esri.WebTileLayer = new EsriWebTileLayer(googleSatelliteWebTileLayerProp);
+     const googleStreetWebTileLayer: esri.WebTileLayer = new EsriWebTileLayer(googleStreetWebTileLayerProp);
++    const hgmAtlasWebTileLayer: esri.WebTileLayer = new EsriWebTileLayer(hgmAtlasWebTileLayerProp);
++    const hgmOrtofotoWebTileLayer: esri.WebTileLayer = new EsriWebTileLayer(hgmOrtofotoWebTileLayerProp);
++
+ 
+     const googleHybridBasemapProp: esri.BasemapProperties = {
+       baseLayers: [googleHybridWebTileLayer],
+@@ -1370,10 +1407,17 @@ export class EsriMapComponent implements OnInit {
+       thumbnailUrl: 'assets/img/streets.jpg',
+       title: 'Google Streets',
+     };
++    const hgmAtlasBasemapProp: esri.BasemapProperties = {
++      baseLayers: [hgmOrtofotoWebTileLayer, hgmAtlasWebTileLayer],
++      id: 'hgmAtlas',
++      thumbnailUrl: 'assets/img/satellite.jpg',
++      title: 'HGM Atlas',
++    };
+ 
+     const googleHybrid = new EsriBasemap(googleHybridBasemapProp);
+     const googleSatellite = new EsriBasemap(googleSatelliteBasemapProp);
+     const googleStreets = new EsriBasemap(googleStreetsBasemapProp);
++    const hgmAtlas = new EsriBasemap(hgmAtlasBasemapProp);
+ 
+     const esriStreet = EsriBasemap.fromId('streets');
+     const esriHybrid = EsriBasemap.fromId('hybrid');
+@@ -1385,7 +1429,7 @@ export class EsriMapComponent implements OnInit {
+ 
+     this.defaultBasemap = googleSatellite;
+ 
+-    basemaps.push(googleHybrid, googleStreets, googleSatellite, esriHybrid, esriStreet, esriOSM);
++    basemaps.push(googleHybrid, googleStreets, googleSatellite, esriHybrid, esriStreet, esriOSM, hgmAtlas);
+ 
+     return basemaps;
+   }
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index 36e19d7a0b50049cd2836086bd5325dd3b6f8ca2..5cc51ba776fbc6c5f6fd887146cc246197384606 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -467,6 +467,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+       if (this._highlightLayer !== undefined) {
+         this._highlightLayer.remove();
+       }
++
+       this._highlightLayer = graphicLayerView.highlight(graphic);
+     }
+ 
+diff --git a/src/app/info/object-info/object-info.component.ts b/src/app/info/object-info/object-info.component.ts
+index 57ccc3123f332b26ad8190b7ee917206e8b1a8ee..8e949f79e1b5810b9d3601f49b4356867e29ad48 100644
+--- a/src/app/info/object-info/object-info.component.ts
++++ b/src/app/info/object-info/object-info.component.ts
+@@ -37,7 +37,10 @@ export class ObjectInfoComponent implements OnInit, OnDestroy {
+   set tabData(tabData) {
+     this._tabData = tabData;
+     if (this.tabData !== undefined) {
+-      this.changeValueOfArea();
++      if (tabData.attributes !== null) {
++        this.changeValueOfArea();
++      }
++
+       const graphicData = this._tabData;
+       if (graphicData.layer === null) {
+         this.changeDomainValues();
+@@ -47,14 +50,16 @@ export class ObjectInfoComponent implements OnInit, OnDestroy {
+         const fields = [];
+         const attributes = graphicData.attributes;
+         graphicData.set('geojson', true);
+-        for (const attributeNames in attributes) {
+-          if (attributes.hasOwnProperty(attributeNames)) {
+-            const field = <esri.Field>{
+-              alias: attributeNames,
+-              name: attributeNames,
+-              domain: null,
+-            };
+-            fields.push(field);
++        if (attributes !== null) {
++          for (const attributeNames in attributes) {
++            if (attributes.hasOwnProperty(attributeNames)) {
++              const field = <esri.Field>{
++                alias: attributeNames,
++                name: attributeNames,
++                domain: null,
++              };
++              fields.push(field);
++            }
+           }
+         }
+         graphicData.set('fields', fields);
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index ce975ae73b249ad399845124baa9724b51e6e5d3..61ad4bb24fef36ee8f14a928b96840b0c334c235 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -18,7 +18,7 @@
+   <app-symbology symbology [mapView]="mapView"></app-symbology>
+ </app-measure-tools>
+ <app-drawing-tools *ngIf="auth.user.hasGeomEdit === true" (initDrawAndEdit)="initDrawAndEditEvent($event)"
+-  (deleteGraphicMode)="deleteGraphicModeEvent($event)">
++  (deleteGraphicMode)="deleteGraphicModeEvent($event)" (createQuad)="createQuadEvent()">
+ </app-drawing-tools>
+ <app-coordinate-box [coordinateTypes]="coordinateTypes" [coordinates]="coordinates"
+   (coordinateRefChanged)="coordinateRefChangeEvent($event)"></app-coordinate-box>
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 492fadcee42f742d6ae7252b8d4d1846b74ac3ca..6651f44236e9b45532c4d6a399c4aa5d4b4b4ba5 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -33,6 +33,7 @@ import { ModelData, InfoData } from '../yapi-info';
+ import { DynamicDataTableComponent } from '../dynamic-data-table/dynamic-data-table.component';
+ import { TkgmparcellistDatatableComponent } from '../search/tkgmparcellist-datatable/tkgmparcellist-datatable.component';
+ import { TKGMFeatureSet } from '../models/TKGM/parcel-object';
++import { CreateQuadComponent } from '../drawing-tools/create-quad/create-quad.component';
+ 
+ @Component({
+   selector: 'app-main',
+@@ -55,6 +56,7 @@ export class MainComponent implements OnInit {
+   goToLocationDialogRef: DialogRef;
+   changePasswdDialogRef: DialogRef;
+   pendingTableDialogRef: DialogRef;
++  quadDialogRef: DialogRef;
+ 
+   measureWindowState = false;
+   layerWindowState = false;
+@@ -1519,10 +1521,10 @@ export class MainComponent implements OnInit {
+     if (this.editMode === true) {
+       return;
+     }
+-    if (this.dataTableDialogRef !== undefined) {
+-      this.dataTableDialogRef.close();
+-      this.dataTableDialogRef = undefined;
+-    }
++    // if (this.dataTableDialogRef !== undefined) {
++    //   this.dataTableDialogRef.close();
++    //   this.dataTableDialogRef = undefined;
++    // }
+ 
+     this.dataTableDialogRef = this.dialogService.open(DataTableComponent, 'Veri Tablosu', true, {
+       data: {
+@@ -1938,9 +1940,22 @@ export class MainComponent implements OnInit {
+   }
+ 
+   deleteGraphicModeEvent() {
++    this.mapService.clearSelectedGraphics('drawBox', true);
++    if (this.quadDialogRef !== undefined) {
++      this.quadDialogRef.close();
++    }
+     this.drawEditService.closeDrawEditMode();
+     this.drawMode = false;
+   }
+   onDispatchOtherLayerView() { }
+ 
++  createQuadEvent() {
++    if (this.quadDialogRef === undefined) {
++      const quadDialogRef = this.dialogService.open(CreateQuadComponent, 'Dörtgen Oluştur', true, { data: { view: this.mapView } });
++      this.quadDialogRef = quadDialogRef;
++      quadDialogRef.afterClosed.subscribe(value => {
++        this.quadDialogRef = undefined;
++      });
++    }
++  }
+ }
+diff --git a/src/app/mapUtils/map.service.ts b/src/app/mapUtils/map.service.ts
+index ded422ac20c7ba157e7363f89bba3763fe0f0d58..1beab654158afced28dd0ff2714718aae8bfaf05 100644
+--- a/src/app/mapUtils/map.service.ts
++++ b/src/app/mapUtils/map.service.ts
+@@ -240,10 +240,18 @@ export class MapService {
+ 
+   prepareHitTestLayers(hitTestResults: Array<esri.HitTestResultResults>): Array<esri.HitTestResultResults> {
+     const tempHitTestResult = [];
++    let drawBoxStatus = false;
++    let drawBoxGraphic: esri.Graphic;
+     hitTestResults.forEach(hitTestResult => {
+       const graphic = hitTestResult.graphic;
+       const layer = graphic.layer;
+       const layerTitle = layer.title;
++
++      if (graphic.get('drawBox') === true) {
++        drawBoxStatus = true;
++        drawBoxGraphic = graphic;
++      }
++
+       if (graphic.get('history') !== true) {
+         if (layerTitle === 'Kadastro Parselleri' || layerTitle === 'Müstakil Hazine Parselleri' ||
+           layerTitle === 'Müşterek Hazine Parselleri' || layerTitle === 'Kamu Parselleri' || layerTitle === 'Şahıs Parselleri') {
+@@ -276,9 +284,22 @@ export class MapService {
+       }
+     });
+ 
++    if (drawBoxStatus) {
++      this.changeDrawBoxStyle(drawBoxGraphic);
++      return [];
++    }
+     return tempHitTestResult;
+   }
+ 
++  changeDrawBoxStyle(graphic: esri.Graphic) {
++    const simpleFillSymbol = (<esri.SimpleFillSymbol>graphic.symbol).clone();
++
++    simpleFillSymbol.color.setColor('rgba(43, 253, 255, 0.3)');
++    simpleFillSymbol.outline.color.setColor('rgba(9, 134, 223, 1)');
++    graphic.symbol = simpleFillSymbol;
++  }
++
++
+   isMAKSEnabled() {
+     const maksLayer = this.mapView.map.layers.find(layer => layer.title === 'MAKS - YAPI' && layer.visible === true);
+ 
+diff --git a/src/assets/img/quad.png b/src/assets/img/quad.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..59b1dc7823b3fb392eac4dce15571196bb148521
+Binary files /dev/null and b/src/assets/img/quad.png differ
+diff --git a/src/environments/environment.hetzner.ts b/src/environments/environment.hetzner.ts
+index 8a32e6d7ce6a3f66db8528eae243a48bd8001da2..7309de4ad2c9f1d6ee15b9ea345ca55c92ff3f9e 100644
+--- a/src/environments/environment.hetzner.ts
++++ b/src/environments/environment.hetzner.ts
+@@ -1,17 +1,17 @@
+ export const environment = {
+     production: false,
+     ws: 'http://localhost:52824/api/',
+-    mebCbsUrl: 'http://localhost:52824/api/',
+-    geotifURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2/mebgeotiff/MapServer',
+-    arcgisMEBURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/mebcbs2023/',
+-    arcgisSQL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/sql/',
+-    arcgisMEBPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/pending/',
+-    arcgisMEBHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/history/',
+-    arcgisMEBAnalysisURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/analiz/MapServer',
+-    arcgisMEBReportsURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer',
+-    arcgisMEBRaporURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer',
+-    mapIstServiceUrl: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/',
++    mebCbsUrl: 'http://localhost:4200/',
++    geotifURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/geotiff/MapServer',
++    arcgisMEBURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebcbs/',
++    arcgisSQL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/sql/',
++    arcgisMEBPendingURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebpending/',
++    arcgisMEBHistoryURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebhistory/',
++    arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer',
++    arcgisEkServislerURL: 'http://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ek_servisler/',
++    arcgisMEBRaporURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/raporlar/MapServer',
+     yapiURL: 'http://localhost:443/',
++    mapIstServiceUrl: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/',
+     arcgisOzelOkullarURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
+     arcgisOzelOkulPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_pending/',
+     arcgisOzelOkulHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_histry/',
