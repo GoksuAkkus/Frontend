@@ -1,0 +1,463 @@
+diff --git a/src/app/models/Modules/module-form-data.ts b/src/app/models/Modules/module-form-data.ts
+index a7a9bb87776265e24fd3c3e13172f1ccd5cada03..3bcf59db87d09decbf3f41859313afbb8aa4567c 100644
+--- a/src/app/models/Modules/module-form-data.ts
++++ b/src/app/models/Modules/module-form-data.ts
+@@ -1,7 +1,10 @@
++import { ProcessMovementRel } from '../ProcessMovementRel';
++
+ export interface ModuleFormData {
+     type: string;
+     value: number;
+     formData: Array<Array<FormData>>;
++    processMovementRel: Array<ProcessMovementRel>;
+ }
+ export interface FormData {
+     alias: string;
+diff --git a/src/app/models/ProcessMovementRel.ts b/src/app/models/ProcessMovementRel.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..3652fc40b07c844ba7aa28eda2a1219170937e57
+--- /dev/null
++++ b/src/app/models/ProcessMovementRel.ts
+@@ -0,0 +1,17 @@
++export interface ProcessMovementRel {
++    islem_turu: number;
++    field_values: Array<Array<FieldValues>>;
++}
++
++export interface FieldValues {
++    field_value: Array<Array<FieldValue>>;
++    movements_todelete: Array<number>;
++    numberof_deletedmovements: number;
++}
++
++export interface FieldValue {
++    name: string;
++    values: Array<number>;
++    not_values: Array<number>;
++}
++
+diff --git a/src/app/models/emitObject.ts b/src/app/models/emitObject.ts
+index ef7dd3172ce804e02032c604aa06fe661eba0b98..c9a24209b22c33102236582649a8690ec56b8f80 100644
+--- a/src/app/models/emitObject.ts
++++ b/src/app/models/emitObject.ts
+@@ -1,8 +1,11 @@
++import { ModuleFormData } from './Modules/module-form-data';
++
+ export class EmitObject {
+     featureSet: any;
+     objectId: string;
+     fromReports: boolean;
+     rowClickData: any;
++    foundModuleForm: ModuleFormData;
+ }
+ 
+ export class EmitObjectForLastMovement {
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 0b5459990c98df1e3375dec5f8cff608d6e8664d..5dd3123403245ea12562b06364b1fbcc08b7e8e0 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -42,6 +42,7 @@ export class ModuleReportComponent implements OnInit {
+   symbologyBuilderDialog: DialogRef;
+ 
+   moduleFormData: ModuleFormData;
++  foundModuleForm: ModuleFormData;
+ 
+   constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef,
+     private http: HttpClient, private auth: AuthService, private dialog: DialogService) { }
+@@ -74,6 +75,7 @@ export class ModuleReportComponent implements OnInit {
+     emitObject.objectId = this.selectedRowObjectId;
+     emitObject.rowClickData = rowClickedEvent.data;
+     emitObject.fromReports = true;
++    emitObject.foundModuleForm = this.foundModuleForm;
+     let ada_no, parsel_no;
+     if (search_id === null || search_id === undefined) {
+       status = 1;
+@@ -594,6 +596,7 @@ export class ModuleReportComponent implements OnInit {
+ 
+     this.getType().subscribe(moduleFormData => {
+       const foundModuleForm = moduleFormData.find(moduleForm => moduleForm.value === operationCode);
++      this.foundModuleForm = foundModuleForm;
+ 
+       if (foundModuleForm !== undefined) {
+         this.getMovementData().subscribe(movementData => {
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index 22a5f5324d19bdf0db1af11538d17f807fd781d9..d5bc6204bc1a0832b2a18ecf6d9f2f25fbf6b7a7 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -18,6 +18,7 @@ import { MovementListComponent } from 'src/app/movements/movement-list/movement-
+ import esri = __esri;
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
+ import { EmitObject, EmitObjectForLastMovement } from 'src/app/models/emitObject';
++import { ModuleFormData } from 'src/app/models/Modules/module-form-data';
+ 
+ @Component({
+   selector: 'app-module-list',
+@@ -49,6 +50,8 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+   showFields = [];
+   requiredFields: any;
+ 
++  foundModuleForm: ModuleFormData;
++
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient) { }
+ 
+@@ -59,6 +62,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+     if (dialogData !== undefined && dialogData['emitObject']) {
+       this.emitObject = dialogData['emitObject'];
++      this.foundModuleForm = dialogData['emitObject']['foundModuleForm'];
+     }
+ 
+     this.mapView = dialogData.mapView;
+@@ -479,7 +483,8 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       data: {
+         moduleData: params.data,
+         featureData: this.featureData,
+-        mapView: this.mapView
++        mapView: this.mapView,
++        foundModuleForm: this.foundModuleForm
+       }
+     }, false, 'light');
+ 
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 11a25ddb3196b032f3fa11451d6454e7831bfede..a5c075587d123ebc5712154157760d7e9dc7f26b 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -5,7 +5,7 @@ import { DialogRef } from 'src/app/dialog/dialog-ref';
+ import { FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+ import { HttpClient } from '@angular/common/http';
+ import { MovementData } from 'src/app/models/movement/movement-data';
+-import { FormData } from 'src/app/models/Modules/module-form-data';
++import { FormData, ModuleFormData } from 'src/app/models/Modules/module-form-data';
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
+ import { Observable } from 'rxjs';
+ import { environment } from 'src/environments/environment';
+@@ -15,6 +15,7 @@ import { map } from 'rxjs/operators';
+ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AcceptDialogComponent } from 'src/app/accept-dialog/accept-dialog.component';
+ import { CreateModuleComponent } from 'src/app/modules/create-module/create-module.component';
++import { FieldValues, ProcessMovementRel } from 'src/app/models/ProcessMovementRel';
+ 
+ interface DeleteResults {
+   deleteResults: {
+@@ -59,6 +60,8 @@ export class MovementCreateComponent implements OnInit {
+   moduleCreateRef: DialogRef;
+   moduleFields: Array<esri.Field> = [];
+   mapView: esri.MapView;
++  foundModuleForm: ModuleFormData;
++  defaultDomainValues: any;
+ 
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder,
+@@ -76,19 +79,27 @@ export class MovementCreateComponent implements OnInit {
+     this.features = features;
+ 
+     this.featureData = data.featureData;
+-    this.moduleData = data.moduleData;
++
++    const moduleData = data.moduleData;
++    this.moduleData = moduleData;
++
++    const foundModuleForm: ModuleFormData = data['foundModuleForm'];
++    this.foundModuleForm = foundModuleForm;
+ 
+     const movementData = <MovementData>data.movementData;
++    this.defaultDomainValues = movementData.field.domain_values;
+ 
++    // ÖNEMLİ SİLME PLAN HAREKETİ TALEP TÜRÜNE GÖRE DEĞİŞİM REVİZYON ADDORREMOVEMOVEMENTS
++    // SONRASINDA KAMULAŞTIRMADAKİ DEĞİŞİKLİKLERE DE EKLENECEK
+     // Hiç hareket olmadığı durumda (this.features boş ise) Plan işleminde domainler 6 ve 7 değilse son 3 domain (9,36,37) silinmeli.
+     // hareketi olup alt konusu 6 ve 7yse gelen movementdata zaten ona göre gelir .
+-    if (this.features.length === 0 && this.moduleData['islem_turu'] === 5) {
+-      const altKonu = this.moduleData['alt_konu'];
+-      // talep turu özel okul dönüşümü ve kamu yararı (islem_turu= 5 talep turu= 4) ise de son 3 domain gelmeli
+-      if (altKonu !== 6 && altKonu !== 7 && this.moduleData['talep_turu'] !== 4 && this.moduleData['talep_turu'] !== 5) {
+-        movementData.field.domain_values = movementData.field.domain_values.slice(0, 7);
+-      }
+-    }
++    // if (this.features.length === 0 && this.moduleData['islem_turu'] === 5) {
++    //   const altKonu = this.moduleData['alt_konu'];
++    //   // talep turu özel okul dönüşümü ve kamu yararı (islem_turu= 5 talep turu= 4) ise de son 3 domain gelmeli
++    //   if (altKonu !== 6 && altKonu !== 7 && this.moduleData['talep_turu'] !== 4 && this.moduleData['talep_turu'] !== 5) {
++    //     movementData.field.domain_values = movementData.field.domain_values.slice(0, 7);
++    //   }
++    // }
+ 
+     if (this.moduleData['islem_turu'] === 8) { // Kamulaştırma'da (type:8) talep türüne göre hareketler değişmeli
+       // Talep türü Uzlaşma Dilekçesi(10) veya Diğer(12) ise hareketler değişecek
+@@ -119,6 +130,19 @@ export class MovementCreateComponent implements OnInit {
+         }
+       }
+     }
++    // FoundModuleForm Şuan Sadece Plan Hareketleri Düzenlemeleri İçin Kullanılmaktadır.
++    if (foundModuleForm !== undefined) {
++      this.processMovementRelationOperation(foundModuleForm, movementData);
++    } else {
++      this.getType().subscribe(processRes => {
++        console.log(processRes);
++        const foundProcessModule: ModuleFormData = processRes.find(process => process.value === moduleData['islem_turu']);
++        this.processMovementRelationOperation(foundProcessModule, movementData);
++      });
++      // UNDEFİNEDSA İŞLEMLER RAPORUNDAN MODULE SEÇMEMİŞ DEMEKTİR DİREKT LİSTEDEN MODULE LİSTELEMEDEN İŞLEME TIKLAMIŞ
++      // YA DA PARSELLERDEN İŞLEMLER BUTONUNA TIKLAMIŞ DEMEKTİR.
++      // BU DURUMDA GETTYPE İLE PROCESSDATA ALINACAK.
++    }
+ 
+     this.movementData = movementData;
+ 
+@@ -155,6 +179,63 @@ export class MovementCreateComponent implements OnInit {
+     // }
+   }
+ 
++  removeMovements(movementData: MovementData, fieldValues: FieldValues) {
++    const movementsToDelete = fieldValues.movements_todelete;
++
++    if (movementsToDelete.length > 0) {
++      movementsToDelete.forEach(movementToDelete => {
++        // tslint:disable-next-line:max-line-length
++        const foundIndex = movementData.field.domain_values.findIndex(extDomain => extDomain.value === movementToDelete);
++        if (foundIndex !== -1) {
++          movementData.field.domain_values.splice(foundIndex, 1);
++          fieldValues.numberof_deletedmovements++;
++        }
++      });
++    }
++  }
++
++  processMovementRelationOperation(foundModuleForm: ModuleFormData, movementData: MovementData) {
++    const processMovementRel: Array<ProcessMovementRel> = foundModuleForm.processMovementRel;
++    if (processMovementRel !== undefined) {
++      processMovementRel.forEach(rel => {
++        const relation: ProcessMovementRel = rel[0];
++        const islemTuru = relation.islem_turu;
++        if (this.moduleData['islem_turu'] === islemTuru) {
++          const fieldValuesArray: Array<Array<FieldValues>> = relation.field_values;
++
++          const fieldValues = fieldValuesArray[0][0];
++          const fieldValue = fieldValues.field_value[0];
++          const notData = fieldValue[0].not_values;
++          const isData = fieldValue[0].values;
++
++          if (this.moduleData[fieldValue[0].name] !== null && this.moduleData[fieldValue[0].name] !== null) {
++            if (notData.length > 0) {
++              if (fieldValue.length === 1) {
++                if (!notData.includes(this.moduleData[fieldValue[0].name])) {
++                  this.removeMovements(movementData, fieldValues);
++                }
++              } else if (fieldValue.length === 2) {
++                if (!notData.includes(this.moduleData[fieldValue[0].name]) && !notData.includes(this.moduleData[fieldValue[1].name])) {
++                  this.removeMovements(movementData, fieldValues);
++                }
++              }
++            } else if (isData.length > 0) {
++              if (fieldValue.length === 1) {
++                if (isData.includes(this.moduleData[fieldValue[0].name])) {
++                  this.removeMovements(movementData, fieldValues);
++                }
++              } else if (fieldValue.length === 2) {
++                if (isData.includes(this.moduleData[fieldValue[0].name]) && isData.includes(this.moduleData[fieldValue[1].name])) {
++                  this.removeMovements(movementData, fieldValues);
++                }
++              }
++            }
++          }
++        }
++      });
++    }
++  }
++
+   customizeDomainValues(criterionName: string, criteriontype: number) {
+     if (this.moduleData[criterionName] === criteriontype) {
+       // Kamulaştırma'da (type:8) talep türüne göre hareketler değişmeli
+@@ -1141,4 +1222,13 @@ export class MovementCreateComponent implements OnInit {
+ 
+     return JSON.parse(atob(encodedString));
+   }
++
++  getType(): Observable<Array<ModuleFormData>> {
++    return this.http.get<Array<ModuleFormData>>('assets/TypeData.json');
++  }
++
++  getMovementData(): Observable<Array<MovementData>> {
++    return this.http.get<Array<MovementData>>('assets/ProcessData.json');
++  }
++
+ }
+diff --git a/src/app/movements/movement-list/movement-list.component.ts b/src/app/movements/movement-list/movement-list.component.ts
+index 3e0ed2edfc6d1ef42a10225f038b297b05d9fca4..70a713e31d97b2c9900c2388c9ebc70f98370665 100644
+--- a/src/app/movements/movement-list/movement-list.component.ts
++++ b/src/app/movements/movement-list/movement-list.component.ts
+@@ -19,6 +19,7 @@ import { RendererComponent } from 'src/app/modules/module-list/rendererClass/ren
+ import { LoginResponse } from 'src/app/models/Login/login-response';
+ import esri = __esri;
+ import { DialogInfoComponent } from 'src/app/dialog-info/dialog-info.component';
++import { ModuleFormData } from 'src/app/models/Modules/module-form-data';
+ @Component({
+   selector: 'app-movement-list',
+   templateUrl: './movement-list.component.html',
+@@ -32,6 +33,7 @@ export class MovementListComponent implements OnInit, OnDestroy {
+   moduleRefId: number;
+   moduleWhereField: string;
+   featureData: esri.Graphic;
++  foundModuleForm: ModuleFormData;
+   _mapView: esri.MapView;
+ 
+   movementCreateDialogRef: DialogRef;
+@@ -55,6 +57,8 @@ export class MovementListComponent implements OnInit, OnDestroy {
+     const whereField = 'islem_refid';
+     this.moduleWhereField = whereField;
+ 
++    this.foundModuleForm = dialogData['foundModuleForm'];
++
+     this.initalizeAGGrid();
+ 
+     this.getMovementData().subscribe(movementData => {
+@@ -94,7 +98,8 @@ export class MovementListComponent implements OnInit, OnDestroy {
+         moduleRefId: this.moduleRefId,
+         moduleWhereField: this.moduleWhereField,
+         mapView: this._mapView,
+-        createMode: true
++        createMode: true,
++        foundModuleForm: this.foundModuleForm
+       }
+     }, true, 'light');
+ 
+@@ -361,7 +366,7 @@ export class MovementListComponent implements OnInit, OnDestroy {
+       colId: 'process',
+       headerName: 'Düzenle',
+       cellRendererFramework: RendererComponent,
+-      cellRendererParams: { title: 'Düzenle', userId: userId , groupName: groupName },
++      cellRendererParams: { title: 'Düzenle', userId: userId, groupName: groupName },
+       sortable: false,
+       filter: false,
+       width: 100,
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 5771895730529ab86d9e0461d34f25edb9353902..a3d4beb48db31b36e22f901d83ec925754bc6120 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -136,8 +136,7 @@
+           "chosen_values": []
+         }
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -320,8 +319,7 @@
+           "chosen_values": []
+         }
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -499,8 +497,7 @@
+           "chosen_values": []
+         }
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -696,8 +693,7 @@
+           "chosen_values": []
+         }
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -889,8 +885,7 @@
+           "chosen_values": []
+         }
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -952,8 +947,7 @@
+           "name": "detay",
+           "type": "localDomain",
+           "required": true,
+-          "domain_values": [
+-            {
++          "domain_values": [{
+               "name": "Anaokul",
+               "value": "Anaokul"
+             },
+@@ -1084,8 +1078,7 @@
+         }
+ 
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -1329,8 +1322,7 @@
+           "chosen_values": []
+         }
+       ],
+-      [
+-        {
++      [{
+           "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+@@ -2229,6 +2221,45 @@
+           "chosen_values": []
+         }
+       ]
++    ],
++    "processMovementRel": [
++      [{
++        "islem_turu": 5,
++        "field_values": [
++          [{
++            "field_value": [
++              [{
++                "name": "alt_konu",
++                "values": [],
++                "not_values": [6, 7]
++              }],
++              [{
++                "name": "talep_turu",
++                "values": [],
++                "not_values": [4, 5]
++              }]
++            ],
++            "movements_todelete": [9, 36, 37],
++            "numberof_deletedmovements": 0
++          }]
++        ]
++      }],
++      [{
++        "islem_turu": 5,
++        "field_values": [
++          [{
++            "field_value": [
++              [{
++                "name": "talep_turu",
++                "values": [6],
++                "not_values": []
++              }]
++            ],
++            "movements_todelete": [9, 36],
++            "numberof_deletedmovements": 0
++          }]
++        ]
++      }]
+     ]
+   },
+   {
