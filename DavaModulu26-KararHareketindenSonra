@@ -1,0 +1,166 @@
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 1409463ec7690fa986adaac08924431816c91132..394372b2d211cb2c73b1c8a7926912853fe5047b 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -185,7 +185,7 @@ export class MovementCreateComponent implements OnInit {
+     this.getAllMovements().subscribe(allMovements => {
+       // Karar Hareketi Girilmişse Tekrar Karar Hareketi Giremez.
+       // Karar Hareketi Girilmeden Yeni Esas ve İcra Hareketi de Giremez.
+-      const kararMovement = allMovements.find(feature => feature.attributes['durumu'] === 'Karar');
++      const kararMovement = allMovements.find(feature => feature.attributes['durumu'] == 38);
+ 
+       // BURASI PROCESSMOVEMENTREL VE MOVEMENTREL YAPISI İLE ÇÖZÜLDÜ
+       if (!kararMovement) {
+@@ -238,8 +238,61 @@ export class MovementCreateComponent implements OnInit {
+     });
+   }
+ 
+-  removeMovements(movementData: MovementData, fieldValues: FieldValues | MovementValues) {
+-    const movementsToDelete = fieldValues.movements_todelete;
++  removeMovements(movementData: MovementData, fieldValues: FieldValues | MovementValues, addDeleteSpecialMovementsStates?: { addKararMovementState: boolean, addYeniEsasIcraMovementState: boolean }) {
++    let movementsToDelete = fieldValues.movements_todelete;
++
++    // Dosyanolar ile bağlanmış 1den fazla işlemin hareket kontrolü için sadece ilk eklenmiş işlem üzerinde hareket ekleme çıkarma yapılacaktı.
++    // bunun için renderer componentte dosyanosu olan ve createdate i olmayanlar sonradan eklenmiş bağlı işlemler olduğu için bu işlemlerin hareketler butonunu disable ettim
++    // ancak processRel olarak yapılan yapı artık bozuldu. bu yüzden icra ve yeni esas hareketlerinden sonra mutlaka karar hareketi olması gerekiyor
++    // bu yüzden en son girilmiş karar hareketinden sonra yeni esas veya icra hareketi girilmişse karar hareketi gözükecek yeni esas ve icra hareketleri silinecek.
++    let newMovementsToDelete = [];
++    let hasIcraMovementState = false;
++    let hasYeniEsasMovementState = false;
++
++    if (addDeleteSpecialMovementsStates !== undefined) {
++      if (addDeleteSpecialMovementsStates.addKararMovementState === true) {
++        const foundKararMovement = movementsToDelete.findIndex(movement => movement === 38);
++        if (foundKararMovement !== -1) {
++          movementsToDelete.forEach(movement => {
++            if (movement !== 38) {
++              newMovementsToDelete.push(movement);
++            }
++
++            if (movement === 39) {
++              hasIcraMovementState = true;
++            } else if (movement === 40) {
++              hasYeniEsasMovementState = true;
++            }
++          });
++          movementsToDelete = newMovementsToDelete;
++          if (!hasIcraMovementState) {
++            movementsToDelete.push(39);
++          }
++
++          if (!hasYeniEsasMovementState) {
++            movementsToDelete.push(40);
++          }
++        }
++      }
++
++      // Eğer Karar Hareketinden sonra yeni esas veya dava yoksa addyeniesasicramovementstate true gelecek bu durumda da karar hareketi silinecek yeni esas ve icra hareketleri eklenecek
++      // movementstodeletede 39 ve 40 hareketleri varsa bunların çıkarılması gerek ki silinmesin
++      // silinecek listesinde (movementstodelete) karar hareketi(38) yoksa da eklenecek.
++      if (addDeleteSpecialMovementsStates.addYeniEsasIcraMovementState === true) {
++        const foundKararMovement = movementsToDelete.findIndex(movement => movement === 38);
++        if (foundKararMovement === -1) {
++          movementsToDelete.push(38);
++        }
++
++        movementsToDelete.forEach(movement => {
++          if (!(movement === 39 || movement === 40)) {
++            newMovementsToDelete.push(movement);
++          }
++        });
++
++        movementsToDelete = newMovementsToDelete;
++      }
++    }
+ 
+     if (movementsToDelete.length > 0) {
+       movementsToDelete.forEach(movementToDelete => {
+@@ -257,6 +310,39 @@ export class MovementCreateComponent implements OnInit {
+     const movementRel: Array<MovementRel> = foundModuleForm.movementRel;
+     const movementsCodes = allMovements.map(movement => movement.attributes['durumu']);
+ 
++    let addKararMovementState = false;
++    let addYeniEsasIcraMovementState = false;
++
++    let addDeleteSpecialMovementsStates = { addKararMovementState: addKararMovementState, addYeniEsasIcraMovementState: addYeniEsasIcraMovementState };
++
++    const indexOfLastKararMovement = allMovements.findIndex(movement => movement.attributes['durumu'] == 38);
++    const indexOfLastIcraMovement = allMovements.findIndex(movement => movement.attributes['durumu'] == 39);
++    const indexOfLastYeniEsasMovement = allMovements.findIndex(movement => movement.attributes['durumu'] == 40);
++
++    if (indexOfLastKararMovement !== -1) {
++      if (indexOfLastIcraMovement !== -1) {
++        if (indexOfLastIcraMovement < indexOfLastKararMovement) {
++          addDeleteSpecialMovementsStates.addKararMovementState = true;
++        } else {
++          if (indexOfLastYeniEsasMovement < indexOfLastKararMovement) {
++            addDeleteSpecialMovementsStates.addKararMovementState = true;
++          } else {
++            addDeleteSpecialMovementsStates.addYeniEsasIcraMovementState = true;
++          }
++        }
++      } else if (indexOfLastYeniEsasMovement !== -1) {
++        if (indexOfLastYeniEsasMovement < indexOfLastKararMovement) {
++          addDeleteSpecialMovementsStates.addKararMovementState = true;
++        } else {
++          if (indexOfLastIcraMovement < indexOfLastKararMovement) {
++            addDeleteSpecialMovementsStates.addKararMovementState = true;
++          } else {
++            addDeleteSpecialMovementsStates.addYeniEsasIcraMovementState = true;
++          }
++        }
++      }
++    }
++
+     if (movementRel !== undefined) {
+       movementRel.forEach(rel => {
+         const relation: MovementRel = rel[0];
+@@ -290,11 +376,11 @@ export class MovementCreateComponent implements OnInit {
+                 // eğer state true ise şu hareket varsa silinecek demek eğer state false ise şu hareket yoksa silinecek
+                 // yani konu olan hareket eğer bulunursa ve state true ise silinir.
+                 // ama konu olan hareket bulunurve state false ise silinmez
+-                this.removeMovements(movementData, movementValuesArray[index][0]);
++                this.removeMovements(movementData, movementValuesArray[index][0], addDeleteSpecialMovementsStates);
+               }
+             } else {
+               if (!valueState) {
+-                this.removeMovements(movementData, movementValuesArray[index][0]);
++                this.removeMovements(movementData, movementValuesArray[index][0], addDeleteSpecialMovementsStates);
+               }
+             }
+ 
+@@ -595,7 +681,7 @@ export class MovementCreateComponent implements OnInit {
+     if (this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] == 26) {
+       formObject['aciklama'] = this.dotMethod(formElement.value);
+     }
+-    
++
+     if (formElement.name === 'ucret') {  // UCRET FIELDI ARTIK TEXT OLDU BURAYA DA DOT METHOD EKLENİYOR
+       formObject['ucret'] = this.dotMethod(formElement.value);
+     }
+@@ -1599,13 +1685,13 @@ export class MovementCreateComponent implements OnInit {
+                         } else {
+                           deleteResponse['deleteAttachmentResults'].forEach(deleteAttachmentResult => {
+                             let isAllOk = true;
+-                            if(!deleteAttachmentResult['success']) {
++                            if (!deleteAttachmentResult['success']) {
+                               isAllOk = false;
+                             }
+                           });
+                         }
+-                        
+-                        if(isAllOk) {
++
++                        if (isAllOk) {
+                           const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectID}/addAttachment`;
+                           const newAttachments = this.attachmentDataArray;
+                           const addObservables = [];
+@@ -2138,7 +2224,7 @@ export class MovementCreateComponent implements OnInit {
+     const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/addAttachment`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+-      if (attachments !== undefined  && attachments.length === 0) {
++      if (attachments !== undefined && attachments.length === 0) {
+         this.addAttachment(formValues, dialog, results);
+       } else {
+         const deleteObservables = [];
