@@ -1,0 +1,272 @@
+diff --git a/src/app/data-table/data-table.component.scss b/src/app/data-table/data-table.component.scss
+index 264233903d679ad7ead25817395167cb560827fe..ac81cb5829f60ab88737038e0afb7a9b57d4029a 100644
+--- a/src/app/data-table/data-table.component.scss
++++ b/src/app/data-table/data-table.component.scss
+@@ -7,7 +7,7 @@ $color_1: white;
+   justify-content: flex-start;
+   padding: 24px;
+   box-sizing: border-box;
+-  width: 1000px;
++  width: 100%;
+   max-height: 100vh;
+   min-height: 500px;
+   min-width: 500px;
+diff --git a/src/app/dynamic-data-table/dynamic-data-table.component.scss b/src/app/dynamic-data-table/dynamic-data-table.component.scss
+index 93e98a526309901edbf60115f73ebfb715a2b90c..c01a302054832e8c482903751c332a61d3702b42 100644
+--- a/src/app/dynamic-data-table/dynamic-data-table.component.scss
++++ b/src/app/dynamic-data-table/dynamic-data-table.component.scss
+@@ -7,7 +7,7 @@ $color_1: white;
+   justify-content: flex-start;
+   padding: 24px;
+   box-sizing: border-box;
+-  width: 1000px;
++  width: 100%;
+   max-height: 70vh;
+   min-height: 500px;
+   min-width: 500px;
+diff --git a/src/app/info/generic-info/generic-info.component.html b/src/app/info/generic-info/generic-info.component.html
+index 6a919da1aa224edf46fd62546469fca856878c50..cf1a77e7f06e3f07c0f12c15edce236ef77a27c7 100644
+--- a/src/app/info/generic-info/generic-info.component.html
++++ b/src/app/info/generic-info/generic-info.component.html
+@@ -91,7 +91,7 @@
+           </tbody>
+         </table>
+         <input *ngIf="_foundModuleData !== undefined" class="additional-buttons" type="button" value="İşlemler"
+-          (click)="onOpenModules($event)">
++          (click)="onClickIslemler($event)">
+         <input *ngIf="feature.getAttribute('tasinmaz_id') !== undefined" class="additional-buttons" type="button"
+           value="TKGM Şerh Beyan - Malik Bilgileri" (click)="onOpenSerhBeyanMalik($event)">
+         <input
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index ac81804bee6e231f704aa1b26228ca18b96267cd..77a0ceb774251a771b981ad8e7d0ab9911424a69 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -1,4 +1,3 @@
+-import { FeatureModel } from './../../models/Modules/geojson';
+ import { TkgmParcelWithMalikAndSbi } from './../../models/TKGM/tkgm-parcel-response';
+ import { SerhBeyanData } from './../../models/TKGM/serh-malik';
+ import { MalikData } from 'src/app/models/TKGM/serh-malik';
+@@ -26,7 +25,7 @@ import { NotificationService } from 'src/app/notification/notification.service';
+ import { WebDataService } from 'src/app/services/web-data.service';
+ import { TransportComponent } from './transport/transport.component';
+ import { Kurum } from 'src/app/models/MEBTasimali/kurum';
+-import { buffer } from 'esri/geometry/geometryEngine';
++import { EmitObject } from 'src/app/models/emitObject';
+ 
+ @Component({
+   selector: 'app-generic-info',
+@@ -62,7 +61,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   historyData: Array<esri.Graphic> = [];
+   currentCount = 0;
+   _highlightLayer: any;
+-  _selectedObjectIdInIslemler: string;
++  _emitObject: EmitObject;
+ 
+   attachmentIndex = 0;
+   @Input()
+@@ -332,6 +331,11 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+     this.setMaxViewHeightWindow();
+   }
+ 
++  onClickIslemler(event: Event) {
++    this._emitObject.fromReports = false;
++    this.onOpenModules(event);
++  }
++
+   onOpenModules(event: Event) {
+     this.closeDialog();
+ 
+@@ -355,7 +359,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+         featureData: feature,
+         userPerm: this._userPerm,
+         mapView: this._mapView,
+-        selectedObjectIdInIslemler: this._selectedObjectIdInIslemler
++        emitObject: this._emitObject
+       }
+     }, true, 'blue');
+   }
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index af26d37715dea327e53ed75c4566f648761003b6..d49351103c8f6b0f3b29ce4b5633dca5f2773d16 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -57,9 +57,8 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   _mapView: esri.MapView;
+   _modelData: InfoModel;
+   _modelType: string;
+-
+   _infoObject: esri.Graphic;
+-  _selectedObjectIdInIslemler: string;
++  _emitObject: EmitObject;
+   _highlightLayer: any;
+ 
+   _userPerm: UserPermission;
+@@ -67,11 +66,11 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   _generalInstutationAnalyze: boolean;
+ 
+   @Input()
+-  set selectedObjectIdInIslemler(selectedObjectIdInIslemler) {
+-    this._selectedObjectIdInIslemler = selectedObjectIdInIslemler;
++  set emitObject(emitObject) {
++    this._emitObject = emitObject;
+   }
+-  get selectedObjectIdInIslemler() {
+-    return this._selectedObjectIdInIslemler;
++  get emitObject() {
++    return this._emitObject;
+   }
+ 
+   @Input()
+@@ -821,7 +820,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     this.genericInfoComponent.showStatus = true;
+     this.genericInfoComponent.mapView = this._mapView;
+     this.genericInfoComponent._highlightLayer = this._highlightLayer;
+-    this.genericInfoComponent._selectedObjectIdInIslemler = this.selectedObjectIdInIslemler;
++    this.genericInfoComponent._emitObject = this.emitObject;
+     if (header !== undefined) {
+       this.genericInfoComponent.header = header;
+     }
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index 583053b65a0f0e5a5acfb9bdee4f43692330542b..89a805690f4e9bbdb4c86b237a9f63a60d1cc572 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -46,7 +46,7 @@
+   (searchGercekKisi)="searchGercekKisiEvent($event)" (searchTuzelKisi)="searchTuzelKisiEvent($event)"
+   (searchNVI)="searchNVIEvent($event)" (openTasimali)="openTasimali($event)" (openYolBilgi)="openYolBilgi($event)"></app-search>
+ <app-info *ngIf="hitTestResult.length > 0 || infoObject !== undefined || generalInstutationAnalyze" [mapView]="mapView"
+-  [hitTestResult]="hitTestResult" [selectedObjectIdInIslemler]="selectedObjectIdInIslemler" [infoObject]="infoObject" (infoClose)="onCloseInfo()" [userPerm]="auth.userPerm"
++  [hitTestResult]="hitTestResult" [emitObject]="emitObject" [infoObject]="infoObject" (infoClose)="onCloseInfo()" [userPerm]="auth.userPerm"
+   (initEdit)="initEditEvent($event)" (finalizeEdit)="finalizeEditEvent($event)" (finalizeTkgmParcelEdit)="finalizeEditEvent($event)"
+   (acceptRejectChanges)="acceptRejectChangesEvent($event)" (otherSchoolTypeSelect)="otherSchoolTypeSelectEvent($event)"
+   (schoolTypeSelect)="schoolTypeSelectEvent($event)" (districtSelect)="convertAndOpenInfoWithFeatureSet($event)"
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 9444e0c0cdee919b323ca65044247d41663b99cd..5db7e6afc2aeb4d73e2be8b0a84f359a045ee638 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -93,7 +93,7 @@ export class MainComponent implements OnInit {
+   geojsonGraphicsLayerImportSubject: Subject<any>;
+ 
+   infoData: ModelData;
+-  selectedObjectIdInIslemler: string;
++  emitObject: EmitObject;
+ 
+   constructor(private projectionService: ProjectionService, public mapService: MapService,
+     public measureService: MeasureService, private dialogService: DialogService, public auth: AuthService,
+@@ -1609,7 +1609,7 @@ export class MainComponent implements OnInit {
+   }
+ 
+   openInfoDialogEvent(emitObject: EmitObject) {
+-    this.selectedObjectIdInIslemler = emitObject.objectId;
++    this.emitObject = emitObject;
+     this.convertAndOpenInfoWithFeatureSet(emitObject.featureSet, true);
+   }
+ 
+diff --git a/src/app/models/emitObject.ts b/src/app/models/emitObject.ts
+index 4a35c85b451cbcfee79d96031ee0dddad22f1560..4883daac2ac51e7bcc1481e9bae6cb651713c8ff 100644
+--- a/src/app/models/emitObject.ts
++++ b/src/app/models/emitObject.ts
+@@ -1,4 +1,5 @@
+ export class EmitObject {
+     featureSet: any;
+     objectId: string;
++    fromReports: boolean;
+ }
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index ef9253dd106a20cb0c526afdd83edeebdc7ba3d6..fcc621e2c6bf4fc9d87600c4dde5102f7fd23b78 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -72,6 +72,7 @@ export class ModuleReportComponent implements OnInit {
+     this.selectedRowObjectId = rowClickedEvent.data['i_objectid'];
+     const emitObject: EmitObject = new EmitObject();
+     emitObject.objectId = this.selectedRowObjectId;
++    emitObject.fromReports = true;
+     let ada_no, parsel_no;
+     if (search_id === null || search_id === undefined) {
+       status = 1;
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index 5cd785e99ad07bcf971e16d94690b213df028d94..e65a2426d328ca4c4d3dfda3fbf1cd5231e836f3 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -17,6 +17,7 @@ import { QueryConstructor } from 'src/app/models/AGGrid/query-constructor';
+ import { MovementListComponent } from 'src/app/movements/movement-list/movement-list.component';
+ import esri = __esri;
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
++import { EmitObject } from 'src/app/models/emitObject';
+ 
+ @Component({
+   selector: 'app-module-list',
+@@ -35,7 +36,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+   fields: Array<esri.Field> = [];
+   mapView: esri.MapView;
+ 
+-  selectedObjectIdInIslemler: string;
++  emitObject: EmitObject;
+ 
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient) { }
+@@ -44,8 +45,8 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     const dialogData = this.dialogConfig.data;
+     const moduleData = <ModulesModel>dialogData.moduleData;
+ 
+-    if (dialogData !== undefined && dialogData['selectedObjectIdInIslemler']) {
+-      this.selectedObjectIdInIslemler = dialogData['selectedObjectIdInIslemler'];
++    if (dialogData !== undefined && dialogData['emitObject']) {
++      this.emitObject = dialogData['emitObject'];
+     }
+ 
+     this.mapView = dialogData.mapView;
+@@ -172,16 +173,19 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         this.getFeatureCount(url, filteredParams).subscribe(filterCount => {
+           this.getFeatures(url, filteredParams).subscribe(res => {
+             let objectModel = res.features.map(feature => feature.attributes);
+-            const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.selectedObjectIdInIslemler));
+ 
+-            const firstPart = objectModel[selectedRowIndex];
+-            objectModel.splice(selectedRowIndex, 1);
++            if (this.emitObject.fromReports) {
++              const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.emitObject.objectId));
+ 
+-            objectModel = [].concat(firstPart, objectModel);
++              const firstPart = objectModel[selectedRowIndex];
++              objectModel.splice(selectedRowIndex, 1);
++
++              objectModel = [].concat(firstPart, objectModel);
++            }
+ 
+             params.successCallback(objectModel, filterCount);
+ 
+-            this.colorYellowSelectedRow();
++            this.colorYellowSelectedRow(this.emitObject.fromReports);
+           });
+         });
+       }
+@@ -189,18 +193,20 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     this.agGrid.api.setDatasource(dataSource);
+   }
+ 
+-  colorYellowSelectedRow() {
+-    const rows = document.querySelectorAll('[row-id="0"]');
+-    let selectedRow: HTMLElement;
+-    for (let i = 0; i < rows.length; i++) {
+-      const clientWidth = rows[i].clientWidth;
+-      const noFocusClass = rows[i].classList.contains('ag-row-no-focus');
+-      if (clientWidth !== 0 && noFocusClass) {
+-        selectedRow = rows[i] as HTMLElement;
++  colorYellowSelectedRow(fromReports: boolean) {
++    if (fromReports) {
++      const rows = document.querySelectorAll('[row-id="0"]');
++      let selectedRow: HTMLElement;
++      for (let i = 0; i < rows.length; i++) {
++        const clientWidth = rows[i].clientWidth;
++        const noFocusClass = rows[i].classList.contains('ag-row-no-focus');
++        if (clientWidth !== 0 && noFocusClass) {
++          selectedRow = rows[i] as HTMLElement;
++        }
+       }
+-    }
+ 
+-    selectedRow.style.backgroundColor = 'yellow';
++      selectedRow.style.backgroundColor = 'yellow';
++    }
+   }
+ 
+   createColumnDefinitions(fields: Array<esri.Field>, showFields: Array<string>): Array<ColDef> {
