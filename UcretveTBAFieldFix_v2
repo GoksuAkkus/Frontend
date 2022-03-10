@@ -1,0 +1,298 @@
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 35361f6d64468eaa2f583a0af058fddf1291d738..7a9185b149d5821bdbe471cdaedb4e2fddc07ec6 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -203,7 +203,7 @@ export class ModuleReportComponent implements OnInit {
+             tbaDotMethodUygulamaState = true;
+           }
+           // TODO: BURASI i_ucret OLMALI AMA ŞUAN YAPAMIYORUM ÇÜNKÜ UCRET STRİNG GELİRKEN İŞLEM HAREKETTE İ_ÜCRET DOUBLE KAYDEDİLMİŞ
+-          //O YÜZDEN KOD PATLIYOR
++          // O YÜZDEN KOD PATLIYOR
+           if (field.name === 'i_ucret') {
+             ucretFieldDotMethodUygState = true;
+           }
+@@ -221,7 +221,7 @@ export class ModuleReportComponent implements OnInit {
+                 return this.dotMethod(commaValue);
+               }
+             };
+-          } else if(ucretFieldDotMethodUygState) {
++          } else if (ucretFieldDotMethodUygState) {
+             colDef.filter = 'agNumberColumnFilter';
+             colDef.valueGetter = (params) => {
+               if (params.data !== undefined) {
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index a811aeadb741171cb3e335f134afae5cae7de292..1b49c34cbcdbbdd9ed08a08a16c2efdfebb6c993 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -183,6 +183,29 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     return dottedString;
+   }
+ 
++  onInput(event: Event) {
++    const inputElement = <HTMLInputElement>event.target;
++
++    const inputValue = inputElement.value;
++    const regexp = new RegExp(/([0-9,])/g); // kuruş girmek için , koyabilmeleri lazım
++
++    const pressedKey = event['data'];
++    if (pressedKey === null) {
++      inputElement.value = '';
++      return inputElement;
++    }
++
++    const matchedValues = pressedKey.match(regexp);
++
++    if (matchedValues !== null) {
++      return inputElement;
++    }
++
++    inputElement.value = inputValue.slice(0, -1);
++
++    return inputElement;
++  }
++
+   onChangeFormControl(event: Event) {
+     const moduleData = this.moduleData;
+     const formObject = this.formGroup.value;
+@@ -218,18 +241,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     if (this.moduleData.value === 14 || formData.name === 'ucret') {
+       // Kamulaştırma Teklifdeki kamulaştırma bedeli için de dotmethod eklenecek
+-      // if (this.moduleData.value === 13) {
+       if (formElement.name === 'talep_eden_kurum') {
+         formObject['detay'] = -1;
+         formObject['yatirim_ad'] = -1;
+       }
+       if (formElement.name === 'esas_no' || formElement.name === 'karar_no' || formElement.name === 'ucret') {
++        formElement = this.onInput(event);
+         formElement.value = this.dotMethod(formElement.value);
+         this.formGroup.controls[formElement.name].setValue(formElement.value);
+       }
+     }
+     if (this.moduleData.value === 14) {
+-      // if (this.moduleData.value === 13) {
+       const tadilatMaliyetControl = this.formGroup.controls['esas_no'];
+       const malAlimiMaliyetControl = this.formGroup.controls['karar_no'];
+ 
+@@ -253,7 +275,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     }
+     if (this.moduleData.value === 14 && formElement.name === 'talep_amaci') {
+-      // if (this.moduleData.value === 13 && formElement.name === 'talep_amaci') {
+       if (formElement.value === '-1') {
+         if (!this.formGroup.controls['esas_no'].disabled) {
+           this.formGroup.controls['esas_no'].setValue('');
+@@ -286,26 +307,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           this.resetFormData(moduleData, formObject);
+         }
+       }
+-      // else if (moduleData.value === 14 && formControlName === 'detay' &&
+-      //  formElementValue !== undefined && formElementValue !== '-1') {
+-      //   // } else if (moduleData.value === 13 && formControlName === 'detay' &&
+-      //   // formElementValue !== undefined && formElementValue !== '-1') {
+-      //   if (formElementValue.includes('Lise')) {
+-      //     const lead = this.recursiveFormLead(this.moduleFormData, 0);
+-      //     const leadingFormData = moduleData.formData[lead];
+-      //     const foundFormObject = leadingFormData.find(formDataElement => formDataElement.name === 'yatirim_ad');
+-
+-      //     foundFormObject.domain_values = [{ name: 'Bilim ve Kültür Sanat Atölyesi', value: 'Bilim ve Kültür Sanat Atölyesi' }];
+-      //   } else if (moduleData.value === 14 && formControlName === 'detay' && !formElementValue.includes('Lise')) {
+-      //     // } else if (moduleData.value === 13 && formControlName === 'detay' && !formElementValue.includes('Lise')) {
+-      //     const lead = this.recursiveFormLead(this.moduleFormData, 0);
+-      //     const leadingFormData = moduleData.formData[lead];
+-      //     const foundFormObject = leadingFormData.find(formDataElement => formDataElement.name === 'yatirim_ad');
+-
+-      //     foundFormObject.domain_values = this.getAtolyeTuruDomains();
+-      //   }
+-      // }
+-
+     } else {
+       this.resetFormData(moduleData, formObject);
+       formElement.classList.add('error');
+@@ -446,8 +447,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+           if (index === 0) {
+             if (calculateControl === 'ucret') {
+-              const valWithoutDot = formControl.value.replaceAll('.', '');
+-              operand1 = Number(valWithoutDot);
++              if (formControl.value !== null) {
++                let valWithoutDot = formControl.value.replaceAll('.', '');
++                if (valWithoutDot.includes(',')) {
++                  const stringValWithoutDot: string = valWithoutDot.toString();
++                  const valWithoutComma = stringValWithoutDot.split(',');
++                  // ucret fieldındaki , checkandcalculate i patlatıyor o yüzden
++                  // , den sonraki kısmı atarak hesaplama yapmalı.
++                  valWithoutDot = valWithoutComma[0];
++                }
++                operand1 = Number(valWithoutDot);
++              }
+             } else {
+               operand1 = Number(formControl.value);
+             }
+@@ -520,7 +530,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     }
+     if (this.moduleData.value === 14) {
+-      // if (this.moduleData.value === 13) {
+       const atolyeIslemValue = this.formGroup.controls['talep_amaci'].value;
+       if (atolyeIslemValue.includes('Sadece')) {
+         this.formGroup.controls['esas_no'].disable();
+@@ -650,12 +659,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         message = 'İşlem kaydını düzenlemek istediğinize emin misiniz ?';
+         notifyMessage = 'İşlem Düzenleme Başarılı';
+       }
+-      // if (this.agGrid !== undefined && this.agGrid.api.paginationGetRowCount() > 0 && this.agGrid.api.getSelectedRows().length === 0) {
+-      //   this.notify.open('Malik Seçilmedi', 'danger', 10);
+-      //   return;
+-      // }
++
+       if (this.moduleData.value === 14 && this.processState === -1) {
+-        // if (this.moduleData.value === 13 && this.processState === -1) {
+         const binaSiraNo = this.feature.attributes['refid'];
+         this.binaSiraNo = binaSiraNo;
+ 
+@@ -1030,23 +1035,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         });
+       }
+ 
+-      // if (recentFormValues !== undefined && this.moduleData.value === 13 && formControlName === 'detay'
+-      // if (recentFormValues !== undefined && this.moduleData.value === 14 && formControlName === 'detay'
+-      //   && recentFormValues['detay'] !== -1) {
+-      //   if (recentFormValues['detay'].includes('Lise')) {
+-      //     const lead = this.recursiveFormLead(this.moduleFormData, 0);
+-      //     const leadingFormData = this.moduleData.formData[lead];
+-      //     const foundFormObject = leadingFormData.find(formDataElement => formDataElement.name === 'yatirim_ad');
+-
+-      //     foundFormObject.domain_values = [{ name: 'Bilim ve Kültür Sanat Atölyesi', value: 'Bilim ve Kültür Sanat Atölyesi' }];
+-      //   } else if (!recentFormValues['detay'].includes('Lise')) {
+-      //     const lead = this.recursiveFormLead(this.moduleFormData, 0);
+-      //     const leadingFormData = this.moduleData.formData[lead];
+-      //     const foundFormObject = leadingFormData.find(formDataElement => formDataElement.name === 'yatirim_ad');
+-
+-      //     foundFormObject.domain_values = this.getAtolyeTuruDomains();
+-      //   }
+-      // }
+       if (recentFormValues !== undefined) {
+         if (this.moduleData.value === 14 && (formControlName === 'esas_no' || formControlName === 'karar_no')) {
+           tbaDotMethodUygulamaState = true;
+@@ -1065,7 +1053,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
+ 
+       if (this.moduleData.value === 14 && recentFormValues !== undefined && formControlName === 'esas_no') {
+-        // if (this.moduleData.value === 13 && recentFormValues !== undefined && formControlName === 'esas_no') {
+         const atolyeIslemValue = recentFormValues['talep_amaci'];
+         if (atolyeIslemValue !== -1) {
+           if (atolyeIslemValue.includes('Sadece')) {
+@@ -1079,7 +1066,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       if (recentFormValues !== undefined) {
+         const atolyeIslemValue = recentFormValues['talep_amaci'];
+         if (this.moduleData.value === 14 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
+-          // if (this.moduleData.value === 13 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
+           if (formControlName === 'esas_no' && !this.formGroup.controls['esas_no'].disabled) {
+             this.formGroup.controls['esas_no'].setValue('');
+             this.formGroup.controls['esas_no'].disable();
+@@ -1090,7 +1076,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           }
+         }
+       } else if (recentFormValues === undefined) {
+-        // if (this.moduleData.value === 13) {
+         if (this.moduleData.value === 14) {
+           if (formControlName === 'esas_no' && !this.formGroup.controls['esas_no'].disabled) {
+             this.formGroup.controls['esas_no'].setValue('');
+@@ -1115,6 +1100,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       this.addOrRemoveDynamicFields(binaSayiValue, recentFormValues);
+     }
+   }
++
+   bindFieldDomainValues(formControl: FormData) {
+     const formControlName = formControl.name;
+     const foundField = this.fields.find(field => field.name === formControlName);
+@@ -1349,19 +1335,24 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       // const toplamMaliyetString = this.dotMethod(toplamMaliyetStringData);
+ 
+       formData['sayi'] = toplamMaliyetStringData;
+-    } else if( ucretFieldProcessArray.includes(this.moduleData.value)) {
+-      let ucretField = <string>formData['ucret'];
+-      ucretField = ucretField.replace(/\./g, '');
+-      ucretField = ucretField.replace(/,/g, '.');
+-      formData['ucret'] = ucretField;
++    } else if (ucretFieldProcessArray.includes(this.moduleData.value)) {
++      if (formData['ucret']) {
++        let ucretField = <string>formData['ucret'];
++        ucretField = ucretField.replace(/\./g, '');
++        ucretField = ucretField.replace(/,/g, '.');
++        formData['ucret'] = ucretField;
++      }
+     }
+     let feature = <esri.Graphic>{
+       attributes: formData,
+     };
+     const features = <Array<esri.Graphic>>[];
+ 
+-    //dottocommamethod arcgiste ondalık kısmı , olarak algılıyorsa çalışır. şuan arcgisde ondalık kısım . olarak seçilmiş bu yüzden , olarak kaydedilmişler arasında CAST operasyonu yapılmıyor. Yani TBA maliyet fieldları içinde filtreleme yapamaz. Hatta kamulaştırma bedeli olan ucret fieldlarında da filtreleme yapamaz.
+-    
++    // dottocommamethod arcgiste ondalık kısmı , olarak algılıyorsa çalışır.
++    // şuan arcgisde ondalık kısım . olarak seçilmiş bu yüzden , olarak kaydedilmişler
++    // arasında CAST operasyonu yapılmıyor. Yani TBA maliyet fieldları içinde filtreleme yapamaz.
++    // Hatta kamulaştırma bedeli olan ucret fieldlarında da filtreleme yapamaz.
++
+     feature = this.dotToCommaMethod(feature);
+     features.push(feature);
+     this.addFeatureBoundData(features);
+@@ -1386,6 +1377,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }
+ 
+   }
++
+   deleteFeatures(queryProperties: esri.QueryProperties, url: string): Observable<Object> {
+     const formData = this.createFormData(queryProperties);
+     formData.append('f', 'json');
+@@ -1810,48 +1802,4 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }];
+   }
+ 
+-  // getAtolyeTuruDomains() {
+-  //   return [
+-  //     {
+-  //       'name': 'Görsel Sanatlar Atölyesi',
+-  //       'value': 'Görsel Sanatlar Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Ahşap ve Metal Atölyesi',
+-  //       'value': 'Ahşap ve Metal Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Müzik Atölyesi',
+-  //       'value': 'Müzik Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Drama, Dil ve Eleştirel Düşünce Atölyesi',
+-  //       'value': 'Drama, Dil ve Eleştirel Düşünce Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Yaşam Becerileri Atölyesi',
+-  //       'value': 'Yaşam Becerileri Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Salon Sporları Atölyesi',
+-  //       'value': 'Salon Sporları Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'FeTeMM',
+-  //       'value': 'FeTeMM'
+-  //     },
+-  //     {
+-  //       'name': 'Yazılım ve Tasarım Atölyesi',
+-  //       'value': 'Yazılım ve Tasarım Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Bahçe ve Hayvan Bakımı Atölyesi',
+-  //       'value': 'Bahçe ve Hayvan Bakımı Atölyesi'
+-  //     },
+-  //     {
+-  //       'name': 'Açık Hava Sporları Atölyesi',
+-  //       'value': 'Açık Hava Sporları Atölyesi'
+-  //     }
+-  //   ];
+-  // }
+ }
