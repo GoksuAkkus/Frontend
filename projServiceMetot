@@ -1,0 +1,24 @@
+diff --git a/src/app/mapUtils/projection.service.ts b/src/app/mapUtils/projection.service.ts
+index e80ffc420e9c0dd7fb7ecb714975d32a0592003d..a5bdcd2f513c1f01bd9f63adbaddc98a1f9c93d0 100644
+--- a/src/app/mapUtils/projection.service.ts
++++ b/src/app/mapUtils/projection.service.ts
+@@ -166,4 +166,19 @@ export class ProjectionService {
+ 
+     geometry.set('rings', [converted3857Rings]);
+   }
++
++  convertWGS84PolygonGeomToEPSG3857ForFile(geometry: any) {
++    const geometryRings = geometry.get('rings');
++
++    const converted3857Rings = [];
++
++    geometryRings[0].forEach(ring => {
++
++      const convertedRing = this.to3857PointArray(ring[0], ring[1]);
++
++      converted3857Rings.push(convertedRing);
++    });
++
++    geometry.set('rings', [converted3857Rings]);
++  }
+ }
