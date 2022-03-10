@@ -1,0 +1,562 @@
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index a38e198b87cb8bdf445ac4c664ae167b6f7fec53..c43efd057e5327a2b421baf8961449d682038545 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -277,7 +277,7 @@
+           {
+             "alias": "İrtifak Bedeli",
+             "name": "ucret",
+-            "type": "text",
++            "type": "number",
+             "required": true
+           },
+           {
+@@ -455,7 +455,7 @@
+           {
+             "alias": "Kiraya Alma Bedeli(aylık)",
+             "name": "ucret",
+-            "type": "text",
++            "type": "number",
+             "required": true
+           },
+           {
+@@ -639,7 +639,7 @@
+           {
+             "alias": "Kiraya Verme Bedeli(aylık)",
+             "name": "ucret",
+-            "type": "text",
++            "type": "number",
+             "required": true
+           },
+           {
+@@ -1306,7 +1306,8 @@
+       "chosen_values": []
+     },
+     "defaultField": "durumu",
+-    "allowedStates": [{
++    "allowedStates": [
++      {
+         "state": 2,
+         "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       },
+@@ -1367,7 +1368,8 @@
+         "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       }
+     ],
+-    "formData": [{
++    "formData": [
++      {
+         "states": [
+           7
+         ],
+@@ -1437,20 +1439,20 @@
+           10
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+           },
+           {
+             "alias": "Onaylanan Ödenek Tutarı",
+-            "name": "onaylanan_odenek_tutar",
++            "name": "ucret",
+             "type": "number",
+             "required": true
+           },
+@@ -1559,7 +1561,7 @@
+         "fields": [{
+             "alias": "Tamamlanan Tutar",
+             "name": "ucret",
+-            "type": "text",
++            "type": "number",
+             "required": true
+           },
+           {
+@@ -1623,20 +1625,20 @@
+           17
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+           },
+           {
+             "alias": "Kullanılan Ödenek Tutarı",
+-            "name": "kullanilan_odenek_tutar",
++            "name": "ucret",
+             "type": "number",
+             "required": false
+           }
+@@ -1893,57 +1895,216 @@
+         {
+           "value": 37,
+           "name": ""
++        },
++        {
++          "value": 38,
++          "name": ""
++        },
++        {
++          "value": 39,
++          "name": ""
++        },
++        {
++          "value": 40,
++          "name": ""
++        },
++        {
++          "value": 41,
++          "name": ""
++        },
++        {
++          "value": 42,
++          "name": ""
+         }
+       ],
+       "chosen_values": []
+     },
+     "defaultField": "durumu",
+-    "allowedStates": [{
++    "allowedStates": [
++      {
+         "state": 4,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 5,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 7,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 11,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 12,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 13,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 14,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 19,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 20,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       },
+       {
+         "state": 37,
+-        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37]
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
++      },
++      {
++        "state": 38,
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
++      },
++      {
++        "state": 39,
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
++      },
++      {
++        "state": 40,
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
++      },
++      {
++        "state": 41,
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
++      },
++      {
++        "state": 42,
++        "values": [4, 5, 7, 11, 12, 13, 14, 19, 20, 37, 38, 39, 40, 41, 42]
+       }
+     ],
+-    "formData": [{
++    "formData": [
++      {
+         "states": [
+-          7
++          38
++        ],
++        "fields": [
++          {
++            "alias": "Karar No",
++            "name": "karar_no",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Karar Türü",
++            "name": "karar_turu",
++            "type": "domain",
++            "required": true,
++            "domain_values": [{
++              "value": 1,
++              "name": ""
++            },
++            {
++              "value": 2,
++              "name": ""
++            },
++            {
++              "value": 3,
++              "name": ""
++            }
++          ]
++          },
++          {
++            "alias": "Dava Bedeli",
++            "name": "ucret",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Davalık Yüz Ölçüm",
++            "name": "alan",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "M2 Birim Fiyatı",
++            "name": "birim_ucret",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
++      },
++      {
++        "states": [
++          39
++        ],
++        "fields": []
++      },
++      {
++        "states": [
++          40
+         ],
+         "fields": [{
++          "alias": "Açıklama",
++          "name": "aciklama",
++          "type": "text",
++          "required": true
++        }]
++      },
++      {
++        "states": [
++          41
++        ],
++        "fields": [
++          {
++            "alias": "Resmi Yazı Tarihi",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Yazı Sayısı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Mahkeme Adı",
++            "name": "detay",
++            "type": "text",
++            "required": true
++          },
++          {
++            "alias": "Kesinleşme Tarihi",
++            "name": "bitis_tarihi",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Şerh Tarihi",
++            "name": "islem_tarihi",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": true
++          }
++        ]
++      },
++      {
++        "states": [
++          42
++        ],
++        "fields": [
++          {
+             "alias": "Gelen Tarih",
+             "name": "gelen_tarih",
+             "type": "date",
+@@ -1955,6 +2116,48 @@
+             "type": "number",
+             "required": true
+           },
++          {
++            "alias": "Talep Edilen Tutar",
++            "name": "ucret",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Ödeme Emri Belgesi",
++            "name": "attachment",
++            "type": "file",
++            "required": true
++          },
++          {
++            "alias": "Ödeme Yapılan Tarih",
++            "name": "bitis_tarihi",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": true
++          }
++      ]
++      },
++      {
++        "states": [
++          7
++        ],
++        "fields": [{
++            "alias": "Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
+           {
+             "alias": "Açıklama",
+             "name": "aciklama",
+@@ -1968,13 +2171,13 @@
+           19
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+@@ -1992,20 +2195,20 @@
+           11
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+           },
+           {
+             "alias": "Ödenecek Tutar",
+-            "name": "odenecek_tutar",
++            "name": "ucret",
+             "type": "number",
+             "required": true
+           },
+@@ -2022,20 +2225,20 @@
+           12
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+           },
+           {
+-            "alias": "Gönderilen Tutar",
+-            "name": "gonderilen_tutar",
++            "alias": "Ödenen Tutar",
++            "name": "ucret",
+             "type": "number",
+             "required": true
+           },
+@@ -2050,7 +2253,26 @@
+             "name": "aciklama",
+             "type": "text",
+             "required": false
++          },
++          {
++            "alias": "Ödeme No",
++            "name": "islem_no",
++            "type": "text",
++            "required": true
++          },
++          {
++            "alias": "Ödeme Tarihi",
++            "name": "islem_tarihi",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Ödeme Emri Belgesi",
++            "name": "attachment",
++            "type": "file",
++            "required": true
+           }
++
+         ]
+       },
+       {
+@@ -2074,6 +2296,18 @@
+             "name": "aciklama",
+             "type": "text",
+             "required": false
++          },
++          {
++            "alias": "Tenkis No",
++            "name": "islem_no",
++            "type": "text",
++            "required": true
++          },
++          {
++            "alias": "Tenkis Tarihi",
++            "name": "islem_tarihi",
++            "type": "date",
++            "required": true
+           }
+         ]
+       },
+@@ -2084,12 +2318,12 @@
+         "fields": [{
+             "alias": "Tamamlanan Tutar",
+             "name": "ucret",
+-            "type": "text",
++            "type": "number",
+             "required": true
+           },
+           {
+             "alias": "Tamamlanan m² Fiyat(TL)",
+-            "name": "tamamlanan_m2_fiyati",
++            "name": "ucret",
+             "type": "number",
+             "required": true
+           },
+@@ -2100,7 +2334,7 @@
+             "required": false
+           },
+           {
+-            "alias": "Ek",
++            "alias": "Tapu Kaydı Belgesi",
+             "name": "attachment",
+             "type": "file",
+             "required": true
+@@ -2112,13 +2346,13 @@
+           4, 37
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+@@ -2147,20 +2381,20 @@
+           20
+         ],
+         "fields": [{
+-            "alias": "Giden Tarih",
++            "alias": "Tarih",
+             "name": "giden_tarih",
+             "type": "date",
+             "required": true
+           },
+           {
+-            "alias": "Giden Sayı",
++            "alias": "Sayı",
+             "name": "giden_sayi",
+             "type": "number",
+             "required": true
+           },
+           {
+             "alias": "Gönderilen Tutar",
+-            "name": "gonderilen_tutar",
++            "name": "ucret",
+             "type": "number",
+             "required": true
+           },
