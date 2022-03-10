@@ -1,0 +1,586 @@
+diff --git a/src/app/mirasci/mirasci.component.html b/src/app/mirasci/mirasci.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..002ad5a91608f11f558bfa04f8e9da1b393bfbac
+--- /dev/null
++++ b/src/app/mirasci/mirasci.component.html
+@@ -0,0 +1,42 @@
++<div *ngIf="state === -1 || state === 0" class="modal-content">
++  <form [formGroup]="formGroup" class="module-form" (ngSubmit)="onSubmit()">
++    <div class="form-group" *ngFor="let formData of moduleFormData;let i = index">
++      <label>{{formData.alias}}</label>
++      <input [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
++        (input)="onChangeFormControl($event)">
++    </div>
++    <div class="form-group">
++      <input *ngIf="state === -1" type="submit" value="Kaydet">
++      <input *ngIf="state === 0" type="submit" value="Düzenlemeyi Bitir">
++    </div>
++  </form>
++</div>
++
++<div class="modal-content" *ngIf="state === 1">
++  <div class="table-container">
++    <table>
++      <thead>
++        <tr>
++          <th *ngFor="let mirasciField of mirasciFields">{{mirasciField}}</th>
++        </tr>
++      </thead>
++      <tbody *ngIf="featuresInfo !== undefined">
++        <tr *ngFor="let feature of featuresInfo; index as i">
++          <td class="dd_{{i}}">{{feature.attributes.tasinmaz_id}}</td>
++          <td class="dd_{{i}}">{{feature.attributes.hisseid}}</td>
++          <td class="dd_{{i}}">{{feature.attributes.ad}}</td>
++          <td class="dd_{{i}}">{{feature.attributes.soyad}}</td>
++          <td class="dd_{{i}}">{{feature.attributes.anne_adi}}</td>
++          <td class="dd_{{i}}">{{feature.attributes.baba_adi}}</td>
++          <td class="dd_{{i}}">{{feature.attributes.tc_kimlik_no}}</td>
++          <td class="dd_{{i}}">
++            <button (click)="onClickUpdate($event)">Düzenle</button>
++          </td>
++          <td class="dd_{{i}}">
++            <button (click)="onClickDelete($event)">Sil</button>
++          </td>
++        </tr>
++      </tbody>
++    </table>
++  </div>
++</div>
+\ No newline at end of file
+diff --git a/src/app/mirasci/mirasci.component.scss b/src/app/mirasci/mirasci.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..f38146205b6d98aec0f1f957c2fad92ce6c69c34
+--- /dev/null
++++ b/src/app/mirasci/mirasci.component.scss
+@@ -0,0 +1,108 @@
++.modal-content {
++    display: flex;
++    flex-direction: column;
++    justify-content: flex-start;
++    margin: 10px 10px 15px 15px;
++    width: 350px;
++    min-width: 450px;
++    max-width: 600px;
++    max-height: 800px;
++    min-height: 100px;
++    overflow: auto;
++  }
++  
++  .modal-content>.module-form {
++    display: flex;
++    flex-direction: row;
++    flex-wrap: wrap
++  }
++  
++  .module-form>.form-group:nth-of-type(even) {
++    padding: 12px 5px 5px 10px;
++    flex: 1 1 40%;
++    display: flex;
++  }
++  
++  .form-group {
++    padding: 12px 10px 5px 5px;
++    flex: 1 1 40%;
++    display: flex;
++    flex-direction: column;
++  }
++  
++  .form-group.full {
++    flex: 1 1 100%;
++  }
++  
++  
++  .form-group select {
++    padding: 0.2rem .0;
++    color: #495057;
++    border: 1px solid #ced4da;
++    border-radius: .25rem;
++    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
++  }
++  
++  .form-group select:focus {
++    border-color: #80bdff;
++    outline: 0;
++    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
++  }
++  
++  .form-group input {
++    padding: 0.2rem .75rem;
++    color: #495057;
++    border: 1px solid #ced4da;
++    border-radius: .25rem;
++    height: 17.5px;
++    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
++  }
++  
++  .module-form>.form-group:last-child {
++    padding: 12px 5px 5px 5px;
++    flex: 1 1 100%;
++    display: flex;
++  }
++  
++  .module-form>.form-group:last-child input {
++    height: auto;
++    background: white;
++    color: black;
++    transition: 0.6s;
++  }
++  
++  .module-form>.form-group:last-child input:not(:disabled):hover {
++    border-color: #80bdff;
++    box-shadow: 1px 1px 0px 0px rgba(221, 221, 221, 0.75);
++    -webkit-box-shadow: 1px 1px 0px 0px rgba(221, 221, 221, 0.75);
++    -moz-box-shadow: 1px 1px 0px 0px rgba(221, 221, 221, 0.75);
++    cursor: pointer;
++  }
++  
++  .module-form>.form-group:last-child input:disabled {
++    background: #dddddd;
++    color: black;
++  }
++  
++  .form-group label {
++    font-size: 14px;
++    padding-bottom: 5px;
++  }
++  
++  .form-group input:focus {
++    border-color: #80bdff;
++    outline: 0;
++    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
++  }
++  
++  .form-group input.error,
++  .form-group select.error {
++    border-color: red;
++    outline: 0;
++    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
++  }
++  
++  .hidden {
++    display: none;
++  }
++  
+\ No newline at end of file
+diff --git a/src/app/mirasci/mirasci.component.spec.ts b/src/app/mirasci/mirasci.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..898f362932fef4cca5354ec1e6a3dc535c0cfb78
+--- /dev/null
++++ b/src/app/mirasci/mirasci.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { MirasciComponent } from './mirasci.component';
++
++describe('MirasciComponent', () => {
++  let component: MirasciComponent;
++  let fixture: ComponentFixture<MirasciComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ MirasciComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(MirasciComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/mirasci/mirasci.component.ts b/src/app/mirasci/mirasci.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0219fb21ac7d9b0d33bac115ae10cbaa8a5e60cf
+--- /dev/null
++++ b/src/app/mirasci/mirasci.component.ts
+@@ -0,0 +1,332 @@
++import { HttpClient } from '@angular/common/http';
++import { Component, OnInit } from '@angular/core';
++import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
++import { Observable } from 'rxjs/internal/Observable';
++import { DialogConfig } from '../dialog/dialog-config';
++import { DialogRef } from '../dialog/dialog-ref';
++import { DialogService } from '../dialog/dialog.service';
++import { Malik, Mirasci, ProcessObject } from '../models/Info/malik_hisse';
++import { MirasciFormData, MirasciModuleData } from '../models/Modules/module-form-data';
++import { NotificationService } from '../notification/notification.service';
++
++@Component({
++  selector: 'app-mirasci',
++  templateUrl: './mirasci.component.html',
++  styleUrls: ['./mirasci.component.scss']
++})
++export class MirasciComponent implements OnInit {
++
++  malikInfo: Malik;
++  tasinmazID: string;
++  hisseID: string;
++  moduleData: MirasciModuleData;
++  moduleFormData: Array<MirasciFormData>;
++  formGroup: FormGroup;
++  state: number;
++  mirasciFields = ['Taşınmaz ID', 'Malik ID', 'Ad', 'Soyad', 'Anne Adı', 'Baba Adı', 'Tc Kimlik No'];
++  mirasciFieldsNames = ['tasinmaz_id', 'hisseid', 'ad', 'soyad', 'anne_adi', 'baba_adi', 'tc_kimlik_no'];
++  featuresInfo: any;
++  mirasciInfo: Mirasci;
++  notifyMessage = 'Mirasçı Başarılı';
++  notifyMessageFull = '';
++  formValues: Mirasci;
++
++  constructor(public dialogService: DialogService, public dialogConfig: DialogConfig, public dialog: DialogRef,
++    private formBuilder: FormBuilder,
++    public http: HttpClient, public notifyService: NotificationService) { }
++
++  ngOnInit() {
++    const data = this.dialogConfig.data;
++    let featuresInfo;
++    let state = data['isInfo'];
++
++    if (data['isInfo'] !== undefined) {
++      this.state = state;
++      if (state === 1) {
++        featuresInfo = data['featuresInfo'];
++      } else {
++        const malikInfo = data['malikInfo'];
++        const tasinmazID = data['tasinmazID'];
++
++        this.malikInfo = malikInfo;
++        this.tasinmazID = tasinmazID;
++        this.hisseID = malikInfo['globalid'];
++      }
++    }
++
++    this.createInitializedForm();
++
++    this.getType().subscribe(response => {
++      this.moduleData = response;
++      this.moduleFormData = response.formData;
++
++      if (state === 1) {
++        this.featuresInfo = featuresInfo;
++      } else if (state === -1) {
++        this.initializeWithFormData();
++        this.process();
++      }
++    });
++  }
++
++  initializeWithFormData(recentFormValues?: Object) {
++    let value: any;
++    let formControlValue: any;
++    const formData = this.moduleFormData;
++
++    if (this.state === 0) {
++      this.tasinmazID = this.formValues['tasinmaz_id'];
++      this.hisseID = this.formValues['hisseid'];
++    }
++
++    formData.forEach(formControl => {
++
++      const formControlName = formControl.name;
++      const required = formControl.required;
++      const disabled = formControl.disabled;
++
++      const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
++      this.formGroup.addControl(formControlName, createdFormControl);
++
++      if (disabled) {
++        if (formControlName === 'tasinmaz_id') {
++          this.formGroup.controls[formControlName].setValue(this.tasinmazID);
++        } else if (formControlName === 'hisseid') {
++          this.formGroup.controls[formControlName].setValue(this.hisseID);
++        }
++        this.formGroup.controls[formControlName].disable();
++      }
++    });
++  }
++
++  createInitializedForm() {
++    this.formGroup = this.formBuilder.group({
++    });
++  }
++
++  createFormControl(formControlName: string, formControlType: string, required: boolean, formValue?: any) {
++    if (required === true) {
++      const validator = [Validators.required];
++      if (formControlType === 'domain' || formControlType === 'localDomain') {
++        validator.push(Validators.pattern('([^-].*)'));
++        if (formValue !== undefined) {
++          return new FormControl(formValue, validator);
++        } else {
++          return new FormControl(-1, validator);
++        }
++      } else {
++        return new FormControl(formValue, validator);
++      }
++    } else {
++      if (formControlType === 'domain' || formControlType === 'localDomain') {
++        const validator = [Validators.pattern('([^-].*)')];
++        if (formValue !== undefined) {
++          return new FormControl(formValue, validator);
++        } else {
++          return new FormControl(-1, validator);
++        }
++      } else {
++        return new FormControl(formValue);
++      }
++    }
++  }
++
++  postProcess(url: string, features: Array<{ attributes: Mirasci }>) {
++    const postFormData = new FormData();
++    let where = '';
++
++    postFormData.append('features', JSON.stringify(features));
++    postFormData.append('f', 'json');
++    postFormData.append('rollbackOnFailure', 'true');
++
++    if (this.state === 2) {
++      where = `objectid=${features[0].attributes.objectid}`;
++      postFormData.append('where', where);
++    }
++
++    return this.http.post(url, postFormData, {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken')
++      }
++    });
++  }
++
++  setProcess() {
++    const processObject = new ProcessObject();
++    let processName = '';
++    let notifyMessageArr = this.notifyMessage.split(' ');
++    let notifyMessageFull = '';
++    let url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/4/';
++    const state = this.state;
++
++    switch (state) {
++      case -1: {
++        processName = processObject.add.processName;
++        notifyMessageFull = notifyMessageArr[0] + processObject.add.name + notifyMessageArr[1];
++        break;
++      };
++      case 0: {
++        processName = processObject.update.processName;
++        notifyMessageFull = notifyMessageArr[0] + processObject.update.name + notifyMessageArr[1];
++        break;
++      };
++      case 1: {
++        processName = processObject.detail.processName;
++        notifyMessageFull = notifyMessageArr[0] + processObject.detail.name + notifyMessageArr[1];
++        break;
++      };
++      case 2: {
++        processName = processObject.delete.processName;
++        notifyMessageFull = notifyMessageArr[0] + processObject.delete.name + notifyMessageArr[1];
++        break;
++      };
++    }
++    this.notifyMessageFull = notifyMessageFull;
++    url += processName;
++
++    return url;
++  }
++
++  process() {
++    const formGroupValue: Mirasci = this.formGroup.value;
++    const features: Array<{ attributes: Mirasci }> = [{
++      attributes:
++      {
++        ad: formGroupValue.ad,
++        soyad: formGroupValue.soyad,
++        anne_adi: formGroupValue.anne_adi,
++        baba_adi: formGroupValue.baba_adi,
++        tc_kimlik_no: formGroupValue.tc_kimlik_no,
++        hisseid: this.formGroup.controls['hisseid'].value,
++        tasinmaz_id: this.formGroup.controls['tasinmaz_id'].value.toString()
++      }
++    }];
++
++    const url = this.setProcess();
++    const postParameters = { url: url, features: features };
++
++    return postParameters;
++  }
++
++  setFormValues(event: Event) {
++    const target = event.target as HTMLElement;
++    const parentElement = target.parentElement as HTMLElement;
++    const className = parentElement.classList.value;
++    // add mirasci ekranı açılacak, eski veriler controllere doldurulacak, updatefeaturesa gönderilecek
++    const selectedTableDatas = document.getElementsByClassName(className);
++
++    const mirasciFormValues: any = {};
++    for (let i = 0; i < selectedTableDatas.length - 2; i++) {
++      mirasciFormValues[this.mirasciFieldsNames[i]] = selectedTableDatas[i].innerHTML;
++    }
++
++    this.formValues = mirasciFormValues;
++    this.tasinmazID = mirasciFormValues['tasinmaz_id'];
++    this.hisseID = mirasciFormValues['hisseid'];
++  }
++
++  onClickUpdate(event: Event) {
++    this.state = 0;
++    this.setFormValues(event);
++    this.initializeWithFormData();
++    const formValues = this.formValues;
++    Object.keys(formValues).forEach(key => {
++      this.formGroup.controls[key].setValue(formValues[key]);
++    });
++  }
++
++  onClickDelete(event: Event) {
++    this.state = 2;
++    this.setFormValues(event);
++    this.initializeWithFormData();
++
++    const formValues = this.formValues;
++    Object.keys(formValues).forEach(key => {
++      this.formGroup.controls[key].setValue(formValues[key]);
++    });
++
++    this.onSubmit();
++  }
++
++  getObjectId() {
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/4/query';
++
++    return this.http.get(url, {
++      params: {
++        where: `tasinmaz_id='${this.tasinmazID}' and hisseid='${this.hisseID}' and tc_kimlik_no=${this.formValues.tc_kimlik_no}`,
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'json',
++        outFields: '*'
++      }
++    });
++  }
++
++  deleteMirasci() {
++
++  }
++
++  onSubmit() {
++    const postParameters = this.process();
++    const features = postParameters.features;
++    let promise;
++
++    if (this.state === 0 || this.state === 2) {
++      promise = this.getObjectId().toPromise().then(response => {
++        features[0].attributes.objectid = response['features'][0].attributes['objectid'];
++      });
++    }
++
++    Promise.all([promise]).then(res => {
++      this.postProcess(postParameters.url, postParameters.features).subscribe(response => {
++        this.notifyService.open(this.notifyMessageFull, 'success', 10);
++        this.dialog.close(true);
++      });
++    });
++
++  }
++
++  onChangeFormControl(event: Event) {
++    const formObject = this.formGroup.value;
++    const formGroup = this.formGroup;
++    const target = <HTMLElement>event.target;
++    let formElement: HTMLInputElement | HTMLSelectElement;
++
++    if (target.tagName === 'INPUT') {
++      formElement = <HTMLInputElement>target;
++    } else {
++      formElement = <HTMLSelectElement>target;
++    }
++
++    if (formElement.type === 'number') {
++      const formValue = formElement.value;
++      if (formValue && formValue.indexOf('.') !== -1) {
++        this.formGroup.controls[formElement.name].patchValue(Number(formValue));
++      }
++    }
++
++    const formControlName = formElement.name;
++
++    const formGroupControl = formGroup.controls[formControlName];
++    if (formGroupControl && formGroupControl.valid === true) {
++      formElement.classList.remove('error');
++
++      const formElementValue = formElement.value;
++      if (formElementValue === '-1') {
++        this.resetFormData(formObject);
++      }
++    } else {
++      this.resetFormData(formObject);
++      formElement.classList.add('error');
++    }
++  }
++
++  resetFormData(formObject: Object) {
++    this.createInitializedForm();
++    this.initializeWithFormData(formObject);
++  }
++
++  getType(): Observable<MirasciModuleData> {
++    return this.http.get<MirasciModuleData>('assets/MirasciData.json');
++  }
++
++}
+diff --git a/src/assets/MirasciData.json b/src/assets/MirasciData.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..e72e7c12c4e86963e2280d6f22cf985dd5366569
+--- /dev/null
++++ b/src/assets/MirasciData.json
+@@ -0,0 +1,47 @@
++{
++  "type": "Mirasçı Bilgileri",
++  "formData": [{
++    "alias": "Ad",
++    "name": "ad",
++    "type": "text",
++    "required": true
++  }, {
++    "alias": "Soyad",
++    "name": "soyad",
++    "type": "text",
++    "required": true,
++    "disabled": false
++  }, {
++    "alias": "TC Kimlik No",
++    "name": "tc_kimlik_no",
++    "type": "number",
++    "required": true,
++    "disabled": false
++  }, {
++    "alias": "Anne Adı",
++    "name": "anne_adi",
++    "type": "string",
++    "required": true,
++    "disabled": false
++  }, {
++    "alias": "Baba Adı",
++    "name": "baba_adi",
++    "type": "string",
++    "required": true,
++    "disabled": false
++  },
++  {
++    "alias": "Parsel ID",
++    "name": "tasinmaz_id",
++    "type": "string",
++    "required": false,
++    "disabled": true
++  },
++  {
++    "alias": "Malik ID",
++    "name": "hisseid",
++    "type": "string",
++    "required": false,
++    "disabled": true
++  }]
++}
