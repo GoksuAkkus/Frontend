@@ -1,0 +1,770 @@
+diff --git a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+index aa60731c454bb9fe6f2e5b3dc75ba8dfdd6728e8..2f8883862ee218e8a4127b15443b40a192d12eb8 100644
+--- a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
++++ b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+@@ -13,7 +13,7 @@ export class IslemTalepCodeValue {
+     };
+     genel_imar = {
+         value: 2,
+-        isIslemTuru: true,
++        isIslemTuru: false,
+         name: 'Genel İmar',
+         code: 6
+     };
+diff --git a/src/app/module-report/module-report-statistics/interfaces/tabdata.ts b/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
+index 02632ebae6ef73d0330464b7c1522aa4d47e25f1..4110c24356798da42b9cf4bd29b38fc735630c40 100644
+--- a/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
++++ b/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
+@@ -1,20 +1,14 @@
++export class TabDetail {
++   isActive = false;
++   isFull = false;
++   previousFirstDate = '';
++   previousSecondDate = '';
++   currentFirstDate = '';
++   currentSecondDate = '';
++}
+ export class Tabdata {
+    islem_analiz = new TabDetail();
+-   plan_personel = new TabDetail() ;
++   plan_personel = new TabDetail();
+    plan_il = new TabDetail();
+ }
+-export class TabDetail {
+-    isActive = false;
+-    isFull = false;
+-    previousFirstDate = '';
+-    previousSecondDate = '';
+-    currentFirstDate = '';
+-    currentSecondDate = '';
+-}
+-
+-export class ActivityOfTabs {
+-   islem_analiz = false;
+-   plan_personel = false;
+-   plan_il = false;
+-}
+ 
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+index d7cbefa1d5fb0c61bc406da914452016132df57e..a1e0a3565f633b67277694884635a43a6e5db909 100644
+--- a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+@@ -17,7 +17,7 @@ import {
+ import { environment } from 'src/environments/environment';
+ import { loadModules } from 'esri-loader';
+ import { OperationsService } from './services/operations.service';
+-import { Tabdata, ActivityOfTabs } from './interfaces/tabdata';
++import { Tabdata } from './interfaces/tabdata';
+ import { AuthService } from 'src/app/services/auth.service';
+ @Component({
+   selector: 'app-module-report-statistics',
+@@ -208,7 +208,6 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planPersonelTableBodyState = false;
+     this.planIlTableHeadState = false;
+     this.planIlTableBodyState = false;
+-    this.dateState = true;
+   }
+ 
+   setSelectValue() {
+@@ -245,7 +244,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planIlTableBodyState = false;
+     this.islemAnalizTableHeadState = false;
+     this.islemAnalizTableBodyState = false;
+-    this.dateState = true;
++    if (this.lastSelectValue !== '-1') {
++      this.onClickIslemTalep();
++    }
+   }
+ 
+   onClickPlanIl() {
+@@ -260,8 +261,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planPersonelTableBodyState = false;
+     this.islemAnalizTableHeadState = false;
+     this.islemAnalizTableBodyState = false;
+-    this.dateState = true;
+-    this.onClickIslemTalep();
++    if (this.lastSelectValue !== '-1') {
++      this.onClickIslemTalep();
++    }
+   }
+ 
+   setDates() {
+@@ -330,17 +332,26 @@ export class ModuleReportStatisticsComponent implements OnInit {
+ 
+   onClickIslemTalep(event?: Event) {
+     if (event) {
++      this.resetOtherTabs();
+       const foundIslem = this.getIslemTalepValue(event);
+-      this.lastFoundIslem = foundIslem;
+-      const code = foundIslem[1]['code'];
+-      if (this.tabState === 'plan_personel') {
+-        this.createPlanPersonelTable(foundIslem, code);
+-      } else if (this.tabState === 'plan_il') {
+-        this.createPlanIlTable(foundIslem, code);
++      if (foundIslem !== undefined) {
++        this.lastFoundIslem = foundIslem;
++        const code = foundIslem[1]['code'];
++        if (this.tabState === 'plan_personel') {
++          this.createPlanPersonelTable(foundIslem, code);
++        } else if (this.tabState === 'plan_il') {
++          this.createPlanIlTable(foundIslem, code);
++        }
+       }
+     } else {
+-      if (this.lastFoundIslem !== undefined) {
+-        this.createPlanIlTable(this.lastFoundIslem, this.lastFoundIslem[1]['code']);
++      if (this.tabState === 'plan_il') {
++        if (this.lastFoundIslem !== undefined) {
++          this.createPlanIlTable(this.lastFoundIslem, this.lastFoundIslem[1]['code']);
++        }
++      } else if (this.tabState === 'plan-personel') {
++        if (this.lastFoundIslem !== undefined) {
++          this.createPlanPersonelTable(this.lastFoundIslem, this.lastFoundIslem[1]['code']);
++        }
+       }
+     }
+   }
+@@ -394,7 +405,6 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planIlToplamColData = planIlToplam;
+   }
+ 
+-
+   createPlanPersonelTable(foundIslem: any, code: any) {
+     this.planPersonelProcess(foundIslem, code);
+     this.planPersonelMovementProcess(foundIslem, code);
+@@ -424,58 +434,107 @@ export class ModuleReportStatisticsComponent implements OnInit {
+ 
+   planIlMovementProcess(foundIslem: any, code: any) {
+     if (foundIslem[1]['isIslemTuru'] === true) {
+-      this.movProArrayByDate.forEach((movPro) => {
+-        const durumu = movPro.h_durumu;
+-        const hCreateDate = movPro.h_create_date;
+-        const iCreateDate = movPro.i_create_date;
+-        if (movPro.i_islem_turu === code) {
+-          this.planIlRows.forEach((row) => {
+-            if (row.ilCode === movPro.i_il) {
+-              // row.cols.il ile row.ilCode aynı mı bak ?
+-              if (durumu === 7) {
+-                row.cols.gelenAdet++;
+-              } else if (durumu === 5) {
+-                row.cols.cevaplanmayacakAdet++;
+-                row.cols.gidenAdet++;
+-              } else if (durumu === 1) {
+-                row.cols.onaydaAdet++;
+-                row.cols.gidenAdet++;
+-              } else if (durumu === 2 || durumu === 3) {
+-                if (this.checkDegerlendirmeSuresi(hCreateDate)) {
+-                  row.cols.sureAdet++;
+-                }
+-                row.cols.degerlendirilenAdet++;
+-                row.cols.gidenAdet++;
+-              } else if (durumu === null) {
+-                if (movPro.h_touch_by === null) { // hareketi yok
+-                  if (this.checkDegerlendirmeSuresi(iCreateDate)) {
++      if (foundIslem[1]['code'] === 7) { // TAHSİS SEÇİLMİŞSE
++        this.movProArrayByDate.forEach((movPro) => {
++          const durumu = movPro.h_durumu;
++          const hCreateDate = movPro.h_create_date;
++          const iCreateDate = movPro.i_create_date;
++          if (movPro.i_islem_turu === 11 || movPro.i_islem_turu === code) {
++            this.planIlRows.forEach((row) => {
++              if (row.ilCode === movPro.i_il) {
++                // row.cols.il ile row.ilCode aynı mı bak ?
++                if (durumu === 7) {
++                  row.cols.gelenAdet++;
++                } else if (durumu === 5) {
++                  row.cols.cevaplanmayacakAdet++;
++                  row.cols.gidenAdet++;
++                } else if (durumu === 1) {
++                  row.cols.onaydaAdet++;
++                  row.cols.gidenAdet++;
++                } else if (durumu === 2 || durumu === 3) {
++                  if (this.checkDegerlendirmeSuresi(hCreateDate)) {
+                     row.cols.sureAdet++;
+                   }
+                   row.cols.degerlendirilenAdet++;
+-                  row.cols.gelenAdet++;
++                  row.cols.gidenAdet++;
++                } else if (durumu === null) {
++                  if (movPro.h_touch_by === null) { // hareketi yok
++                    if (this.checkDegerlendirmeSuresi(iCreateDate)) {
++                      row.cols.sureAdet++;
++                    }
++                    row.cols.degerlendirilenAdet++;
++                    row.cols.gelenAdet++;
++                  } else {
++                    // htouchby null değil ama durumu nullsa sadece değerlendirilen
++                    if (this.checkDegerlendirmeSuresi(hCreateDate)) {
++                      row.cols.sureAdet++;
++                    }
++                    row.cols.degerlendirilenAdet++;
++                    row.cols.gidenAdet++;
++                  }
+                 } else {
+-                  // htouchby null değil ama durumu nullsa sadece değerlendirilen
++                  row.cols.gidenAdet++;
++                }
++                return true;
++              }
++            });
++            return true;
++          }
++        });
++      } else {
++        this.movProArrayByDate.forEach((movPro) => {
++          const durumu = movPro.h_durumu;
++          const hCreateDate = movPro.h_create_date;
++          const iCreateDate = movPro.i_create_date;
++          if (movPro.i_islem_turu === code) {
++            this.planIlRows.forEach((row) => {
++              if (row.ilCode === movPro.i_il) {
++                // row.cols.il ile row.ilCode aynı mı bak ?
++                if (durumu === 7) {
++                  row.cols.gelenAdet++;
++                } else if (durumu === 5) {
++                  row.cols.cevaplanmayacakAdet++;
++                  row.cols.gidenAdet++;
++                } else if (durumu === 1) {
++                  row.cols.onaydaAdet++;
++                  row.cols.gidenAdet++;
++                } else if (durumu === 2 || durumu === 3) {
+                   if (this.checkDegerlendirmeSuresi(hCreateDate)) {
+                     row.cols.sureAdet++;
+                   }
+                   row.cols.degerlendirilenAdet++;
+                   row.cols.gidenAdet++;
++                } else if (durumu === null) {
++                  if (movPro.h_touch_by === null) { // hareketi yok
++                    if (this.checkDegerlendirmeSuresi(iCreateDate)) {
++                      row.cols.sureAdet++;
++                    }
++                    row.cols.degerlendirilenAdet++;
++                    row.cols.gelenAdet++;
++                  } else {
++                    // htouchby null değil ama durumu nullsa sadece değerlendirilen
++                    if (this.checkDegerlendirmeSuresi(hCreateDate)) {
++                      row.cols.sureAdet++;
++                    }
++                    row.cols.degerlendirilenAdet++;
++                    row.cols.gidenAdet++;
++                  }
++                } else {
++                  row.cols.gidenAdet++;
+                 }
+-              } else {
+-                row.cols.gidenAdet++;
++                return true;
+               }
+-              return true;
+-            }
+-          });
+-          return true;
+-        }
+-      });
++            });
++            return true;
++          }
++        });
++      }
+     } else {
+       this.movProArrayByDate.forEach((movPro) => {
+         const durumu = movPro.h_durumu;
+         const hCreateDate = movPro.h_create_date;
+         const iCreateDate = movPro.i_create_date;
+-        if (movPro.i_talep_turu === code) {
++        if (movPro.i_talep_turu === code && movPro.i_islem_turu !== 11) {
+           this.planIlRows.forEach((row) => {
+             if (row.ilCode === movPro.i_il) {
+               // row.cols.il ile row.ilCode aynı mı bak ?
+@@ -522,83 +581,160 @@ export class ModuleReportStatisticsComponent implements OnInit {
+ 
+   planPersonelMovementProcess(foundIslem: any, code: number) {
+     if (foundIslem[1]['isIslemTuru'] === true) {
+-      this.movProArrayByDate.forEach((movPro) => {
+-        if (movPro.i_islem_turu === code) {
+-          const durumu = movPro.h_durumu;
+-          const hCreateDate = movPro.h_create_date;
+-          // hareketi olmayanlar için
+-          if (movPro.h_touch_by === null) {
+-            // hareketi olmayanlar gelenlere kaydedilir i_touch_by a bakılır
+-            // arrayde aynı personel var mı diye bakılır.
+-            const foundPersonel = this.planPersonelFeatures.findIndex(
+-              (personel) => personel.touch_by === movPro.i_touch_by
+-            );
+-            if (foundPersonel === -1) {
+-              const newPersonel = new PlanColumnData();
+-              newPersonel.touch_by = movPro.i_touch_by;
+-              newPersonel.il = movPro.i_il;
+-              newPersonel.gelenAdet++;
+-              newPersonel.degerlendirilenAdet++;
+-              this.planPersonelFeatures.push(newPersonel);
++      if (foundIslem[1]['code'] === 7) { // TAHSİS SEÇİLMİŞSE islemturu 11(milliemlak ve tarım) olanlar da buraya eklenir
++        this.movProArrayByDate.forEach((movPro) => {
++          if (movPro.i_islem_turu === 11 || movPro.i_islem_turu === code) {
++            const durumu = movPro.h_durumu;
++            const hCreateDate = movPro.h_create_date;
++            // hareketi olmayanlar için
++            if (movPro.h_touch_by === null) {
++              // hareketi olmayanlar gelenlere kaydedilir i_touch_by a bakılır
++              // arrayde aynı personel var mı diye bakılır.
++              const foundPersonel = this.planPersonelFeatures.findIndex(
++                (personel) => personel.touch_by === movPro.i_touch_by
++              );
++              if (foundPersonel === -1) {
++                const newPersonel = new PlanColumnData();
++                newPersonel.touch_by = movPro.i_touch_by;
++                newPersonel.il = movPro.i_il;
++                newPersonel.gelenAdet++;
++                newPersonel.degerlendirilenAdet++;
++                this.planPersonelFeatures.push(newPersonel);
++              } else {
++                this.planPersonelFeatures[foundPersonel].il = movPro.i_il;
++                this.planPersonelFeatures[foundPersonel].gelenAdet++;
++                this.planPersonelFeatures[foundPersonel].degerlendirilenAdet++;
++              }
+             } else {
+-              this.planPersonelFeatures[foundPersonel].il = movPro.i_il;
+-              this.planPersonelFeatures[foundPersonel].gelenAdet++;
+-              this.planPersonelFeatures[foundPersonel].degerlendirilenAdet++;
++              // hareketi olanlar
++              const foundPersonel = this.planPersonelFeatures.findIndex(
++                (personel) => personel.touch_by === movPro.h_touch_by
++              );
++              if (foundPersonel === -1) {
++                const newPersonel = new PlanColumnData();
++                newPersonel.touch_by = movPro.h_touch_by;
++                newPersonel.il = movPro.i_il;
++                if (durumu === 7) {
++                  newPersonel.gelenAdet++;
++                } else if (durumu === 5) {
++                  newPersonel.cevaplanmayacakAdet++;
++                  newPersonel.gidenAdet++;
++                } else if (durumu === 1) {
++                  newPersonel.onaydaAdet++;
++                  newPersonel.gidenAdet++;
++                } else if (durumu === 2 || durumu === 3 || durumu === null) {
++                  if (this.checkDegerlendirmeSuresi(hCreateDate)) {
++                    newPersonel.sureAdet++;
++                  }
++                  newPersonel.degerlendirilenAdet++;
++                  newPersonel.gidenAdet++;
++                } else {
++                  newPersonel.gidenAdet++;
++                }
++                this.planPersonelFeatures.push(newPersonel);
++              } else {
++                const personel = this.planPersonelFeatures[foundPersonel];
++                personel.il = movPro.i_il;
++                if (durumu === 7) {
++                  personel.gelenAdet++;
++                } else if (durumu === 5) {
++                  personel.cevaplanmayacakAdet++;
++                  personel.gidenAdet++;
++                } else if (durumu === 1) {
++                  personel.onaydaAdet++;
++                  personel.gidenAdet++;
++                } else if (durumu === 2 || durumu === 3 || durumu === null) {
++                  if (this.checkDegerlendirmeSuresi(hCreateDate)) {
++                    personel.sureAdet++;
++                  }
++                  personel.degerlendirilenAdet++;
++                  personel.gidenAdet++;
++                } else {
++                  personel.gidenAdet++;
++                }
++              }
+             }
+-          } else {
+-            // hareketi olanlar
+-            const foundPersonel = this.planPersonelFeatures.findIndex(
+-              (personel) => personel.touch_by === movPro.h_touch_by
+-            );
+-            if (foundPersonel === -1) {
+-              const newPersonel = new PlanColumnData();
+-              newPersonel.touch_by = movPro.h_touch_by;
+-              newPersonel.il = movPro.i_il;
+-              if (durumu === 7) {
++          }
++        });
++      } else {
++        this.movProArrayByDate.forEach((movPro) => {
++          if (movPro.i_islem_turu === code) {
++            const durumu = movPro.h_durumu;
++            const hCreateDate = movPro.h_create_date;
++            // hareketi olmayanlar için
++            if (movPro.h_touch_by === null) {
++              // hareketi olmayanlar gelenlere kaydedilir i_touch_by a bakılır
++              // arrayde aynı personel var mı diye bakılır.
++              const foundPersonel = this.planPersonelFeatures.findIndex(
++                (personel) => personel.touch_by === movPro.i_touch_by
++              );
++              if (foundPersonel === -1) {
++                const newPersonel = new PlanColumnData();
++                newPersonel.touch_by = movPro.i_touch_by;
++                newPersonel.il = movPro.i_il;
+                 newPersonel.gelenAdet++;
+-              } else if (durumu === 5) {
+-                newPersonel.cevaplanmayacakAdet++;
+-                newPersonel.gidenAdet++;
+-              } else if (durumu === 1) {
+-                newPersonel.onaydaAdet++;
+-                newPersonel.gidenAdet++;
+-              } else if (durumu === 2 || durumu === 3 || durumu === null) {
+-                if (this.checkDegerlendirmeSuresi(hCreateDate)) {
+-                  newPersonel.sureAdet++;
+-                }
+                 newPersonel.degerlendirilenAdet++;
+-                newPersonel.gidenAdet++;
++                this.planPersonelFeatures.push(newPersonel);
+               } else {
+-                newPersonel.gidenAdet++;
++                this.planPersonelFeatures[foundPersonel].il = movPro.i_il;
++                this.planPersonelFeatures[foundPersonel].gelenAdet++;
++                this.planPersonelFeatures[foundPersonel].degerlendirilenAdet++;
+               }
+-              this.planPersonelFeatures.push(newPersonel);
+             } else {
+-              const personel = this.planPersonelFeatures[foundPersonel];
+-              personel.il = movPro.i_il;
+-              if (durumu === 7) {
+-                personel.gelenAdet++;
+-              } else if (durumu === 5) {
+-                personel.cevaplanmayacakAdet++;
+-                personel.gidenAdet++;
+-              } else if (durumu === 1) {
+-                personel.onaydaAdet++;
+-                personel.gidenAdet++;
+-              } else if (durumu === 2 || durumu === 3 || durumu === null) {
+-                if (this.checkDegerlendirmeSuresi(hCreateDate)) {
+-                  personel.sureAdet++;
++              // hareketi olanlar
++              const foundPersonel = this.planPersonelFeatures.findIndex(
++                (personel) => personel.touch_by === movPro.h_touch_by
++              );
++              if (foundPersonel === -1) {
++                const newPersonel = new PlanColumnData();
++                newPersonel.touch_by = movPro.h_touch_by;
++                newPersonel.il = movPro.i_il;
++                if (durumu === 7) {
++                  newPersonel.gelenAdet++;
++                } else if (durumu === 5) {
++                  newPersonel.cevaplanmayacakAdet++;
++                  newPersonel.gidenAdet++;
++                } else if (durumu === 1) {
++                  newPersonel.onaydaAdet++;
++                  newPersonel.gidenAdet++;
++                } else if (durumu === 2 || durumu === 3 || durumu === null) {
++                  if (this.checkDegerlendirmeSuresi(hCreateDate)) {
++                    newPersonel.sureAdet++;
++                  }
++                  newPersonel.degerlendirilenAdet++;
++                  newPersonel.gidenAdet++;
++                } else {
++                  newPersonel.gidenAdet++;
+                 }
+-                personel.degerlendirilenAdet++;
+-                personel.gidenAdet++;
++                this.planPersonelFeatures.push(newPersonel);
+               } else {
+-                personel.gidenAdet++;
++                const personel = this.planPersonelFeatures[foundPersonel];
++                personel.il = movPro.i_il;
++                if (durumu === 7) {
++                  personel.gelenAdet++;
++                } else if (durumu === 5) {
++                  personel.cevaplanmayacakAdet++;
++                  personel.gidenAdet++;
++                } else if (durumu === 1) {
++                  personel.onaydaAdet++;
++                  personel.gidenAdet++;
++                } else if (durumu === 2 || durumu === 3 || durumu === null) {
++                  if (this.checkDegerlendirmeSuresi(hCreateDate)) {
++                    personel.sureAdet++;
++                  }
++                  personel.degerlendirilenAdet++;
++                  personel.gidenAdet++;
++                } else {
++                  personel.gidenAdet++;
++                }
+               }
+             }
+           }
+-        }
+-      });
++        });
++      }
+     } else {
+       this.movProArrayByDate.forEach((movPro) => {
+-        if (movPro.i_talep_turu === code) {
++        if (movPro.i_talep_turu === code && movPro.i_islem_turu !== 11) {
+           const durumu = movPro.h_durumu;
+           const hCreateDate = movPro.h_create_date;
+           // hareketi olmayanlar için
+@@ -678,21 +814,36 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     const planIl = new PlanIlRowData();
+     this.planIlRows = JSON.parse(JSON.stringify(rows));
+     if (foundIslem[1]['isIslemTuru'] === true) {
+-      this.proArrayByDate.forEach((pro) => {
+-        if (pro.islem_turu === code) {
+-          this.planIlRows.forEach((row) => {
+-            if (row.ilCode === pro.il) {
+-              // row.cols.il ile row.ilCode aynı mı bak ?
+-              row.cols.gelenAdet++;
+-              return true;
+-            }
+-          });
+-          return true;
+-        }
+-      });
++      if (foundIslem[1]['code'] === 7) { // TAHSİS SEÇİLMİŞSE milli emlak ve tarım olanlar da buraya eklenir.
++        this.proArrayByDate.forEach((pro) => {
++          if (pro.islem_turu === 11 || pro.islem_turu === code) {
++            this.planIlRows.forEach((row) => {
++              if (row.ilCode === pro.il) {
++                // row.cols.il ile row.ilCode aynı mı bak ?
++                row.cols.gelenAdet++;
++                return true;
++              }
++            });
++            return true;
++          }
++        });
++      } else {
++        this.proArrayByDate.forEach((pro) => {
++          if (pro.islem_turu === code) {
++            this.planIlRows.forEach((row) => {
++              if (row.ilCode === pro.il) {
++                // row.cols.il ile row.ilCode aynı mı bak ?
++                row.cols.gelenAdet++;
++                return true;
++              }
++            });
++            return true;
++          }
++        });
++      }
+     } else {
+       this.proArrayByDate.forEach((pro) => {
+-        if (pro.talep_turu === code) {
++        if (pro.talep_turu === code && pro.islem_turu !== 11) {
+           this.planIlRows.forEach((row) => {
+             if (row.ilCode === pro.il) {
+               // row.cols.il ile row.ilCode aynı mı bak ?
+@@ -708,27 +859,47 @@ export class ModuleReportStatisticsComponent implements OnInit {
+ 
+   planPersonelProcess(foundIslem: any, code: number) {
+     if (foundIslem[1]['isIslemTuru'] === true) {
+-      this.proArrayByDate.forEach((pro) => {
+-        if (pro.islem_turu === code) {
+-          const foundPersonelIndex = this.planPersonelFeatures.findIndex(
+-            (personel) => personel.touch_by === pro.touch_by
+-          );
+-          if (foundPersonelIndex === -1) {
+-            // planpersonel featuresda bu personel yok demektir
+-            const newPersonel = new PlanColumnData();
+-            newPersonel.touch_by = pro.touch_by;
+-            newPersonel.il = pro.il;
+-            newPersonel.gelenAdet++;
+-            this.planPersonelFeatures.push(newPersonel);
+-          } else {
+-            this.planPersonelFeatures[foundPersonelIndex].il = pro.il;
+-            this.planPersonelFeatures[foundPersonelIndex].gelenAdet++;
++      if (foundIslem[1]['code'] === 7) { // TAHSİS SEÇİLMİŞSE islem turu 11 olanlar(milliemlak ve tarım) buraya eklenir
++        this.proArrayByDate.forEach((pro) => {
++          if (pro.islem_turu === 11 || pro.islem_turu === code) {
++            const foundPersonelIndex = this.planPersonelFeatures.findIndex(
++              (personel) => personel.touch_by === pro.touch_by
++            );
++            if (foundPersonelIndex === -1) {
++              // planpersonel featuresda bu personel yok demektir
++              const newPersonel = new PlanColumnData();
++              newPersonel.touch_by = pro.touch_by;
++              newPersonel.il = pro.il;
++              newPersonel.gelenAdet++;
++              this.planPersonelFeatures.push(newPersonel);
++            } else {
++              this.planPersonelFeatures[foundPersonelIndex].il = pro.il;
++              this.planPersonelFeatures[foundPersonelIndex].gelenAdet++;
++            }
+           }
+-        }
+-      });
++        });
++      } else {
++        this.proArrayByDate.forEach((pro) => {
++          if (pro.islem_turu === code) {
++            const foundPersonelIndex = this.planPersonelFeatures.findIndex((personel) => personel.touch_by === pro.touch_by);
++            if (foundPersonelIndex === -1) {
++              // planpersonel featuresda bu personel yok demektir
++              const newPersonel = new PlanColumnData();
++              newPersonel.touch_by = pro.touch_by;
++              newPersonel.il = pro.il;
++              newPersonel.gelenAdet++;
++              this.planPersonelFeatures.push(newPersonel);
++            } else {
++              this.planPersonelFeatures[foundPersonelIndex].il = pro.il;
++              this.planPersonelFeatures[foundPersonelIndex].gelenAdet++;
++            }
++          }
++        });
++      }
++
+     } else {
+       this.proArrayByDate.forEach((pro) => {
+-        if (pro.talep_turu === code) {
++        if (pro.talep_turu === code && pro.islem_turu !== 11) {
+           const foundPersonelIndex = this.planPersonelFeatures.findIndex(
+             (personel) => personel.touch_by === pro.touch_by
+           );
+@@ -779,8 +950,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+           newMovPro.i_create_date = feature.attributes['i_create_date'];
+           newMovPro.i_il = feature.attributes['i_il'];
+           newMovPro.i_islem_turu = feature.attributes['i_islem_turu'];
+-          newMovPro.i_talep_eden_kurum =
+-            feature.attributes['i_talep_eden_kurum'];
++          newMovPro.i_talep_eden_kurum = feature.attributes['i_talep_eden_kurum'];
+           newMovPro.i_talep_turu = feature.attributes['i_talep_turu'];
+           newMovPro.i_touch_by = feature.attributes['i_touch_by'];
+           this.movementProcessResArr.push(newMovPro);
+@@ -894,6 +1064,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+             this.islemAnalizRows[8].columnData.find((column) => {
+               if (column.ilData.includes(feature.i_il) && column.durumu) {
+                 column.count++;
++                feature.i_islem_turu = 11;
+                 this.movProArrayByDate.push(feature);
+                 return true;
+               }
+@@ -903,6 +1074,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+             this.islemAnalizRows[9].columnData.find((column) => {
+               if (column.ilData.includes(feature.i_il) && column.durumu) {
+                 column.count++;
++                feature.i_islem_turu = 12;
+                 this.movProArrayByDate.push(feature);
+                 return true;
+               }
+@@ -911,13 +1083,16 @@ export class ModuleReportStatisticsComponent implements OnInit {
+           } else {
+             let islem_turu = false;
+             let talep_turu = false;
++            let alreadyPushed = false;
+             this.islemAnalizRows.find((row) => {
+               if (row.isIslemTuru) {
+                 if (feature.i_islem_turu === row.turData.code) {
+                   row.columnData.find((column) => {
+                     if (column.ilData.includes(feature.i_il) && column.durumu) {
++
+                       column.count++;
+                       this.movProArrayByDate.push(feature);
++                      alreadyPushed = true;
+                       return true;
+                     }
+                   });
+@@ -928,7 +1103,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+                   row.columnData.find((column) => {
+                     if (column.ilData.includes(feature.i_il) && column.durumu) {
+                       column.count++;
+-                      this.movProArrayByDate.push(feature);
++                      if (!alreadyPushed) {
++                        this.movProArrayByDate.push(feature);
++                      }
+                       return true;
+                     }
+                   });
+@@ -947,6 +1124,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+             this.islemAnalizRows[8].columnData.find((column) => {
+               if (column.ilData.includes(feature.i_il) && !column.durumu) {
+                 column.count++;
++                feature.i_islem_turu = 11;
+                 this.movProArrayByDate.push(feature);
+                 return true;
+               }
+@@ -956,6 +1134,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+             this.islemAnalizRows[9].columnData.find((column) => {
+               if (column.ilData.includes(feature.i_il) && !column.durumu) {
+                 column.count++;
++                feature.i_islem_turu = 12;
+                 this.movProArrayByDate.push(feature);
+                 return true;
+               }
+@@ -964,16 +1143,15 @@ export class ModuleReportStatisticsComponent implements OnInit {
+           } else {
+             let islem_turu = false;
+             let talep_turu = false;
++            let alreadyPushed = false;
+             this.islemAnalizRows.find((row) => {
+               if (row.isIslemTuru) {
+                 if (feature.i_islem_turu === row.turData.code) {
+                   row.columnData.find((column) => {
+-                    if (
+-                      column.ilData.includes(feature.i_il) &&
+-                      !column.durumu
+-                    ) {
++                    if (column.ilData.includes(feature.i_il) && !column.durumu) {
+                       column.count++;
+                       this.movProArrayByDate.push(feature);
++                      alreadyPushed = true;
+                       return true;
+                     }
+                   });
+@@ -982,12 +1160,11 @@ export class ModuleReportStatisticsComponent implements OnInit {
+               } else {
+                 if (feature.i_talep_turu === row.turData.code) {
+                   row.columnData.find((column) => {
+-                    if (
+-                      column.ilData.includes(feature.i_il) &&
+-                      !column.durumu
+-                    ) {
++                    if (column.ilData.includes(feature.i_il) && !column.durumu) {
+                       column.count++;
+-                      this.movProArrayByDate.push(feature);
++                      if (!alreadyPushed) {
++                        this.movProArrayByDate.push(feature);
++                      }
+                       return true;
+                     }
+                   });
+@@ -1018,6 +1195,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+           this.islemAnalizRows[8].columnData.find((column) => {
+             if (column.ilData.includes(feature.il) && column.durumu) {
+               column.count++;
++              feature.islem_turu = 11;
+               this.proArrayByDate.push(feature);
+               return true;
+             }
+@@ -1027,14 +1205,16 @@ export class ModuleReportStatisticsComponent implements OnInit {
+           this.islemAnalizRows[9].columnData.find((column) => {
+             if (column.ilData.includes(feature.il) && column.durumu) {
+               column.count++;
++              feature.islem_turu = 12;
+               this.proArrayByDate.push(feature);
+               return true;
+             }
+           });
+           return true;
+-        } else {
++        } else if (kurum !== 'Milli Emlak' && kurum !== 'Orman' && kurum !== 'Tarım') {
+           let islem_turu = false;
+           let talep_turu = false;
++          let alreadyPushed = false;
+           this.islemAnalizRows.find((row) => {
+             if (row.isIslemTuru) {
+               if (feature.islem_turu === row.turData.code) {
+@@ -1042,6 +1222,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+                   if (column.ilData.includes(feature.il) && column.durumu) {
+                     column.count++;
+                     this.proArrayByDate.push(feature);
++                    alreadyPushed = true;
+                     return true;
+                   }
+                 });
+@@ -1052,7 +1233,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+                 row.columnData.find((column) => {
+                   if (column.ilData.includes(feature.il) && column.durumu) {
+                     column.count++;
+-                    this.proArrayByDate.push(feature);
++                    if (!alreadyPushed) {
++                      this.proArrayByDate.push(feature);
++                    }
+                     return true;
+                   }
+                 });
