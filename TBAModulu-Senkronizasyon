@@ -1,0 +1,204 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index 697a48aaf44fc328ee2707b9b3cec31eb4002863..ffcddbb3edb0310c0bd38ccf98a2cc6560f9f6f1 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -77,7 +77,6 @@ import { AnalysisLayerComponent } from './analysis-layer/analysis-layer.componen
+ import { YapiBilgileriGenericinfoComponent } from './yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component';
+ import { YapiBilgileriInfoComponent } from './yapi-bilgileri-info/yapi-bilgileri-info.component';
+ import { ReportTableComponent } from './report-table/report-table.component';
+-import { DenemeComponent } from './deneme/deneme.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -150,8 +149,7 @@ import { DenemeComponent } from './deneme/deneme.component';
+     AnalysisLayerComponent,
+     YapiBilgileriInfoComponent,
+     YapiBilgileriGenericinfoComponent,
+-    ReportTableComponent,
+-    DenemeComponent,
++    ReportTableComponent
+   ],
+   imports: [
+     BrowserAnimationsModule,
+diff --git a/src/app/deneme/deneme.component.html b/src/app/deneme/deneme.component.html
+deleted file mode 100644
+index 6abf5da081ce94f78afbf4a4d580fafa77a4937b..0000000000000000000000000000000000000000
+--- a/src/app/deneme/deneme.component.html
++++ /dev/null
+@@ -1 +0,0 @@
+-<button (click)="onClickDeneme()"> DENEME </button>
+\ No newline at end of file
+diff --git a/src/app/deneme/deneme.component.scss b/src/app/deneme/deneme.component.scss
+deleted file mode 100644
+index 76188a86f55824380a3ced2ea793443eb536f9fb..0000000000000000000000000000000000000000
+--- a/src/app/deneme/deneme.component.scss
++++ /dev/null
+@@ -1,8 +0,0 @@
+-button {
+-    width: 100px;
+-    height: 100px;
+-    z-index: 1;
+-    position: absolute;
+-    left: 0;
+-    bottom: 0;
+-}
+\ No newline at end of file
+diff --git a/src/app/deneme/deneme.component.spec.ts b/src/app/deneme/deneme.component.spec.ts
+deleted file mode 100644
+index 94d87b8e440ca080e2ba7fa6e5ba0e6fed721cec..0000000000000000000000000000000000000000
+--- a/src/app/deneme/deneme.component.spec.ts
++++ /dev/null
+@@ -1,25 +0,0 @@
+-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+-
+-import { DenemeComponent } from './deneme.component';
+-
+-describe('DenemeComponent', () => {
+-  let component: DenemeComponent;
+-  let fixture: ComponentFixture<DenemeComponent>;
+-
+-  beforeEach(async(() => {
+-    TestBed.configureTestingModule({
+-      declarations: [ DenemeComponent ]
+-    })
+-    .compileComponents();
+-  }));
+-
+-  beforeEach(() => {
+-    fixture = TestBed.createComponent(DenemeComponent);
+-    component = fixture.componentInstance;
+-    fixture.detectChanges();
+-  });
+-
+-  it('should create', () => {
+-    expect(component).toBeTruthy();
+-  });
+-});
+diff --git a/src/app/deneme/deneme.component.ts b/src/app/deneme/deneme.component.ts
+deleted file mode 100644
+index 6245af1deaff29123feaf4c61916afa226a14ad7..0000000000000000000000000000000000000000
+--- a/src/app/deneme/deneme.component.ts
++++ /dev/null
+@@ -1,43 +0,0 @@
+-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+-import { EsriMapComponent } from '../esri-map/esri-map.component';
+-import esri = __esri;
+-import { DialogRef } from '../dialog/dialog-ref';
+-import { DialogService } from '../dialog/dialog.service';
+-import { InfoComponent } from '../info/info.component';
+-@Component({
+-  selector: 'app-deneme',
+-  templateUrl: './deneme.component.html',
+-  styleUrls: ['./deneme.component.scss']
+-})
+-export class DenemeComponent implements OnInit {
+-  _mapView: esri.MapView;
+-  @Output() featureSet = new EventEmitter<esri.FeatureSet>();
+-  @Input()
+-  set mapView(mapView) {
+-    this._mapView = mapView;
+-  }
+-
+-  get mapView() {
+-    return this._mapView;
+-  }
+-
+-  constructor(private dialogService: DialogService) { }
+-
+-  ngOnInit() {
+-
+-  }
+-  onClickDeneme() {
+-    const selectedLayer = <esri.FeatureLayer>this._mapView.map.layers.find(layer => layer.title === 'Yapılar');
+-    const queryProperties: esri.QueryProperties = {
+-      where: `objectid= 6328`,
+-      // where: `objectid= 181683`,
+-      outFields: ['*'],
+-      returnGeometry: true
+-    };
+-
+-    selectedLayer.queryFeatures(queryProperties).then(result => {
+-      this.featureSet.emit(result);
+-    });
+-  }
+-}
+-
+diff --git a/src/app/info/diff-info/diff-info.component.ts b/src/app/info/diff-info/diff-info.component.ts
+index 84eac665d452381af6c6f7305bec4a549ffe56f1..7007084bba44173c391a14179cbae57830894206 100644
+--- a/src/app/info/diff-info/diff-info.component.ts
++++ b/src/app/info/diff-info/diff-info.component.ts
+@@ -163,7 +163,7 @@ export class DiffInfoComponent implements OnInit {
+     const inputOrSelectElement = <HTMLInputElement | HTMLSelectElement>event.target;
+     const attributeName = inputOrSelectElement.name;
+     let attributeValue;
+-    const inputOrSelectValue = inputOrSelectElement.value
++    const inputOrSelectValue = inputOrSelectElement.value;
+     if (inputOrSelectElement.type === 'number' || inputOrSelectElement.tagName === 'SELECT') {
+       if (inputOrSelectValue === '') {
+         attributeValue = undefined;
+@@ -682,7 +682,6 @@ export class DiffInfoComponent implements OnInit {
+           const formControl = this.createFormControl(field.name, 'number', required, fieldValue);
+ 
+           formControl['type'] = 'number';
+-          formControl.disable;
+ 
+           formGroup.addControl(field.name, formControl);
+         } else if (field.type === 'string') {
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index 15be89a709291bbb4b4899dba77841aa534a78a5..a8b8d8a30ca9bff130011f5fac92b090afbc1972 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -64,4 +64,3 @@
+ <app-buffer-analysis (bufferAnalysisToggle)="bufferAnalysisToggleEvent()"
+   (bufferAnalysisCompleted)="bufferAnalysisCompletedEvent()">
+ </app-buffer-analysis>
+-<app-deneme (featureSet)="deneme($event)" [mapView]="mapView"></app-deneme>
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 32220cc34e55d9d121ee236ea1e7e38a06d9129b..43255bded8240bf327f6d2dad2d501e03e2144f9 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -1828,9 +1828,5 @@ export class MainComponent implements OnInit {
+     this.drawMode = false;
+   }
+   onDispatchOtherLayerView() { }
+-  
+-  deneme(featureSet: esri.FeatureSet) {
+-    this.convertAndOpenInfoWithFeatureSet(featureSet);
+-  }
+ 
+ }
+diff --git a/src/app/report-table/report-table.component.ts b/src/app/report-table/report-table.component.ts
+index b042bdcc845d9bab3537c0f09c40e7e7d29c87c2..aa26206ffc7779ff894bc98f473b24647cabb9f7 100644
+--- a/src/app/report-table/report-table.component.ts
++++ b/src/app/report-table/report-table.component.ts
+@@ -139,7 +139,6 @@ export class ReportTableComponent implements OnInit, OnDestroy {
+   }
+ 
+   onRowClickedEvent(event: RowClickedEvent) {
+-    console.log(this.reportLayer)
+   }
+ 
+   filterData() {
+@@ -362,7 +361,7 @@ export class ReportTableComponent implements OnInit, OnDestroy {
+       const mapView = this.mapView;
+       const map = mapView.map;
+       const layers = map.layers;
+-      
++
+       const foundLayer = layers.find(layer => layer.title === 'Mahalle');
+       if (foundLayer === undefined) {
+         return;
+diff --git a/src/app/search/search.component.ts b/src/app/search/search.component.ts
+index 74a9f7cd0cd54a5bbfb78cc30b5b64bb1f4ef1a1..42ac35dbf5aa31b026a0c4f3e7f27f3976563d68 100644
+--- a/src/app/search/search.component.ts
++++ b/src/app/search/search.component.ts
+@@ -135,7 +135,8 @@ export class SearchComponent implements OnInit {
+       where = `(LOWER(kurum_adi) LIKE '%${searchKey.toLocaleLowerCase()}%' or UPPER(kurum_adi)
+       LIKE '%${searchKey.toLocaleUpperCase()}%') and kurum_turu <> 118 and kurum_durum <> 2`;
+     } else {
+-      where = `CAST(kurum_kodu AS varchar(10)) LIKE '%${Number(searchKey)}%' and
++      where = `(CAST(kurum_kodu AS varchar(10)) LIKE '%${Number(searchKey)}%' or
++      CAST(bagli_kurum_kodu AS varchar(10)) LIKE '%${Number(searchKey)}%') and
+       kurum_turu <> 118 and kurum_durum <> 2`;
+     }
+ 
