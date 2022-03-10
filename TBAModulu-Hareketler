@@ -1,0 +1,396 @@
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 2cd81b3f5d2e64ea58bc20a4e1e7b8cfd3751b99..0955bb9eb0fea1e6605da9769123c03b5657f1a9 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -240,12 +240,16 @@ export class ModuleReportComponent implements OnInit {
+             let toplamMaliyet = 0;
+             if (tadilatMaliyetString !== null) {
+               tadilatMaliyetString = tadilatMaliyetString.replace(/\./g, '');
++              tadilatMaliyetString = tadilatMaliyetString.replace(/,/g, '.');
+               toplamMaliyet += Number(tadilatMaliyetString);
+             }
+             malAlimiMaliyetString = malAlimiMaliyetString.replace(/\./g, '');
+-
++            malAlimiMaliyetString = malAlimiMaliyetString.replace(/,/g, '.');
+             toplamMaliyet += Number(malAlimiMaliyetString);
+-            const toplamMaliyetString = this.dotMethod(toplamMaliyet.toString());
++
++            let toplamMaliyetStringData = toplamMaliyet.toString();
++            toplamMaliyetStringData = toplamMaliyetStringData.replace('.', ',');
++            const toplamMaliyetString = this.dotMethod(toplamMaliyetStringData);
+             return toplamMaliyetString;
+           }
+         }
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 320996f7f01f9c520389ab05fccaa1baf39420cb..dc4d8221876976a9ab87f3d787289bec3ca81547 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -410,7 +410,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     moduleFormData.length = karakteristikIndex;
+   }
+ 
+-
+   checkAndUpdateCalculateFuntions(moduleData: ModuleFormData, formGroup: FormGroup): any {
+     const foundLead = this.recursiveFormLead(moduleData.formData[0], 0);
+     const formData = moduleData.formData[foundLead];
+@@ -658,6 +657,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     }
+   }
++
+   onAcceptDialogSubmit(header: string, message: string, notifyMessage: string) {
+     this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, {
+       data: {
+@@ -761,7 +761,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
+-
+   updateAttachments(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+     const featureAttributes = <any>this.infoAttributes;
+     const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
+diff --git a/src/app/movements/movement-create/movement-create.component.html b/src/app/movements/movement-create/movement-create.component.html
+index f7514686967cbe2218c64f519982a521ec21249e..e4d6f29eb055f03df305a21165722fedfa00938e 100644
+--- a/src/app/movements/movement-create/movement-create.component.html
++++ b/src/app/movements/movement-create/movement-create.component.html
+@@ -3,7 +3,7 @@
+     <div class="form-group" *ngFor="let formData of movementFormData;let i = index">
+       <label>{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
+       <input *ngIf="!(formData.type === 'domain' || formData.type === 'localDomain')" [name]="formData.name"
+-        [type]="formData.type" [formControlName]="formData.name" (change)="onChangeFormControl($event)">
++        [type]="formData.type" [formControlName]="formData.name" (input)="onChangeFormControl($event)">
+       <select *ngIf="formData.type === 'domain' || formData.type === 'localDomain'" [name]="formData.name"
+         [formControlName]="formData.name" (change)="onChangeFormControl($event)">
+         <option value="-1">{{formData.alias}} Seçiniz..</option>
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 77f94966b06ebc2614fba2165e4e5d0e2d1c14d1..00107320f02522b2b63a76ed31c704fee713edb2 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -164,6 +164,46 @@ export class MovementCreateComponent implements OnInit {
+     }
+   }
+ 
++  dotMethod(value: string) {
++    let splitDotArray = [];
++    let valueWithoutDot = '';
++    if (value.includes('.')) {
++      splitDotArray = value.split('.');
++      for (let i = 0; i < splitDotArray.length; i++) {
++        valueWithoutDot += splitDotArray[i];
++      }
++      value = valueWithoutDot;
++    }
++
++    const length = 3;
++
++    const splitComma = value.split(',');
++    const dotValue = splitComma[0];
++    const commaValue = splitComma[1];
++
++    const stringLength = dotValue.length;
++    const loopNumber = Math.ceil(stringLength / length);
++
++    const splittedValues = [];
++    let dottedString = '';
++    for (let i = 0; i < loopNumber; i++) {
++      const splittedValue = dotValue.substring(stringLength - (length * (i + 1)), stringLength - (length * i));
++      splittedValues.push(splittedValue);
++    }
++
++    const reversedValues = splittedValues.reverse();
++    reversedValues.forEach(stringValue => {
++      dottedString += stringValue + '.';
++    });
++
++    dottedString = dottedString.slice(0, -1);
++    if (commaValue !== undefined) {
++      dottedString += ',' + commaValue;
++    }
++
++    return dottedString;
++  }
++
+   onChangeFormControl(event: Event) {
+     const formObject = this.formGroup.value;
+     const formGroup = this.formGroup;
+@@ -196,7 +236,10 @@ export class MovementCreateComponent implements OnInit {
+         this.formGroup.controls[formElement.name].patchValue(Number(formValue));
+       }
+     }
+-
++    // if ( this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] === 26) {
++    if (this.movementData.type === 13 && formElement.name === 'aciklama' && formObject['durumu'] === 26) {
++      formObject['aciklama'] = this.dotMethod(formElement.value);
++    }
+     const formControlName = formElement.name;
+     const formGroupControl = formGroup.controls[formControlName];
+ 
+@@ -205,6 +248,12 @@ export class MovementCreateComponent implements OnInit {
+     } else {
+       formElement.classList.add('error');
+     }
++    // if (this.movementData.type === 14 && formObject['durumu'] === 26) {
++      if (this.movementData.type === 13 && formObject['durumu'] === 26) {
++        if (this.formGroup.controls['proje_no'] !== undefined) {
++          formObject['proje_no'] = this.formGroup.controls['proje_no'].value;
++        }
++      }
+     this.initalizeWithFormData(this.movementData, formObject);
+   }
+ 
+@@ -230,6 +279,14 @@ export class MovementCreateComponent implements OnInit {
+   createInitializedForm(movementData: MovementData, features: Array<esri.Graphic>, formValue?: any) {
+     this.movementFormData = [];
+ 
++    const movementDataType = this.movementData.type;
++    let atolyeIslemAttribute = '';
++
++    // if( movementDataType === 14){
++    if (movementDataType === 13) {
++      atolyeIslemAttribute = this.moduleData['talep_amaci'];
++    }
++
+     this.formGroup = this.formBuilder.group({
+     });
+ 
+@@ -237,7 +294,21 @@ export class MovementCreateComponent implements OnInit {
+       const lastFeature = features[0];
+ 
+       const lastValue = <number>lastFeature.attributes['durumu'];
+-      movementData = this.setDefaultFieldDomains(movementData, lastValue);
++      if (movementDataType === 13) {
++        if (lastValue === 26 && atolyeIslemAttribute === 'Sadece Mal Alımı') {
++          movementData = this.setDefaultFieldDomains(movementData, -2);
++        } else {
++          movementData = this.setDefaultFieldDomains(movementData, lastValue);
++        }
++      } else {
++        movementData = this.setDefaultFieldDomains(movementData, lastValue);
++      }
++    } else {
++      // if( movementDataType === 14) {
++      if (movementDataType === 13) {
++        movementData.allowedStates.pop();
++        movementData = this.setDefaultFieldDomains(movementData, -1);
++      }
+     }
+ 
+     const createdFormControl = this.createFormControl(movementData.field.name, movementData.field.type, true, formValue);
+@@ -275,6 +346,7 @@ export class MovementCreateComponent implements OnInit {
+         const formControlType = field.type;
+         const isRequired = field.required;
+         let formDataValue = formObject[formControlName];
++
+         if (field.if !== undefined) {
+           const ifObject = field.if;
+ 
+@@ -314,6 +386,10 @@ export class MovementCreateComponent implements OnInit {
+           const createdFormControl = this.createFormControl(formControlName, formControlType, isRequired, formDataValue);
+ 
+           this.formGroup.addControl(formControlName, createdFormControl);
++          // if (this.movementData.type === 14 && formObject['durumu'] === 26 && formControlName === 'proje_no') {
++          if (this.movementData.type === 13 && formControlName === 'proje_no' && formObject['durumu'] === 26) {
++            this.formGroup.controls['proje_no'].disable();
++          }
+         }
+       });
+     }
+@@ -581,6 +657,24 @@ export class MovementCreateComponent implements OnInit {
+     });
+   }
+ 
++  updateProjeNo(formValues: any) {
++    const url = `${environment.arcgisMEBURL}FeatureServer/13/updateFeatures`;
++
++    const formData = new FormData();
++    const features: Array<esri.Graphic> = [];
++    // @ts-ignore
++    const feature: esri.Graphic = {
++      attributes: formValues
++    };
++    features.push(feature);
++
++    formData.append('f', 'json');
++    formData.append('rollbackOnFailure', 'true');
++    formData.append('features', JSON.stringify(features));
++
++    this.http.post(url, formData, { params: { token: sessionStorage.getItem('CBSArcToken') } }).subscribe();
++  }
++
+   createMovementData(url: string, formValues: any) {
+     const dialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'İşlem Yapılıyor', false,
+       { data: {} }, false, 'light');
+@@ -623,6 +717,15 @@ export class MovementCreateComponent implements OnInit {
+       }
+       const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+ 
++      // if (this.movementData.type === 14 && formValues['durumu'] === 26) {
++      if (this.movementData.type === 13 && formValues['durumu'] === 26) {
++        const objectid = results[0].objectId;
++        formValues['proje_no'] = objectid;
++        formValues['objectid'] = objectid;
++
++        this.updateProjeNo(formValues);
++      }
++
+       if (formValues.attachment !== undefined) {
+         if (this.editMode === true) {
+           this.updateAttachments(formValues, dialog, results);
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index f44b7174dc0fe0f7751f34e862a726905e5f18ae..d5407cdbc557794bc01270dc9766b2de16385e10 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -2487,7 +2487,16 @@
+       "chosen_values": []
+     },
+     "defaultField": "durumu",
+-    "allowedStates": [{
++    "allowedStates": [
++      {
++        "state": -1,
++        "values": [15,25,26,28,30,34]
++      },
++      {
++        "state": -2,
++        "values": [34]
++      },
++      {
+         "state": 15,
+         "values": [35]
+       },
+@@ -2513,7 +2522,7 @@
+       },
+       {
+         "state": 35,
+-        "values": [25, 26, 28, 30,34]
++        "values": [15, 25, 26, 28, 30, 34]
+       }
+     ],
+     "formData": [
+@@ -2563,18 +2572,7 @@
+         "states": [
+           30
+         ],
+-        "fields": [{
+-            "alias": "Gerçekleşme Oranı (%Yüzde)",
+-            "name": "gerceklesme_orani",
+-            "type": "number",
+-            "required": true
+-          },
+-          {
+-            "alias": "Nakdi Gerçekleşme Oranı (Yüzde)",
+-            "name": "nakdi_gerceklesme_orani",
+-            "type": "number",
+-            "required": true
+-          },
++        "fields": [
+           {
+             "alias": "Açıklama",
+             "name": "aciklama",
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 3b2152458d522b17abbf0560b9dce35d8fd78d86..a0dce146735e1042434927945e57021556632258 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -4,7 +4,7 @@
+     "formData": [
+       [
+         {
+-          "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++          "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+           "required": true,
+@@ -86,6 +86,7 @@
+               "name": "Bağış"
+             },
+             {
++
+               "value": "Genel Bütçe/İEDB",
+               "name": "Genel Bütçe/İEDB"
+             },
+@@ -138,7 +139,7 @@
+       ],
+       [
+         {
+-          "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++          "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+           "required": true,
+@@ -318,7 +319,7 @@
+       ],
+       [
+         {
+-          "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++          "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+           "required": true,
+@@ -492,7 +493,7 @@
+         }
+       ],
+       [{
+-        "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++        "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+         "name": "talep_eden_kurum",
+         "type": "localDomain",
+         "required": true,
+@@ -685,7 +686,7 @@
+       ],
+       [
+         {
+-          "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++          "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+           "required": true,
+@@ -873,7 +874,7 @@
+         }
+       ],
+       [{
+-        "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++        "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+         "name": "talep_eden_kurum",
+         "type": "localDomain",
+         "required": true,
+@@ -934,10 +935,7 @@
+         "name": "detay",
+         "type": "localDomain",
+         "required": true,
+-        "domain_values": [{
+-            "name": "Anaokul",
+-            "value": "Anaokul"
+-          },
++        "domain_values": [
+           {
+             "name": "İlkokul",
+             "value": "İlkokul"
+@@ -1063,7 +1061,7 @@
+       ],
+       [
+         {
+-          "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++          "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+           "required": true,
+@@ -1128,10 +1126,6 @@
+               "name": "Bilim ve Sanat Merkezi",
+               "value": "Bilim ve Sanat Merkezi"
+             },
+-            {
+-              "name": "Özel Eğitim Anaokulu",
+-              "value": "Özel Eğitim Anaokulu"
+-            },
+             {
+               "name": "Uygulama Okulu 1. Kademe",
+               "value": "Uygulama Okulu 1. Kademe"
+@@ -1308,7 +1302,7 @@
+       ],
+       [
+         {
+-          "alias": "Atölyeyi Kullanacak Genel Müdürlük",
++          "alias": "Atölyeyi Kullanacak Genel Müdürlük/Kurum",
+           "name": "talep_eden_kurum",
+           "type": "localDomain",
+           "required": true,
