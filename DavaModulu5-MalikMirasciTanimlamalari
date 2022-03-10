@@ -1,0 +1,103 @@
+diff --git a/src/app/models/Info/malik_hisse.ts b/src/app/models/Info/malik_hisse.ts
+index 9984b58a569561bca8abfc305318b5eeb094b5e6..40d105e9b3c477084a6c9d9b1e2f503770c79388 100644
+--- a/src/app/models/Info/malik_hisse.ts
++++ b/src/app/models/Info/malik_hisse.ts
+@@ -6,3 +6,36 @@ export interface MalikHisse {
+     kamu_area: number;
+     sahis_area: number;
+ }
++
++export interface Mirasci {
++    ad: string;
++    soyad: string;
++    anne_adi: string;
++    baba_adi: string;
++    tc_kimlik_no: number;
++    hisseid: string;
++    tasinmaz_id: string;
++    objectid?: number;
++}
++
++export interface Malik {
++    ad: string;
++    globalid: string;
++    hisse_yuz_olcum: number;
++    soyad: string;
++    tc_kimlikno: string;
++    vergi_no: any;
++}
++
++export class ProcessObject {
++    add: ProcessState = { state:-1, name: 'Ekleme', processName: 'addFeatures'};
++    update: ProcessState = { state: 0, name: 'Düzenleme', processName: 'updateFeatures'};
++    detail: ProcessState = { state: 1, name: 'Detay', processName: 'query'};
++    delete: ProcessState = { state: 2, name: 'Silme', processName: 'deleteFeatures'};
++}
++
++export interface ProcessState {
++    state: number;
++    name: string;
++    processName: string;
++}
+diff --git a/src/app/models/MalikDosyaNo.ts b/src/app/models/MalikDosyaNo.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e503d754c3e70da427b260f12a39874dad17dbac
+--- /dev/null
++++ b/src/app/models/MalikDosyaNo.ts
+@@ -0,0 +1,6 @@
++export interface MalikDosyaNo {
++   malik_id: string;
++   islem_id: string;
++   dosya_no: number | null;
++   objectid: number;
++}
+\ No newline at end of file
+diff --git a/src/app/models/Modules/module-form-data.ts b/src/app/models/Modules/module-form-data.ts
+index 3bcf59db87d09decbf3f41859313afbb8aa4567c..6f60a2e8ba1e85f975f3fbd5c2b9f7ec132b51a8 100644
+--- a/src/app/models/Modules/module-form-data.ts
++++ b/src/app/models/Modules/module-form-data.ts
+@@ -1,11 +1,13 @@
+-import { ProcessMovementRel } from '../ProcessMovementRel';
++import { ProcessMovementRel, MovementRel } from '../ProcessMovementRel';
+ 
+ export interface ModuleFormData {
+     type: string;
+     value: number;
+     formData: Array<Array<FormData>>;
+     processMovementRel: Array<ProcessMovementRel>;
++    movementRel: Array<MovementRel>;
+ }
++
+ export interface FormData {
+     alias: string;
+     name: string;
+@@ -15,6 +17,19 @@ export interface FormData {
+     domain_values: Array<DomainValue>;
+ }
+ 
++export interface MirasciModuleData {
++    type: string;
++    formData: Array<MirasciFormData>;
++}
++
++export interface MirasciFormData {
++    alias: string;
++    name: string;
++    type: 'text' | 'number';
++    required: boolean;
++    disabled: boolean;
++}
++
+ export interface ChosenValue {
+     values: Array<number | string>;
+     lead: number;
+diff --git a/src/app/movements/movement-create/MultiSelectMovement.ts b/src/app/movements/movement-create/MultiSelectMovement.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..658f54e128eed73f7211b4d5edaf6487b90cfd26
+--- /dev/null
++++ b/src/app/movements/movement-create/MultiSelectMovement.ts
+@@ -0,0 +1,4 @@
++export interface MultiSelectMovement {
++    feature: any;
++    movementData: any;
++}
