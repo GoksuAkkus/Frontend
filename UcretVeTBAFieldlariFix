@@ -1,0 +1,57 @@
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index b18ceffce417aab377143bc79ba1ec4f30fa9a6e..555a876643e78170ed9d439cdf15fcd156926fa9 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -202,12 +202,26 @@ export class ModuleReportComponent implements OnInit {
+           if (moduleFormData.value === 14 && (field.name === 'i_esas_no' || field.name === 'i_karar_no' || field.name === 'i_sayi')) {
+             tbaDotMethodUygulamaState = true;
+           }
+-
++          // TODO: BURASI i_ucret OLMALI AMA ŞUAN YAPAMIYORUM ÇÜNKÜ UCRET STRİNG GELİRKEN İŞLEM HAREKETTE İ_ÜCRET DOUBLE KAYDEDİLMİŞ
++          //O YÜZDEN KOD PATLIYOR
+           if (field.name === 'ucret') {
+             ucretFieldDotMethodUygState = true;
+           }
+ 
+-          if (tbaDotMethodUygulamaState || ucretFieldDotMethodUygState) {
++          if (tbaDotMethodUygulamaState) {
++            colDef.filter = 'agNumberColumnFilter';
++            colDef.valueGetter = (params) => {
++              if (params.data !== undefined) {
++                const fieldValue = <string>params.data[colDef.field];
++                if (!fieldValue) {
++                  return null;
++                }
++                const commaValue = fieldValue.replace('.', ',');
++
++                return this.dotMethod(commaValue);
++              }
++            };
++          } else if(ucretFieldDotMethodUygState) {
+             colDef.filter = 'agNumberColumnFilter';
+             colDef.valueGetter = (params) => {
+               if (params.data !== undefined) {
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 5151e6b354fdb97d012fd89bbdaaecfe240989f3..458c374208e0118bca7c22e37eef8b14b9b9815a 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -1349,12 +1349,19 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       // const toplamMaliyetString = this.dotMethod(toplamMaliyetStringData);
+ 
+       formData['sayi'] = toplamMaliyetStringData;
++    } else if(this.moduleData.value === 11) {
++      let ucretField = <string>formData['ucret'];
++      ucretField = ucretField.replace(/\./g, '');
++      ucretField = ucretField.replace(/,/g, '.');
++      formData['ucret'] = ucretField;
+     }
+     let feature = <esri.Graphic>{
+       attributes: formData,
+     };
+     const features = <Array<esri.Graphic>>[];
+ 
++    //dottocommamethod arcgiste ondalık kısmı , olarak algılıyorsa çalışır. şuan arcgisde ondalık kısım . olarak seçilmiş bu yüzden , olarak kaydedilmişler arasında CAST operasyonu yapılmıyor. Yani TBA maliyet fieldları içinde filtreleme yapamaz. Hatta kamulaştırma bedeli olan ucret fieldlarında da filtreleme yapamaz.
++    
+     feature = this.dotToCommaMethod(feature);
+     features.push(feature);
+     this.addFeatureBoundData(features);
