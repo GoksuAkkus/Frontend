@@ -1,0 +1,371 @@
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+index f7d9dddbadb87708aa5e6d01f1c080ecab93b073..3bcf8bb20311bf5d154963394fae7fb145dcb320 100644
+--- a/src/app/models/MaksData.ts
++++ b/src/app/models/MaksData.ts
+@@ -38,7 +38,7 @@ export interface Bina {
+     ilceKodu: number;
+     mahalleKodu: number;
+     csbmKodu: number;
+-    binaKodu: number;
++    kod: number;
+ 
+     ada: number;
+     binaDurum: string;
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+index 8577d22c98b0b4864bffdd9c5939866c23de776d..e74a766dc51f59e631b80f456b02f7b7787e885f 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -1,75 +1,83 @@
+-<div class="tkgm-tapu-search-container">
+-    <div class="header" (click)="dispatchMaksAdresBinaKoduSearchClicked($event)">
+-      <h3>Adres Kodu/Bina Kodu Sorgula</h3>
+-      <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
+-        <g transform="translate(-4357.014 -110.735)">
+-          <path d="M4379.745,130.755a.94.94,0,0,1,.255.68,1.281,1.281,0,0,1-.255.619,4.95,4.95,0,0,1-.65.768,6.075,6.075,0,0,1-.77.647,1.179,1.179,0,0,1-.614.266.89.89,0,0,1-.674-.271l-5.169-5.153a10.006,10.006,0,0,1-2.521,1.17,9.548,9.548,0,0,1-6.46-.335,9.675,9.675,0,0,1-3.057-2.062,9.518,9.518,0,0,1-2.068-3.051,9.589,9.589,0,0,1,0-7.426,9.577,9.577,0,0,1,2.068-3.052,9.867,9.867,0,0,1,3.049-2.067,9.531,9.531,0,0,1,7.426,0,9.916,9.916,0,0,1,3.055,2.067,9.638,9.638,0,0,1,2.064,3.052,9.544,9.544,0,0,1,.338,6.47,9.627,9.627,0,0,1-1.173,2.509Zm-20.158-10.434a6.673,6.673,0,0,0,.564,2.745,7.066,7.066,0,0,0,3.732,3.7,6.81,6.81,0,0,0,2.72.549,6.725,6.725,0,0,0,2.706-.549,7.117,7.117,0,0,0,2.219-1.492,7.263,7.263,0,0,0,1.511-2.208,6.734,6.734,0,0,0,.559-2.745,6.662,6.662,0,0,0-.559-2.711,7.433,7.433,0,0,0-1.511-2.226,6.987,6.987,0,0,0-2.219-1.506,6.731,6.731,0,0,0-2.706-.556,6.816,6.816,0,0,0-2.72.556,7.008,7.008,0,0,0-2.225,1.506,7.351,7.351,0,0,0-1.507,2.226A6.6,6.6,0,0,0,4359.587,120.321Z" fill="#d1000f"/>
+-          <path d="M4366.933,114.443a1.125,1.125,0,0,1,.824.349,1.2,1.2,0,0,1,.348.873,1.143,1.143,0,0,1-.348.829,1.117,1.117,0,0,1-.824.352,3.616,3.616,0,0,0-3.641,3.634,1.15,1.15,0,0,1-.35.832,1.126,1.126,0,0,1-.821.338,1.188,1.188,0,0,1-.889-.338,1.157,1.157,0,0,1-.333-.832,5.894,5.894,0,0,1,.465-2.323,6.025,6.025,0,0,1,1.294-1.94,5.93,5.93,0,0,1,4.275-1.774Z" fill="#d1000f"/>
+-        </g>
+-      </svg>
+-  
+-    </div>
+-    <div class="form-container">
+-      <form class="form">
+-        <div class="form-group">
+-          <input id="selectIlArcgis" class="form-input" type="select" name="iller" autocomplete="off"
+-            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
+-            (focus)="onToggleDropdown($event)" required>
+-          <label for="selectIlArcgis" class="form-label">İl Seçiniz</label>
+-          <img src="assets/img/arrow.png" alt="" class="arrow-down">
+-        </div>
+-        <div class="select-options">
+-          <span class="option" id="{{il.uavtil}}" *ngFor="let il of ilArray"
+-            (mousedown)="onSelect($event)">{{il.ad}}</span>
+-        </div>        
++<div class="maks-binakodu-search-container">
++  <div class="header" (click)="dispatchMaksAdresBinaKoduSearchClicked($event)">
++    <h3>Bina Kodu Sorgulama</h3>
++    <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
++      <g transform="translate(-4357.014 -110.735)">
++        <path
++          d="M4379.745,130.755a.94.94,0,0,1,.255.68,1.281,1.281,0,0,1-.255.619,4.95,4.95,0,0,1-.65.768,6.075,6.075,0,0,1-.77.647,1.179,1.179,0,0,1-.614.266.89.89,0,0,1-.674-.271l-5.169-5.153a10.006,10.006,0,0,1-2.521,1.17,9.548,9.548,0,0,1-6.46-.335,9.675,9.675,0,0,1-3.057-2.062,9.518,9.518,0,0,1-2.068-3.051,9.589,9.589,0,0,1,0-7.426,9.577,9.577,0,0,1,2.068-3.052,9.867,9.867,0,0,1,3.049-2.067,9.531,9.531,0,0,1,7.426,0,9.916,9.916,0,0,1,3.055,2.067,9.638,9.638,0,0,1,2.064,3.052,9.544,9.544,0,0,1,.338,6.47,9.627,9.627,0,0,1-1.173,2.509Zm-20.158-10.434a6.673,6.673,0,0,0,.564,2.745,7.066,7.066,0,0,0,3.732,3.7,6.81,6.81,0,0,0,2.72.549,6.725,6.725,0,0,0,2.706-.549,7.117,7.117,0,0,0,2.219-1.492,7.263,7.263,0,0,0,1.511-2.208,6.734,6.734,0,0,0,.559-2.745,6.662,6.662,0,0,0-.559-2.711,7.433,7.433,0,0,0-1.511-2.226,6.987,6.987,0,0,0-2.219-1.506,6.731,6.731,0,0,0-2.706-.556,6.816,6.816,0,0,0-2.72.556,7.008,7.008,0,0,0-2.225,1.506,7.351,7.351,0,0,0-1.507,2.226A6.6,6.6,0,0,0,4359.587,120.321Z"
++          fill="#d1000f" />
++        <path
++          d="M4366.933,114.443a1.125,1.125,0,0,1,.824.349,1.2,1.2,0,0,1,.348.873,1.143,1.143,0,0,1-.348.829,1.117,1.117,0,0,1-.824.352,3.616,3.616,0,0,0-3.641,3.634,1.15,1.15,0,0,1-.35.832,1.126,1.126,0,0,1-.821.338,1.188,1.188,0,0,1-.889-.338,1.157,1.157,0,0,1-.333-.832,5.894,5.894,0,0,1,.465-2.323,6.025,6.025,0,0,1,1.294-1.94,5.93,5.93,0,0,1,4.275-1.774Z"
++          fill="#d1000f" />
++      </g>
++    </svg>
+ 
+-        <div class="form-group">
+-          <input id="selectIlceMaks" class="form-input" type="select" name="ilceler" autocomplete="off"
+-            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
+-            (focus)="onToggleDropdown($event)" required>
+-          <label for="selectIlceMaks" class="form-label">İlçe Seçiniz</label>
+-          <img src="assets/img/arrow.png" alt="" class="arrow-down">
+-        </div>
+-        <div class="select-options">
+-          <span class="option" id="{{ilce.kod}}" *ngFor="let ilce of denemeArray[0].ilceler"
+-            (mousedown)="onSelect($event)">{{ilce.ad}}</span>
+-        </div>
+-        <div class="form-group">
+-          <input id="selectMahalleMaks" class="form-input" type="select" name="mahalleler" autocomplete="off"
+-            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
+-            (focus)="onToggleDropdown($event)" required>
+-          <label for="selectMahalleMaks" class="form-label">Mahalle Seçiniz</label>
+-          <img src="assets/img/arrow.png" alt="" class="arrow-down">
+-        </div>
+-        <div class="select-options">
+-          <span class="option" id="{{mahalle.kod}}" *ngFor="let mahalle of denemeArray[0].mahalleler"
+-            (mousedown)="onSelect($event)">{{mahalle.ad}}</span>
+-        </div>
++  </div>
++  <div class="form-container">
++    <form class="form">
++      <div class="form-group">
++        <input id="selectIlArcgis" class="form-input" type="select" name="iller" autocomplete="off"
++          style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++          (focus)="onToggleDropdown($event)" required>
++        <label for="selectIlArcgis" class="form-label">İl Seçiniz</label>
++        <img src="assets/img/arrow.png" alt="" class="arrow-down">
++      </div>
++      <div class="select-options">
++        <span class="option" id="{{il.uavtil}}" *ngFor="let il of ilArray"
++          (mousedown)="onSelect($event)">{{il.ad}}</span>
++      </div>
++
++      <div class="form-group">
++        <input id="selectIlceMaks" class="form-input" type="select" name="ilceler" autocomplete="off"
++          style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++          (focus)="onToggleDropdown($event)" required>
++        <label for="selectIlceMaks" class="form-label">İlçe Seçiniz</label>
++        <img src="assets/img/arrow.png" alt="" class="arrow-down">
++      </div>
++      <div class="select-options">
++        <span class="option" id="{{ilce.kod}}" *ngFor="let ilce of denemeArray[0].ilceler"
++          (mousedown)="onSelect($event)">{{ilce.ad}}</span>
++      </div>
++      <div class="form-group">
++        <input id="selectMahalleMaks" class="form-input" type="select" name="mahalleler" autocomplete="off"
++          style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++          (focus)="onToggleDropdown($event)" required>
++        <label for="selectMahalleMaks" class="form-label">Mahalle Seçiniz</label>
++        <img src="assets/img/arrow.png" alt="" class="arrow-down">
++      </div>
++      <div class="select-options">
++        <span class="option" id="{{mahalle.kod}}" *ngFor="let mahalle of denemeArray[0].mahalleler"
++          (mousedown)="onSelect($event)">{{mahalle.ad}}</span>
++      </div>
+ 
+-        <div class="form-group">
+-          <input id="selectCsbmMaks" class="form-input" type="select" name="csbmler" autocomplete="off"
+-            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
+-            (focus)="onToggleDropdown($event)" required>
+-          <label for="selectCsbmMaks" class="form-label">Csbm Seçiniz</label>
+-          <img src="assets/img/arrow.png" alt="" class="arrow-down">
+-        </div>
+-        <div class="select-options">
+-          <span class="option" id="{{csbm.kod}}" *ngFor="let csbm of denemeArray[0].csbmler"
+-            (mousedown)="onSelect($event)">{{csbm.ad}}</span>
+-        </div>
++      <div class="form-group">
++        <input id="selectCsbmMaks" class="form-input" type="select" name="csbmler" autocomplete="off"
++          style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++          (focus)="onToggleDropdown($event)" required>
++        <label for="selectCsbmMaks" class="form-label">Csbm Seçiniz</label>
++        <img src="assets/img/arrow.png" alt="" class="arrow-down">
++      </div>
++      <div class="select-options">
++        <span class="option" id="{{csbm.kod}}" *ngFor="let csbm of denemeArray[0].csbmler"
++          (mousedown)="onSelect($event)">{{csbm.ad}}</span>
++      </div>
+ 
+-        <div class="form-group">
+-          <input id="selectDiskapiNoMaks" class="form-input" type="select" name="diskapiNolar" autocomplete="off"
+-            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
+-            (focus)="onToggleDropdown($event)" required>
+-          <label for="selectDiskapiNoMaks" class="form-label">Dışkapı No Seçiniz</label>
+-          <img src="assets/img/arrow.png" alt="" class="arrow-down">
+-        </div>
+-        <div class="select-options">
+-          <span class="option" id="{{diskapino.disKapiNo}}" *ngFor="let diskapino of denemeArray[0].binalar"
+-            (mousedown)="onSelect($event)">{{diskapino.disKapiNo}}</span>
+-        </div>
+-      </form>
+-    </div>
++      <div class="form-group">
++        <input id="selectDiskapiNoMaks" class="form-input" type="select" name="diskapiNolar" autocomplete="off"
++          style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++          (focus)="onToggleDropdown($event)" required>
++        <label for="selectDiskapiNoMaks" class="form-label">Dışkapı No Seçiniz</label>
++        <img src="assets/img/arrow.png" alt="" class="arrow-down">
++      </div>
++      <div class="select-options">
++        <span class="option" id="{{i}}" *ngFor="let diskapino of denemeArray[0].binalar; let i=index"
++          (mousedown)="onSelect($event)">{{diskapino.disKapiNo}}</span>
++      </div>
++      <div class="binakodu-info-container">
++        <button class="btn-info" type="button">Bina Kodu: </button>
++        <label class="info"
++          *ngIf="selectedDiskapiNoIndex != ''">{{denemeArray[0].binalar[selectedDiskapiNoIndex].kod}}</label>
++      </div>
++    </form>
+   </div>
+-  
+\ No newline at end of file
++</div>
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
+index 52ba1930bbf780f9416703552c2d1516cb9d4aa6..264d8ca1f768c05abf84702d3cd10b46bfc58e3b 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
+@@ -1,6 +1,6 @@
+ @import '../../../global.scss';
+ 
+-.tkgm-tapu-search-container {
++.maks-binakodu-search-container {
+   border: 1px solid $primaryColor;
+   border-radius: 5px;
+   overflow: auto;
+@@ -38,6 +38,35 @@
+       position: relative;
+       width: 100%;
+     }
++
++    .binakodu-info-container {
++      display: flex;
++      justify-content: space-evenly;
++      background-color: #17a2b8;
++      border-radius: .25rem;
++      margin: 10px;
++    }
++
++    .btn-info {
++      display: inline-block;
++      font-weight: 400;
++      background-color: #17a2b8;
++      color: white;
++      user-select: none;
++      border: 1px solid transparent;
++      padding: .275rem 1rem;
++      font-size: 15px;
++      line-height: 1.5;
++
++    }
++
++    .info {
++      background-color: #17a2b8;
++      color: white;
++      border: 1px solid transparent;
++      padding: .275rem 1rem;
++      font-size: 18px;
++    }
+   }
+ }
+ 
+@@ -143,28 +172,3 @@
+ .r-90 {
+   transform: rotate(90deg);
+ }
+-
+-.meb-form-btn-container {
+-  position: relative;
+-  margin: 12px 0;
+-
+-  .btn-info {
+-    display: inline-block;
+-    font-weight: 400;
+-    background-color: #17a2b8;
+-    color: white;
+-    text-align: center;
+-    vertical-align: middle;
+-    -webkit-user-select: none;
+-    -moz-user-select: none;
+-    -ms-user-select: none;
+-    user-select: none;
+-    border: 1px solid transparent;
+-    padding: .275rem 1rem;
+-    font-size: 14px;
+-    line-height: 1.5;
+-    border-radius: .25rem;
+-    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+-    cursor: pointer;
+-  }
+-}
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index 78b329d1e289984484da0a900c319cd223edfe83..ff841aaf53be54eccfd9f41c346319f98e72ca9a 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -35,6 +35,7 @@ export class MaksAdresbinakoduComponent implements OnInit {
+   filterArray: Array<Array<any>> = [];
+   denemeArray: Array<MaksData> = [new MaksData()];
+   selectedDataArray: Array<any> = [];
++  selectedDiskapiNoIndex = '';
+   progressInfoDialogRef: DialogRef;
+   _mapView: esri.MapView;
+   ilArray: Array<Il> = [];
+@@ -134,7 +135,7 @@ export class MaksAdresbinakoduComponent implements OnInit {
+   }
+ 
+   onSelect(event: Event) {
+-
++    this.selectedDiskapiNoIndex = '';
+     const selectedElement: HTMLElement = <HTMLElement>event.target;
+     const selectContainer: HTMLElement = selectedElement.parentElement;
+     const form: HTMLFormElement = <HTMLFormElement>selectContainer.parentElement;
+@@ -142,14 +143,6 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     const inputContainer: HTMLElement = <HTMLElement>selectContainer.previousElementSibling;
+     const selectInput: HTMLInputElement = <HTMLInputElement>inputContainer.firstElementChild;
+ 
+-    const selectContainerNextElement: HTMLElement = <HTMLElement>selectContainer.nextElementSibling;
+-    let notifyMessageTitle;
+-
+-    if (selectContainerNextElement !== null) {
+-      const nextElementInput: HTMLInputElement = <HTMLInputElement>selectContainerNextElement.firstElementChild;
+-      notifyMessageTitle = nextElementInput.name;
+-    }
+-
+     this.resetFormData(form, inputContainer);
+ 
+     selectInput.value = '';
+@@ -159,59 +152,61 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     selectInput.value = selectedElementTitle;
+     selectInput.blur();
+ 
+-    const inputArray = [];
++    const dataService = this.webdataservice;
+ 
++    const inputArray = [];
+     const currentTarget = event.currentTarget;
+     const selectName = selectInput.name;
+     const kod = currentTarget['id'];
++
+     switch (selectName) {
+       case 'iller': {
+         inputArray[0] = kod;
++        dataService.getIlcelerFromMAKS(inputArray[0]).subscribe(res => {
++          this.denemeArray[0].ilceler = res['ilceler'];
++        });
++        this.denemeArray[0].mahalleler = [];
++        this.denemeArray[0].csbmler = [];
++        this.denemeArray[0].binalar = [];
+         break;
+       }
+       case 'ilceler': {
+         inputArray[1] = kod;
++        dataService.getMahallelerFromMAKS(inputArray[1]).subscribe(res => {
++          this.denemeArray[0].mahalleler = res['mahalleler'];
++          console.log(res.mahalleler);
++        });
++        this.denemeArray[0].csbmler = [];
++        this.denemeArray[0].binalar = [];
+         break;
+       }
+       case 'mahalleler': {
+         inputArray[2] = kod;
++        dataService.getCsbmlerFromMAKS(inputArray[2]).subscribe(res => {
++          this.denemeArray[0].csbmler = res['csbmler'];
++        });
++        this.denemeArray[0].binalar = [];
+         break;
+       }
+       case 'csbmler': {
+         inputArray[3] = kod;
++        dataService.getBinalarFromMAKS(inputArray[3]).subscribe(res => {
++          this.denemeArray[0].binalar = res['binalar'];
++        });
+         break;
+       }
+       case 'diskapiNolar': {
++        // diskapino idsi binalar arrayinin indexine eşittir. 
++        // O yüzden kod yani currenttargetin id si diskapino için index olarak kayıt ediliyor.
+         inputArray[4] = kod;
++        this.selectedDiskapiNoIndex = kod;
+         break;
+       }
+     }
+-    const dataService = this.webdataservice;
+-
+-    // const deneme = dataService.getIlcelerFromMAKS(23);
+-    // console.log(deneme);
+-
+-    const index = this.getIndexElement(inputContainer);
+-
+-    dataService.getIlcelerFromMAKS(inputArray[0]).subscribe(res => {
+-      this.denemeArray[0].ilceler = res['ilceler'];
+-    });
+-    dataService.getMahallelerFromMAKS(inputArray[1]).subscribe(res => {
+-      this.denemeArray[0].mahalleler = res['mahalleler'];
+-      console.log(res.mahalleler);
+-    });
+-    dataService.getCsbmlerFromMAKS(inputArray[2]).subscribe(res => {
+-      this.denemeArray[0].csbmler = res['csbmler'];
+-    });
+-    dataService.getBinalarFromMAKS(inputArray[3]).subscribe(res => {
+-      this.denemeArray[0].binalar = res['binalar'];
+-    });
+ 
+     if (this.subscription !== undefined) {
+       this.subscription.unsubscribe();
+     }
+-
+-
+   }
+ 
+   getGeometryFromTKGM(search_query) {
