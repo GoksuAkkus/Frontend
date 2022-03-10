@@ -1,0 +1,155 @@
+diff --git a/src/app/dialog-info/dialog-info.component.ts b/src/app/dialog-info/dialog-info.component.ts
+index a6f6e348c2babd7346a0a140391a7af2c4820893..ff2271361853d02fd4d733da333029c23b6cc333 100644
+--- a/src/app/dialog-info/dialog-info.component.ts
++++ b/src/app/dialog-info/dialog-info.component.ts
+@@ -26,58 +26,100 @@ export class DialogInfoComponent implements OnInit {
+   ilceLayer: esri.FeatureLayer;
+   permittedCities: Array<string> = [];
+   permittedDistricts: Array<Array<string>> = [];
++  promiseArray = [];
++  ilceAttributes;
++  ilceProperties;
+   pointModule: esri.PointConstructor;
+-  graphicModule: esri.GraphicConstructor;
+-
++  isPermitted;
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef, private dialogService: DialogService,
+     private webDataService: WebDataService, private auth: AuthService) {
+-      loadModules(['esri/Graphic', 'esri/geometry/Point']).then(([Graphic, Point]) => {
+-        this.pointModule = Point;
+-        this.graphicModule = Graphic;
+-      });
++
+   }
+ 
+   ngOnInit() {
+-    this.userPerm = this.auth.userPerm;
+-    const data = this.dialogConfig.data;
+-    this.mapView = data.mapView;
+-    this.maksBinaKoduSorgulaState = data['maksBinaKoduSorgulaState'];
+-    this.lat = data['coordinateData']['lat'];
+-    this.lon = data['coordinateData']['lon'];
+-    this.ilceLayer = data['ilceLayer'];
+-    console.log(this.ilceLayer);
+-    this.setPermZones();
+-    this.getLocation().then();
+-    this.getAllNumaratajFromBina(this.lat, this.lon);
++    this.getModules().then(moduleRes => {
++      this.pointModule = moduleRes;
++      this.userPerm = this.auth.userPerm;
++      const data = this.dialogConfig.data;
++      this.mapView = data.mapView;
++      this.maksBinaKoduSorgulaState = data['maksBinaKoduSorgulaState'];
++      this.lat = data['coordinateData']['lat'];
++      this.lon = data['coordinateData']['lon'];
++      this.ilceLayer = data['ilceLayer'];
++      this.setPermZones();
++
++      this.getProperties();
++      const queryPromise = this.queryIlceLayer().then(ilceRes => {
++        this.ilceAttributes = ilceRes.features[0].attributes;
++        this.isPermitted = this.testLocation();
++        if (this.isPermitted === 1) {
++          this.getAllNumaratajFromBina(this.lat, this.lon);
++        } else {
++          // TODO: İzinli Değilsiniz Uyarısı Çıksın.
++          console.log('YOU ARE NOT PERMITTED IN');
++        }
++      });
++    });
+   }
+ 
+-  async getLocation() {
++  async getModules() {
++    const [Point] = await loadModules(['esri/geometry/Point']);
++    return Point;
++  }
+ 
++  async queryIlceLayer() {
++    return this.ilceLayer.queryFeatures(this.ilceProperties).then(ilceRes => {
++      return ilceRes;
++    });
++  }
++
++  getProperties() {
+     const pointProp: esri.PointProperties = {
+       x: Number(this.lat),
+       y: Number(this.lon),
+       spatialReference: { wkid: 4326 }
+     };
+ 
+-    // TODO: POINTMODULE IS NOT A CONSTRUCTOR HATASI ÇÖZÜLECEK
+     const point = new this.pointModule(pointProp);
+ 
+     const properties: esri.QueryProperties = {
+       where: '1=1',
+       geometry: point,
+-      spatialRelationship: 'Intersects',
++      spatialRelationship: 'intersects',
+       outFields: ['*'],
+       returnGeometry: false
+     };
+-    // BURADA HANGİ İLÇEDE OLDUĞUNU BULUP YETKİSİ OLUP OLMADIĞINA BAKILACAK
+-    this.ilceLayer.queryFeatures(properties).then(res => {
+-      console.log(res);
+-    });
++
++    this.ilceProperties = properties;
++    return properties;
++
+   }
+ 
+-  isPermitted() {
+-    const uavtil = this.ilceLayer['attributes']['uavtil'];
+-    const ilceKodu = this.ilceLayer['attributes']['ilce'];
++  testLocation(): number {
++    const attributes = this.ilceAttributes;
++    const kodilce = attributes['kodilce'];
++    const uavtil = attributes['uavtil'];
++
++    const foundCity = this.permittedCities.find(city => Number(city) === uavtil);
++
++    if (foundCity === undefined) { // izinli il listesinde bulamazsa, izinli ilçe listesine bakılacak.
++      let foundDistrict;
++      this.permittedDistricts.forEach(district => {
++        const foundCode = district.find(code => Number(code) === kodilce);
++        if (foundCode !== undefined) {
++          foundDistrict = foundCode;
++        }
++        // TODO: FOREACH ERKEN DURDURMA YAPILACAK
++      });
++
++      if (foundDistrict === undefined) {
++        return -1;
++      } else {
++        return 1;
++      }
++    } else {
++      return 1;
++    }
+   }
+ 
+   setPermZones() {
+@@ -104,9 +146,6 @@ export class DialogInfoComponent implements OnInit {
+       }
+     });
+   }
+-
+   // TODO: SORGULAMA YAPILIRKEN PROGRESSINFO COMPONENTİ EKLENECEK
+-  // TODO: İL İLÇE FİLTRELEMESİNE GÖRE ÇALIŞMASI SAĞLANACAK.
+   // TODO: TABLO HTML CSS DÜZENLENECEK
+-
+ }
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index cd33163ef7754690624ec13f2eb6c3ce9dc53d54..244a88bd70f067b7cba5024554030c3ce6ac2d3a 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -448,7 +448,7 @@ export class MainComponent implements OnInit {
+     setTimeout(() => {
+       const mapviewHitTestResult = this.mapView.hitTest(mouseEvent).then(res => {
+         const result = res.results;
+-        const ilceLayer = this.mapView.map.layers.filter(layer => layer.title === 'İlçe');
++        const ilceLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İlçe');
+ 
+         this.dialogService.open(DialogInfoComponent, 'Bina Kodu Sorgula', false, {data: {
+           maksBinaKoduSorgulaState: true,
