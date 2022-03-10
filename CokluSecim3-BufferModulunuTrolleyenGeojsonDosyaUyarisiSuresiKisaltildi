@@ -1,0 +1,35 @@
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 3924aef60bd4a92b4238585cf43cf0b41dcc5ff2..eb50b71e20b65e8b09c54c56c5cf30ff3f9f1022 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -461,7 +461,9 @@ export class EsriMapComponent implements OnInit {
+ 
+     const moduleLayerProperties = <esri.FeatureLayerProperties>{
+       title: 'İslem',
+-      url: environment.arcgisMEBURL + '/FeatureServer/14',
++      // GAGA BURASI AÇILACAK
++      // url: environment.arcgisMEBURL + '/FeatureServer/14',
++      url: 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1',
+       visible: false
+     };
+     this.addLayerDefinitionExpression(moduleLayerProperties);
+@@ -471,7 +473,9 @@ export class EsriMapComponent implements OnInit {
+ 
+     const processLayerProperties = <esri.FeatureLayerProperties>{
+       title: 'Hareket',
+-      url: environment.arcgisMEBURL + '/FeatureServer/13',
++      // GAGA BURASI AÇILACAK
++      // url: environment.arcgisMEBURL + '/FeatureServer/13',
++      url: 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2',
+       visible: false
+     };
+     this.addLayerDefinitionExpression(processLayerProperties);
+@@ -1640,7 +1644,7 @@ export class EsriMapComponent implements OnInit {
+         const file: File = fileList.item(i);
+         if (!file.name.toLowerCase().includes('.geojson')) {
+           validStatus = false;
+-          this.notificationService.open('Lütfen Geojson Uzantılı Dosya Sürükleyiniz.', 'danger', 100);
++          this.notificationService.open('Lütfen Geojson Uzantılı Dosya Sürükleyiniz.', 'danger', 10);
+         }
+       }
+       if (validStatus) {
