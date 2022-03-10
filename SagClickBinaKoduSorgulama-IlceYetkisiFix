@@ -1,0 +1,24 @@
+diff --git a/src/app/dialog-info/dialog-info.component.ts b/src/app/dialog-info/dialog-info.component.ts
+index 8fcc64ba2ae35cdb7df35dd7eee390b03bcf2817..1d70f58a0a8fc0ad184f0af7438ccf0942e81c60 100644
+--- a/src/app/dialog-info/dialog-info.component.ts
++++ b/src/app/dialog-info/dialog-info.component.ts
+@@ -155,13 +155,18 @@ export class DialogInfoComponent implements OnInit {
+ 
+   setPermZones() {
+     const permZones = this.userPerm.permZone;
++    const permZoneCity = this.userPerm.permZoneCityTKGM;
+ 
+     permZones.forEach(permZone => {
+       const zone = permZone.zone;
+       if (zone.includes(',')) { // , içerenler izin verilen 1 ilin ilçe listesi demek
+         this.permittedDistricts.push(zone.split(','));
+       } else {
+-        this.permittedCities.push(zone);
++        if (permZoneCity.length === 0) {
++          this.permittedDistricts.push([zone]);
++        } else {
++          this.permittedCities.push(zone);
++        }
+       }
+     });
+   }
