@@ -1,0 +1,58 @@
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 244a88bd70f067b7cba5024554030c3ce6ac2d3a..f78e930f8e779d7ae6d121b19812be1973e90a5c 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -61,6 +61,7 @@ export class MainComponent implements OnInit {
+   changePasswdDialogRef: DialogRef;
+   pendingTableDialogRef: DialogRef;
+   quadDialogRef: DialogRef;
++  binaKoduDialogRef: DialogRef;
+ 
+   measureWindowState = false;
+   layerWindowState = false;
+@@ -442,24 +443,26 @@ export class MainComponent implements OnInit {
+   }
+ 
+   getMaksBinaKoduAtLocationEvent(event: Event) {
++    if (this.binaKoduDialogRef !== undefined) {
++      this.binaKoduDialogRef.close();
++    }
+     const mouseEvent = this.rightClickEvent;
+-    const coordinates = { lat: mouseEvent.mapPoint.longitude, lon: mouseEvent.mapPoint.latitude};
++    const coordinates = { lat: mouseEvent.mapPoint.longitude, lon: mouseEvent.mapPoint.latitude };
+ 
+     setTimeout(() => {
+       const mapviewHitTestResult = this.mapView.hitTest(mouseEvent).then(res => {
+-        const result = res.results;
+         const ilceLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İlçe');
+ 
+-        this.dialogService.open(DialogInfoComponent, 'Bina Kodu Sorgula', false, {data: {
+-          maksBinaKoduSorgulaState: true,
+-          mapView: this.mapView,
+-          coordinateData: coordinates,
+-          ilceLayer: ilceLayer
+-        }}, true, 'red-to-light');
++        this.binaKoduDialogRef = this.dialogService.open(DialogInfoComponent, 'Bina Kodu Sorgula', false, {
++          data: {
++            maksBinaKoduSorgulaState: true,
++            mapView: this.mapView,
++            coordinateData: coordinates,
++            ilceLayer: ilceLayer
++          }
++        }, true, 'red-to-light');
+       });
+     }, 1000);
+-
+-   
+   }
+ 
+   mapLeftClickEvent(event: esri.MapViewClickEvent) {
+@@ -2310,7 +2313,7 @@ export class MainComponent implements OnInit {
+     this.convertAndOpenInfoWithFeatureSet(searchResult);
+   }
+ 
+-  searchMAKSAdresBinaKoduInfoEvent() {}
++  searchMAKSAdresBinaKoduInfoEvent() { }
+ 
+   convertAndOpenInfoWithFeatureSet(featureSet: esri.FeatureSet, openModules?: boolean) {
+     const hitTestResultModel: esri.HitTestResult = { results: [] };
