@@ -1,0 +1,36 @@
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 5dd3123403245ea12562b06364b1fbcc08b7e8e0..52b4fcd218c9b010f58692a7a89341d10f6f4ba7 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -19,9 +19,7 @@ import { environment } from 'src/environments/environment';
+ import { UserPermission } from '../models/Login/user-permission';
+ import { LayerSymbologyComponent } from '../layer-symbology/layer-symbology.component';
+ import { ModuleReportStatisticsComponent } from './module-report-statistics/module-report-statistics.component';
+-import { stringify } from '@angular/compiler/src/util';
+ import { EmitObject } from '../models/emitObject';
+-import Feature from 'esri/widgets/Feature';
+ @Component({
+   selector: 'app-module-report',
+   templateUrl: './module-report.component.html',
+@@ -565,13 +563,15 @@ export class ModuleReportComponent implements OnInit {
+       const foundField = processMovementLayer.fields.find(viewField =>
+         'i_' + field.name === viewField.name || field.name === viewField.name);
+ 
+-      foundField.alias = field.alias;
+-      if (field.domain !== null) {
+-        foundField.domain = field.domain;
+-      }
++      if (foundField !== undefined) {
++        foundField.alias = field.alias;
++        if (field.domain !== null) {
++          foundField.domain = field.domain;
++        }
+ 
+-      if (foundField.name !== 'i_durumu' && foundField.name !== 'durumu') {
+-        fields.push(foundField);
++        if (foundField.name !== 'i_durumu' && foundField.name !== 'durumu') {
++          fields.push(foundField);
++        }
+       }
+     });
+ 
