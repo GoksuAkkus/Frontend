@@ -1,0 +1,81 @@
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 6943b34e8e87e7828caf0ae89aa35f47132a552e..4210a4257524513f14928be5de49e29802bb21e3 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -398,7 +398,6 @@ export class DataTableComponent implements OnInit, OnDestroy {
+           const count = end - start;
+           let whereQuery = '';
+           let where = '1=1';
+-          console.log(params);
+           if (params.filterModel !== {}) {
+ 
+             const filterModel = params.filterModel;
+@@ -407,7 +406,6 @@ export class DataTableComponent implements OnInit, OnDestroy {
+ 
+               if (element) {
+                 const filterModelElement = filterModel[element];
+-                console.log(filterModelElement);
+ 
+                 if (filterModelElement.operator) {
+                   const operator = filterModelElement.operator;
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index d443b08c9e0160b6e952b874b6b0ea2218d70fc8..2b166324d7c438e50dc209c19c0dbbea6447f9fe 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -1295,7 +1295,6 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+ 
+   onClickYapiBilgileri() {
+     this._tabData.set('yapibilgileri', true);
+-    console.log(this._tabData.features[0].attributes);
+      this.yapiBilgileri.emit(this._tabData.features[0].attributes['bina_refid']);
+     // this.yapiBilgileri.emit(this._tabData.features[0].attributes['kurum_kodu']);
+   }
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 8467621122bc9881f36a6919bf34e841b959dd54..e96326d8894d7dc5c66d4bec0689de004086f518 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -1728,7 +1728,6 @@ export class MainComponent implements OnInit {
+   getYapiBilgileri(kurumKodu: number) {
+     this.webDataService.getBinaSiraNoileInfo(kurumKodu).subscribe(dd => {
+       this.infoData = dd;
+-      console.log(this.infoData);
+     });
+   }
+ 
+diff --git a/src/app/mapUtils/map.service.ts b/src/app/mapUtils/map.service.ts
+index 9d93563a275ca0205f2ae9450cd04f704186065d..f344a5b3decd4ce1fce7f619b809ec823bbcc58c 100644
+--- a/src/app/mapUtils/map.service.ts
++++ b/src/app/mapUtils/map.service.ts
+@@ -76,8 +76,6 @@ export class MapService {
+ 
+   clearSelectedGraphics(propertyName: string, value: any) {
+     const selectedGraphic = this.mapView.graphics.filter(graphic => graphic.get(propertyName) === value);
+-    console.log(selectedGraphic);
+-    console.log(this.mapView.graphics);
+     if (selectedGraphic.length > 0) {
+       this.mapView.graphics.removeMany(selectedGraphic);
+     }
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 0404f4466d6f5e302bdd7a69d6bd16c4a04ae9d8..bb8e90c2e99fee9c3d1f605011818a187e9fea19 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -111,7 +111,6 @@ export class WebDataService {
+ 
+       }
+     });
+-    console.log(response);
+     return response;
+   }
+ }
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
+index da078e6fdb0f93b426357b7902ee3a66f7e32b70..ca9ce5a9489ac1f39830bece9377836a8e646bc4 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
+@@ -40,7 +40,6 @@ export class YapiBilgileriInfoComponent implements OnInit {
+   @Input()
+   set infoData(infoData: ModelData) {
+     this._infoData = infoData;
+-    console.log(infoData);
+ 
+     if (this._infoData !== undefined) {
+         this.tabs = ['Bina', 'Yapısal Bilgi', 'Deprem', 'Enerji'];
