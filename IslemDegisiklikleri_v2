@@ -1,0 +1,573 @@
+diff --git a/package.json b/package.json
+index 235fa853c60a2c7ddd9458a24e6266e0ac15da43..877926cd86723ed7b9906c3b383227316d20dd3d 100644
+--- a/package.json
++++ b/package.json
+@@ -22,7 +22,7 @@
+     "@angular/platform-browser-dynamic": "^8.0.3",
+     "@angular/router": "^8.0.3",
+     "@swimlane/ngx-charts": "^12.0.1",
+-    "@types/arcgis-js-api": "^4.11.0",
++    "@types/arcgis-js-api": "4.11.0",
+     "@types/geojson": "^7946.0.7",
+     "ag-grid-angular": "^20.2.0",
+     "ag-grid-community": "^20.2.0",
+diff --git a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+index 2f8883862ee218e8a4127b15443b40a192d12eb8..6594acb5ceddb9eda9df57d0e2bece1a07bb0b55 100644
+--- a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
++++ b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+@@ -29,10 +29,10 @@ export class IslemTalepCodeValue {
+         name: 'İrtifak Hakkı',
+         code: 2
+     };
+-    kiralama = {
++    kirayaAlma = {
+         value: 5,
+         isIslemTuru: true,
+-        name: 'Kiralama',
++        name: 'Kiraya Alma',
+         code: 3
+     };
+     kamulastirma = {
+@@ -166,7 +166,7 @@ export class IslemTurleri {
+         code: 2,
+         name: ''
+     };
+-    kiralama = {
++    kirayaAlma = {
+         code: 3,
+         name: ''
+     };
+@@ -266,7 +266,7 @@ const ozelOkul = new RowData(false, talepTurleri.ozel_okul);
+ const genelImar = new RowData(false, talepTurleri.genel_imar);
+ const kamuYarari = new RowData(false, talepTurleri.kamu_yarari);
+ const irtifakHakki = new RowData(true, islemTurleri.irtifak_hakki);
+-const kiralama = new RowData(true, islemTurleri.kiralama);
++const kirayaAlma = new RowData(true, islemTurleri.kirayaAlma);
+ const kamulastirma = new RowData(true, islemTurleri.kamulastirma);
+ const kamulastirmaDavalari = new RowData(true, islemTurleri.kamulastirma_davalari);
+ const tahsis = new RowData(true, islemTurleri.tahsis);
+@@ -279,5 +279,5 @@ const geciciKullanim = new RowData(true, islemTurleri.gecici_kullanim);
+ const kesinTahsis = new RowData(false, talepTurleri.kesin_tahsis);
+ 
+ export const islemAnalizRows = [planYapimRevizyon, ozelOkul, genelImar, kamuYarari,
+-    irtifakHakki, kiralama, kamulastirma, kamulastirmaDavalari, tahsis,
++    irtifakHakki, kirayaAlma, kamulastirma, kamulastirmaDavalari, tahsis,
+     onTahsis, tahsisKaldirma, protokol, kirayaVerme, imarDavalari, geciciKullanim, kesinTahsis];
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.html b/src/app/module-report/module-report-statistics/module-report-statistics.component.html
+index 543b22146e996f2c3061d5126f673cd9949aca51..371699eb0eb253f36893361946506b221b179988 100644
+--- a/src/app/module-report/module-report-statistics/module-report-statistics.component.html
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.html
+@@ -15,7 +15,7 @@
+         <option value="2"> Genel İmar </option>
+         <option value="3"> Kamu Yararı </option>
+         <option value="4"> İrtifak Hakkı </option>
+-        <option value="5"> Kiralama </option>
++        <option value="5"> Kiraya Alma </option>
+         <option value="6"> Kamulaştırma </option>
+         <option value="7"> Dava </option>
+         <option value="8"> Tahsis </option>
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 9ea1e8952606f99fb420775de596c02631dfd6cb..a704d3d7621ea14ed8b21819a5cb8748077a1955 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -240,7 +240,7 @@ export class ModuleReportComponent implements OnInit {
+             return lowerCasedValue;
+           },
+           filterOptions: [
+-            'equals', 'notEqual', 'contains', 'notContains', 'startsWith', 'endsWith',
++            'contains', 'notEqual', 'equals', 'notContains', 'startsWith', 'endsWith',
+             {
+               displayKey: 'isNull',
+               displayName: 'Boş Olanlar',
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 7cfdec0822633c5c342b6d42ac6c89e4836ee430..4df89fec833908d44a6e54254b67d52f1aaed771 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -94,6 +94,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     this.openDefault = dialogData.specialState;
+ 
+     this.createInitializedForm();
++    this.initalizeAGGrid();
+ 
+     this.getLayerFields().subscribe(fields => {
+       this.fields = fields;
+@@ -215,13 +216,14 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     const formData = this.findFormData(formControlName);
+ 
+-    if (this.moduleData.value === 14) {
++    if (this.moduleData.value === 14 || this.moduleData.value === 11) {
++      // Kamulaştırma Teklifdeki kamulaştırma bedeli için de dotmethod eklenecek
+       // if (this.moduleData.value === 13) {
+       if (formElement.name === 'talep_eden_kurum') {
+         formObject['detay'] = -1;
+         formObject['yatirim_ad'] = -1;
+       }
+-      if (formElement.name === 'esas_no' || formElement.name === 'karar_no') {
++      if (formElement.name === 'esas_no' || formElement.name === 'karar_no' || formElement.name === 'ucret') {
+         formElement.value = this.dotMethod(formElement.value);
+         this.formGroup.controls[formElement.name].setValue(formElement.value);
+       }
+@@ -1043,6 +1045,13 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           value = this.dotMethod(commaValue);
+         }
+       }
++      if (recentFormValues !== undefined && this.moduleData.value === 11
++        && (formControlName === 'ucret')) {
++        if (this.processState === 0 && value !== null) {
++          const commaValue = value.replace('.', ',');
++          value = this.dotMethod(commaValue);
++        }
++      }
+ 
+       const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
+ 
+@@ -1480,7 +1489,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+   onGridReady() {
+     const processState = this.processState;
+-    this.initalizeAGGrid();
++
+     const colDefs = this.createMalikColumDefinitions();
+     this.agGrid.api.setColumnDefs(colDefs);
+ 
+@@ -1660,6 +1669,35 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         colId: fieldName,
+         field: fieldName,
+         filter: filterType,
++        filterParams: {
++          textCustomComparator: (filter: string, value: string, filterText: string) => {
++            // @ts-ignore
++            const filterTextLowerCase = filterText.toLocaleLowerCase('tr-TR');
++            // @ts-ignore
++            const valueLowerCase = value.toLocaleLowerCase('tr-TR');
++
++            switch (filter) {
++              case 'contains':
++                return valueLowerCase.indexOf(filterTextLowerCase) >= 0;
++              case 'notContains':
++                return valueLowerCase.indexOf(filterTextLowerCase) === -1;
++              case 'equals':
++                return valueLowerCase === filterTextLowerCase;
++              case 'notEqual':
++                return valueLowerCase !== filterTextLowerCase;
++              case 'startsWith':
++                return valueLowerCase.indexOf(filterTextLowerCase) === 0;
++              case 'endsWith':
++                const index = valueLowerCase.lastIndexOf(filterTextLowerCase);
++                return index >= 0 && index === (valueLowerCase.length - filterTextLowerCase.length);
++              default:
++                // should never happen
++                console.warn('invalid filter type ' + filter);
++                return false;
++            }
++          },
++          caseSensitive: true
++        }
+       };
+     }
+   }
+diff --git a/src/app/modules/module-list/module-list.component.scss b/src/app/modules/module-list/module-list.component.scss
+index 356ba56614fb20c0f911ba0eeeda6792942b26af..ded4e623b8e34ee3ad2eecc7b2444ed03525c6d0 100644
+--- a/src/app/modules/module-list/module-list.component.scss
++++ b/src/app/modules/module-list/module-list.component.scss
+@@ -13,7 +13,6 @@
+ }
+ 
+ .module-buttons {
+-  display: flex;
+   flex-direction: row-reverse;
+ }
+ 
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index 563de6505eac19e435d26f201fc26ecb33ba54a6..7138f56d033fccd3e01ea3c460cfef824b6bee5c 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -105,12 +105,21 @@ export class RendererComponent implements ICellRendererAngularComp {
+         this.cell = { row: params.value, col: params.colDef.headerName };
+ 
+         if (params['http'] === true && params.data !== undefined) {
++
++            let binaDegisiklikOlumluDurumu = false;
++
+             const objectId = <number>params.data.objectid;
+             const state = params.data.durumu;
+             this.httpStatus = params['http'];
+             this.loadingStatus = true;
+             const id = params['id'];
+-            if (state === 6) {
++
++            const movementData = params.context['componentParent']['movementData']['type'];
++            if (movementData === 13 && state === 2) { // İşlem Bina Değişiklikse ve Hareket Olumlu İse De Belge Eklemeli
++                binaDegisiklikOlumluDurumu = true;
++            }
++            // Önceden sadece Gerçekleşti Hareketinde Belge Vardı. Artık Bina Değişiklik Olumlu Hareketinden Sonra da Olacak.
++            if (state === 6 || binaDegisiklikOlumluDurumu) {
+                 const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson` +
+                     `&token=${sessionStorage.getItem('CBSArcToken')}`;
+                 this.http.get(url).subscribe(res => {
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 6d7ae0b92271a3bc9570e78616ab219c8cc8d5e0..d2c6797dfd9721e76219f0792e87c0cdb3bf9706 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -91,9 +91,9 @@ export class MovementCreateComponent implements OnInit {
+       // Talep türü Uzlaşma Dilekçesi(10) veya Diğer(12) ise hareketler değişecek
+       const talepTuru = this.moduleData['talep_turu'];
+       const domainValues = movementData.field.domain_values;
+-      const extractDomainValuesForCustomize = [8, 10, 11, 12, 13, 14, 15, 16, 17];
++      const extractDomainValuesForCustomize = [10, 11, 12, 13, 14, 15, 16, 17];
+       // Talep Türü 10 ve 12 Olanların Hareketlerinden Bunlar Çıkmalı
+-      const extractDomainValuesForDefault = [3]; // Talep Türü 11 Olanların Hareketlerinden Bunlar Çıkmalı
++      const extractDomainValuesForDefault = [2, 3]; // Talep Türü 11 Olanların Hareketlerinden Bunlar Çıkmalı
+       if (talepTuru === 10 || talepTuru === 12) {
+         for (let i = 0; i < extractDomainValuesForCustomize.length; i++) {
+           const extractDomain = extractDomainValuesForCustomize[i];
+diff --git a/src/assets/Modules.json b/src/assets/Modules.json
+index 3ed56bc342f849bbae5b48a94592f6eda8437af5..76ee0e6873a455f5ca9ac3857877fa2471ac09ef 100644
+--- a/src/assets/Modules.json
++++ b/src/assets/Modules.json
+@@ -15,7 +15,7 @@
+     {
+       "item": 2,
+       "islem_turu": 3,
+-      "title": "Kiralama"
++      "title": "Kiraya Alma"
+     },
+     {
+       "item": 0,
+@@ -70,7 +70,7 @@
+     {
+       "item": 2,
+       "islem_turu": 3,
+-      "title": "Kiralama"
++      "title": "Kiraya Alma"
+     },
+     {
+       "item": 7,
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index 87246585825ad802d89ce7448adfea3687fc0459..0403576b3677b34e0a10b576a255f87d89d93a67 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -459,7 +459,7 @@
+             "required": true
+           },
+           {
+-            "alias": "Kira Süresi",
++            "alias": "Kira Bitiş Tarihi",
+             "name": "bitis_tarihi",
+             "type": "date",
+             "required": true
+@@ -643,7 +643,7 @@
+             "required": true
+           },
+           {
+-            "alias": "Kira Süresi",
++            "alias": "Kira Bitiş Tarihi",
+             "name": "bitis_tarihi",
+             "type": "date",
+             "required": true
+@@ -655,17 +655,11 @@
+           6
+         ],
+         "fields": [{
+-            "alias": "Gelen Tarih",
++            "alias": "Tarih",
+             "name": "gelen_tarih",
+             "type": "date",
+             "required": true
+           },
+-          {
+-            "alias": "Gelen Sayı",
+-            "name": "gelen_sayi",
+-            "type": "number",
+-            "required": true
+-          },
+           {
+             "alias": "Belge",
+             "name": "attachment",
+@@ -1067,6 +1061,10 @@
+         {
+           "value": 7,
+           "name": ""
++        },
++        {
++          "value": 37,
++          "name": ""
+         }
+       ],
+       "chosen_values": []
+@@ -1074,11 +1072,11 @@
+     "defaultField": "durumu",
+     "allowedStates": [{
+         "state": 1,
+-        "values": [2, 3, 4, 6, 7]
++        "values": [2, 3, 4, 6, 7, 37]
+       },
+       {
+         "state": 2,
+-        "values": [5, 6, 7]
++        "values": [5, 6, 7, 37]
+       },
+       {
+         "state": 3,
+@@ -1086,7 +1084,7 @@
+       },
+       {
+         "state": 4,
+-        "values": [2, 3, 6, 7]
++        "values": [2, 3, 6, 7, 37]
+       },
+       {
+         "state": 5,
+@@ -1098,7 +1096,7 @@
+       },
+       {
+         "state": 7,
+-        "values": [1, 2, 3, 4, 5, 6, 7]
++        "values": [1, 2, 3, 4, 5, 6, 7, 37]
+       }
+     ],
+     "formData": [{
+@@ -1233,6 +1231,10 @@
+       "type": "domain",
+       "required": true,
+       "domain_values": [{
++          "value": 2,
++          "name": ""
++        },
++        {
+           "value": 3,
+           "name": ""
+         },
+@@ -1293,24 +1295,28 @@
+     },
+     "defaultField": "durumu",
+     "allowedStates": [{
++        "state": 2,
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++      },
++      {
+         "state": 3,
+-        "values": [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       },
+       {
+         "state": 4,
+-        "values": [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       },
+       {
+         "state": 5,
+-        "values": [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       },
+       {
+         "state": 7,
+-        "values": [1, 2, 3, 4, 5, 6, 7, 37]
++        "values": [2, 3, 4, 5, 6, 7, 37]
+       },
+       {
+         "state": 9,
+-        "values": [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       },
+       {
+         "state": 10,
+@@ -1342,11 +1348,11 @@
+       },
+       {
+         "state": 17,
+-        "values": [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       },
+       {
+         "state": 37,
+-        "values": [3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
++        "values": [2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 37]
+       }
+     ],
+     "formData": [{
+@@ -1925,7 +1931,20 @@
+         "states": [
+           7
+         ],
+-        "fields": [{
++        "fields": [
++          {
++            "alias": "Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
+           "alias": "Açıklama",
+           "name": "aciklama",
+           "type": "text",
+@@ -2258,51 +2277,51 @@
+     "defaultField": "durumu",
+     "allowedStates": [{
+         "state": 15,
+-        "values": [7, 35]
++        "values": [35]
+       },
+       {
+         "state": 25,
+-        "values": [7, 35]
++        "values": [35]
+       },
+       {
+         "state": 26,
+-        "values": [7, 27, 28, 29, 30, 31, 32, 33, 34]
++        "values": [27, 28, 29, 30, 31, 32, 33, 34]
+       },
+       {
+         "state": 27,
+-        "values": [7, 28, 29, 30, 31, 32, 33, 34]
++        "values": [28, 29, 30, 31, 32, 33, 34]
+       },
+       {
+         "state": 28,
+-        "values": [7, 29, 30, 31, 32, 33, 34]
++        "values": [29, 30, 31, 32, 33, 34]
+       },
+       {
+         "state": 29,
+-        "values": [7, 30, 31, 32, 33, 34]
++        "values": [30, 31, 32, 33, 34]
+       },
+       {
+         "state": 30,
+-        "values": [7, 31, 32, 33, 34]
++        "values": [31, 32, 33, 34]
+       },
+       {
+         "state": 31,
+-        "values": [7, 32, 33, 34]
++        "values": [32, 33, 34]
+       },
+       {
+         "state": 32,
+-        "values": [7, 33, 34]
++        "values": [33, 34]
+       },
+       {
+         "state": 33,
+-        "values": [7]
++        "values": [15, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
+       },
+       {
+         "state": 34,
+-        "values": [7]
++        "values": []
+       },
+       {
+         "state": 35,
+-        "values": [7, 15, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
++        "values": [15, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
+       }
+     ],
+     "formData": [{
+@@ -2593,6 +2612,12 @@
+             "name": "attachment",
+             "type": "file",
+             "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
+           }
+         ]
+       },
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 7aee56bc4d528b47ce885fdd89dbc2381acee8ac..769283ba3f0fe1e0fb0c02b6e2e4bfc908645fbe 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -1634,7 +1634,7 @@
+     ]
+   },
+   {
+-    "type": "Kiralama",
++    "type": "Kiraya Alma",
+     "value": 3,
+     "formData": [
+       [{
+@@ -3569,7 +3569,7 @@
+           "alias": "Açıklama",
+           "name": "aciklama",
+           "type": "text",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         },
+@@ -3577,7 +3577,7 @@
+           "alias": "Belge",
+           "name": "attachment",
+           "type": "file",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         }
+@@ -3764,7 +3764,7 @@
+           "alias": "Açıklama",
+           "name": "aciklama",
+           "type": "text",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         },
+@@ -3772,7 +3772,7 @@
+           "alias": "Belge",
+           "name": "attachment",
+           "type": "file",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         }
+@@ -3922,7 +3922,7 @@
+           "alias": "Açıklama",
+           "name": "aciklama",
+           "type": "text",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         },
+@@ -3930,7 +3930,7 @@
+           "alias": "Belge",
+           "name": "attachment",
+           "type": "file",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         }
+@@ -3942,7 +3942,7 @@
+     "value": 9,
+     "formData": [
+       [{
+-          "alias": "Gelen Tarih",
++          "alias": "Tarih",
+           "name": "islem_tarihi",
+           "type": "date",
+           "required": true,
+@@ -3950,7 +3950,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Sayı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
