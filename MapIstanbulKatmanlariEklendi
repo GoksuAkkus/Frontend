@@ -1,0 +1,813 @@
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 9fbcee03a59237cda60d1fae276c85abe77c2fed..ecc4c71d9040e1cdf128b3a9e98275838a2b40b1 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -264,13 +264,28 @@ export class EsriMapComponent implements OnInit {
+   registerMapIstToken(identityManager: esri.IdentityManager) {
+     this.web_data_service.getMapIstToken().subscribe(result => {
+       sessionStorage.setItem('mapIstToken', result.token);
+-      const istToken = {
++      const tadilat1000 = {
+         expires: Number(result.expires),
+-        server: environment.mapIstServiceUrl,
++        server: environment.mapIstPlan1000Tadilat,
+         ssl: false,
+         token: result.token
+       };
+-      identityManager.registerToken(istToken);
++      const sayisal1000 = {
++        expires: Number(result.expires),
++        server: environment.mapIstPlan1000Sayisal,
++        ssl: false,
++        token: result.token
++      };
++      const tadilat5000 = {
++        expires: Number(result.expires),
++        server: environment.mapIstPlan5000Sayisal,
++        ssl: false,
++        token: result.token
++      };
++      identityManager.registerToken(tadilat1000);
++      identityManager.registerToken(sayisal1000);
++      identityManager.registerToken(tadilat5000);
++
+     });
+   }
+ 
+@@ -320,7 +335,7 @@ export class EsriMapComponent implements OnInit {
+         this.createOtherLayers(map, FeatureLayer, GraphicsLayer);
+         this.createTKGMLayers(map);
+         this.createMaksLayers(map);
+-        this.createMapIstanbulLayers(map);
++        this.createMapIstanbulLayers2(map);
+         this.createMETSLayers(map);
+         // this.createSitAlanLayer(map);
+       });
+@@ -331,7 +346,7 @@ export class EsriMapComponent implements OnInit {
+       this.createOtherLayers(map, FeatureLayer, GraphicsLayer);
+       this.createTKGMLayers(map);
+       this.createMaksLayers(map);
+-      this.createMapIstanbulLayers(map);
++      this.createMapIstanbulLayers2(map);
+       this.createMETSLayers(map);
+       // this.createSitAlanLayer(map);
+     }
+@@ -590,6 +605,50 @@ export class EsriMapComponent implements OnInit {
+     });
+   }
+ 
++  createMapIstanbulLayers2(map: esri.Map) {
++    loadModules(['esri/layers/MapImageLayer']).then(([MapImageLayer]) => {
++      const MapImageLayerConstructor = <esri.MapImageLayerConstructor>MapImageLayer;
++
++      const tadilat2BProperties = <esri.MapImageLayerProperties>{
++        url: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
++        imageFormat: 'png',
++        opacity: 1,
++        imageTransparency: true,
++        visible: false,
++        title: '2-B Tadilat 1/1000'
++      };
++
++      const tadilat2B = new MapImageLayerConstructor(tadilat2BProperties);
++      tadilat2B.set('MAPISTANBUL', true);
++
++      const mapIstanbul3BProperties = <esri.MapImageLayerProperties>{
++        url: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
++        imageFormat: 'png',
++        opacity: 1,
++        imageTransparency: true,
++        visible: false,
++        title: '3-B 1/1000'
++      };
++
++      const mapIstanbul3B = new MapImageLayerConstructor(mapIstanbul3BProperties);
++      mapIstanbul3B.set('MAPISTANBUL', true);
++
++      const mapIstanbul4BProperties = <esri.MapImageLayerProperties>{
++        url: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer',
++        imageFormat: 'png',
++        opacity: 1,
++        imageTransparency: true,
++        visible: false,
++        title: '4-B 1/5000'
++      };
++
++      const mapIstanbul4B = new MapImageLayerConstructor(mapIstanbul4BProperties);
++      mapIstanbul4B.set('MAPISTANBUL', true);
++
++      map.addMany([tadilat2B, mapIstanbul3B, mapIstanbul4B]);
++    });
++  }
++
+   createMAKSWMSLayer(WMSLayerConstructor: esri.WMSLayerConstructor, title: string, layername: string) {
+     const wmsLayer = new WMSLayerConstructor({
+       url: environment.ws + 'Cbs/maksProxy?',
+diff --git a/src/app/info/diff-info/diff-info.component.ts b/src/app/info/diff-info/diff-info.component.ts
+index ae5ffa7a5f24ed750697b4b331461741c26bbca4..c5ed17d76d2b482a3044efbb70b7b038b433f7d0 100644
+--- a/src/app/info/diff-info/diff-info.component.ts
++++ b/src/app/info/diff-info/diff-info.component.ts
+@@ -139,8 +139,7 @@ export class DiffInfoComponent implements OnInit {
+       return;
+     }
+ 
+-    if (layerTitle === 'İl' || layerTitle === 'İlçe' || layerTitle === 'Mahalle' ||
+-      layerTitle === 'Kadastro Parselleri') {
++    if (layerTitle === 'İl' || layerTitle === 'İlçe' || layerTitle === 'Mahalle') {
+       this._showFormControl = true;
+     } else {
+       this._showFormControl = false;
+@@ -671,12 +670,26 @@ export class DiffInfoComponent implements OnInit {
+         this.generateID(5, field.name, 'Planlı Alan Sınırı').then(generateID => {
+           this.checkGeneratedId('Planlı Alan Sınırı', editFeature, generateID, field, formGroup);
+         });
++      } else if (field.name === 'refid' && featureLayer.title === 'Kadastro Parselleri') {
++        this.addFieldControl(field, editFeature, formGroup, isDisabled);
++        this.generateID(4, field.name, 'Kadastro Parselleri').then(generateID => {
++          this.checkGeneratedId('Kadastro Parselleri', editFeature, generateID, field, formGroup);
++        });
+       } else if (field.name === 'yuzey_alan') {
+         this.addFieldControl(field, editFeature, formGroup);
+         this.measureService.getGeometricArea(<esri.Polygon>editFeature.geometry).then(area => {
+           editFeature.setAttribute(field.name, area);
+           formGroup.controls[field.name].setValue(area);
+         });
++      } else if (field.name === 'tasinmaz_id' || field.name === 'kimlik_no') {
++        this.addFieldControl(field, editFeature, formGroup);
++
++        editFeature.setAttribute(field.name, 0);
++        formGroup.controls[field.name].setValue(0);
++        const fieldValue = editFeature.getAttribute(field.name);
++        const formControl = this.createFormControl(field.name, 'number', false, fieldValue, true);
++
++        formControl['type'] = 'number';
+       } else {
+         let required = false;
+         const requiredFields: Array<string> = featureLayer['requiredFields'];
+@@ -882,7 +895,9 @@ export class DiffInfoComponent implements OnInit {
+         };
+ 
+         return foundFeatureLayer.queryFeatures(foundFeatureLayerQuery).then(refIdFeatureSet => {
+-          this.progressDialog.close();
++          if (this.progressDialog) {
++            this.progressDialog.close();
++          }
+           this._showFormControl = true;
+ 
+           const generatedRefID = this.setGenerateID(refIdFeatureSet.features[0], splitParameter);
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index 543b31e4ed132b51f7b38b8aae8dc68ede3a9e61..f990482b9accd0e2a6717cc7fc075311f4330cd7 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -312,7 +312,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     const tasinmaz_id = this.infoObject.getAttribute('tasinmazID');
+ 
+     const parcelQueryProperties: esri.QueryProperties = {
+-      where: `tasinmaz_id = ${tasinmaz_id} and mevcut_kullanim <> 9`,
++      where: `tasinmaz_id = ${tasinmaz_id} and (mevcut_kullanim IS NULL or mevcut_kullanim <> 9)`,
+       returnGeometry: false,
+     };
+ 
+diff --git a/src/app/info/object-info/object-info.component.css b/src/app/info/object-info/object-info.component.css
+index 894a73251e4942f77f7b9c08021feac5dced81eb..f91c271b2ed9a65bbbd1db587b6d24e33d7b02dc 100644
+--- a/src/app/info/object-info/object-info.component.css
++++ b/src/app/info/object-info/object-info.component.css
+@@ -85,3 +85,8 @@
+   text-align: left;
+   padding: .572rem
+ }
++
++.additional-buttons:disabled {
++  background: #dddddd;
++  color: black;
++}
+diff --git a/src/app/info/object-info/object-info.component.html b/src/app/info/object-info/object-info.component.html
+index cbe63bda14addc6cc8697bbe0856cb5fa0cd7af4..04d205f4f4a7b5dd0461976f7fec308145f919cf 100644
+--- a/src/app/info/object-info/object-info.component.html
++++ b/src/app/info/object-info/object-info.component.html
+@@ -22,8 +22,8 @@
+       (click)="onOpenSerhBeyanMalik()">
+     <input type="button" class="additional-buttons" value="Geldiği Parsel" (click)="onOpenParcelHistory($event)">
+     <input type="button" class="additional-buttons" value="Gittiği Parsel" (click)="onOpenParcelHistory($event)">
+-    <!-- <input *ngIf="_tabData.attributes.tapuBolumDurum === 'Aktif'" type="button" class="additional-buttons"
+-      value="Meb Parsele Ekle 1" (click)="onSaveParcel()"> -->
++    <input *ngIf="_tabData.attributes.tapuBolumDurum === 'Aktif' && _permAddMebParcel && _is_parcel_exist"
++    type="button" class="additional-buttons" value="Meb Parseli Güncelle" (click)="onSaveParcel()">
+ 
+     <input *ngIf="_tabData.attributes.tapuBolumDurum === 'Aktif' && !_is_parcel_exist && _permAddMebParcel" type="button" class="additional-buttons"
+       value="Meb Parsele Ekle" (click)="onEditAndSaveData($event)">
+diff --git a/src/app/info/object-info/object-info.component.ts b/src/app/info/object-info/object-info.component.ts
+index 68150d2d0173752f1093a2bb38bb760a41ad7a7e..16450f8a9eac02176dd3bef67fef21cdafa23353 100644
+--- a/src/app/info/object-info/object-info.component.ts
++++ b/src/app/info/object-info/object-info.component.ts
+@@ -531,7 +531,11 @@ export class ObjectInfoComponent implements OnInit, OnDestroy {
+         if (formValue !== undefined) {
+           return new FormControl({ value: formValue, disabled: isDisabled }, validator);
+         } else {
+-          return new FormControl(-1, validator);
++          if (formControlName === 'mevcut_kullanim' || formControlName === 'aktif_mi') {
++            return new FormControl({ value: undefined, disabled: isDisabled }, validator);
++          } else {
++            return new FormControl({ value: -1, disabled: isDisabled }, validator);
++          }
+         }
+       } else {
+         return new FormControl({ value: formValue, disabled: isDisabled }, validator);
+@@ -541,7 +545,11 @@ export class ObjectInfoComponent implements OnInit, OnDestroy {
+         if (formValue !== undefined) {
+           return new FormControl({ value: formValue, disabled: isDisabled });
+         } else {
+-          return new FormControl(-1);
++          if (formControlName === 'mevcut_kullanim' || formControlName === 'aktif_mi') {
++            return new FormControl(undefined);
++          } else {
++            return new FormControl(-1);
++          }
+         }
+       } else {
+         return new FormControl({ value: formValue, disabled: isDisabled });
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index e21bd59b4c1a5d9ea853b3c88dae732515869ad3..f2e3482a80f5db69827e9a8bc3d56ec367716d4a 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -684,10 +684,6 @@ export class MainComponent implements OnInit {
+       console.error('Operation Not Implemented');
+     }
+ 
+-    if (layer.title === 'Kadastro Parselleri' && operation === 2) {
+-      this.deleteSerhBeyanMalik(feature);
+-    }
+-
+     if (operation === 1) {
+       const originalLayerQueryProperties = <esri.QueryProperties>{
+         where: `globalid= '${feature.getAttribute('globalid')}'`,
+@@ -735,57 +731,84 @@ export class MainComponent implements OnInit {
+         });
+       }
+ 
+-      let progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Çekiliyor', false, {}, false, 'light');
+-      dialog.close();
++      if (tasinmazID !== 0) {
++        let progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Çekiliyor', false, {}, false, 'light');
++        dialog.close();
+ 
+-      this.webDataService.getSerhBeyanMalik(tasinmazID, tapuAlan, mahalleID, ada, parsel).subscribe(serhBeyanMalikData => {
+-        progressRef.close();
+-        const malikData = serhBeyanMalikData.malik;
+-        const malikFields = serhBeyanMalikData.malikFields;
+-        const serhData = serhBeyanMalikData.serhBeyan;
+-        const serhFields = serhBeyanMalikData.serhBeyanFields;
++        this.webDataService.getSerhBeyanMalik(tasinmazID, tapuAlan, mahalleID, ada, parsel).subscribe(serhBeyanMalikData => {
++          progressRef.close();
++          const malikData = serhBeyanMalikData.malik;
++          const malikFields = serhBeyanMalikData.malikFields;
++          const serhData = serhBeyanMalikData.serhBeyan;
++          const serhFields = serhBeyanMalikData.serhBeyanFields;
+ 
+-        this.convertSerhBeyanFields(malikData, malikFields);
+-        this.convertSerhBeyanFields(serhData, serhFields);
++          this.convertSerhBeyanFields(malikData, malikFields);
++          this.convertSerhBeyanFields(serhData, serhFields);
+ 
+-        const malikTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 15 + '/addFeatures';
+-        const serhTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 16 + '/addFeatures';
++          const malikTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 15 + '/addFeatures';
++          const serhTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 16 + '/addFeatures';
+ 
+-        const requests = [];
+-        requests.push(this.addSerhBeyanMalik(malikTableURL, malikData));
+-        requests.push(this.addSerhBeyanMalik(serhTableURL, serhData));
++          const requests = [];
++          requests.push(this.addSerhBeyanMalik(malikTableURL, malikData));
++          requests.push(this.addSerhBeyanMalik(serhTableURL, serhData));
+ 
+-        progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Kaydediliyor', false, {}, false, 'light');
++          progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Kaydediliyor', false, {}, false, 'light');
+ 
+-        forkJoin(requests).subscribe(addFeatureResponses => {
+-          progressRef.close();
+-          progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Parsel Kaydediliyor', false, {}, false, 'light');
++          forkJoin(requests).subscribe(addFeatureResponses => {
++            progressRef.close();
++            progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Parsel Kaydediliyor', false, {}, false, 'light');
+ 
+-          layer.applyEdits(edits).then(applyEditRes => {
+-            const editResults: Array<esri.FeatureEditResult> = applyEditRes[operationProperty];
++            layer.applyEdits(edits).then(applyEditRes => {
++              const editResults: Array<esri.FeatureEditResult> = applyEditRes[operationProperty];
+ 
+-            const errorResult = editResults.find(editResult => editResult.error !== null);
+-            if (errorResult === undefined) {
+-              const message = 'İşlem Onaya Düşmeden tamamlandı';
+-              progressRef.close();
++              const errorResult = editResults.find(editResult => editResult.error !== null);
++              if (errorResult === undefined) {
++                const message = 'İşlem Onaya Düşmeden tamamlandı';
++                progressRef.close();
+ 
+-              this.addToHistory(dialog, feature, operation, layer, message);
+-            } else {
+-              dialog.close();
+-              this.notify.open('Düzenleme İşlemi Sırasında Hata Oluştu', 'danger', 10);
+-            }
++                this.addToHistory(dialog, feature, operation, layer, message);
++              } else {
++                dialog.close();
++                this.notify.open('Düzenleme İşlemi Sırasında Hata Oluştu', 'danger', 10);
++              }
+ 
+-            description = `${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
+-            this.auth.createLog(description, action);
++              description = `${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
++              this.auth.createLog(description, action);
++            });
+           });
+         });
+-      });
++      } else {
++        const progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Parsel Kaydediliyor', false, {}, false, 'light');
++
++        layer.applyEdits(edits).then(applyEditRes => {
++          const editResults: Array<esri.FeatureEditResult> = applyEditRes[operationProperty];
++
++          const errorResult = editResults.find(editResult => editResult.error !== null);
++          if (errorResult === undefined) {
++            const message = 'İşlem Onaya Düşmeden tamamlandı';
++            progressRef.close();
++
++            this.addToHistory(dialog, feature, operation, layer, message);
++          } else {
++            dialog.close();
++            this.notify.open('Düzenleme İşlemi Sırasında Hata Oluştu', 'danger', 10);
++          }
++
++          description = `${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
++          this.auth.createLog(description, action);
++        });
++
++      }
++
+     } else {
+       layer.applyEdits(edits).then(applyEditRes => {
+         const editResults: Array<esri.FeatureEditResult> = applyEditRes[operationProperty];
+ 
+         const errorResult = editResults.find(editResult => editResult.error !== null);
+         if (errorResult === undefined) {
++          if (layer.title === 'Kadastro Parselleri' && operation === 2) {
++            this.deleteSerhBeyanMalik(feature);
++          }
+           const message = 'İşlem Onaya Düşmeden tamamlandı';
+ 
+           this.addToHistory(dialog, feature, operation, layer, message);
+@@ -836,7 +859,7 @@ export class MainComponent implements OnInit {
+   }
+ 
+   addToHistory(dialog: DialogRef, feature: esri.Graphic, operation: number,
+-    layer: esri.FeatureLayer, message: string, originalFeature?: esri.Graphic, addedGlobalID?: string) {
++    layer: esri.FeatureLayer, message: string, isDelete?, originalFeature?: esri.Graphic, addedGlobalID?: string) {
+     if (operation === 3) {
+       this.notify.open(message, 'success', 10);
+       dialog.close();
+@@ -940,7 +963,7 @@ export class MainComponent implements OnInit {
+ 
+     if (editFeature === undefined) {
+       if (isDelete === true) {
+-        this.deletePendingLayerFeature(layerID, originalFeature, dialog, currentLayer);
++        this.deletePendingLayerFeature(layerID, originalFeature, dialog, currentLayer, 'INSERT', isDelete);
+ 
+         const action = 'Veri Düzenleme Red';
+         const description = `${originalFeature.attributes['objectid']} ID'li veri düzenleme işlemi reddedildi`;
+@@ -973,27 +996,22 @@ export class MainComponent implements OnInit {
+           originalFeature.layer = dataLayer;
+         }
+ 
+-        this.deletePendingInsertUpdate(layerID, originalFeature, originalFeature, dialog);
++        this.deletePendingInsertUpdate(layerID, originalFeature, originalFeature, dialog, isDelete);
+       }
+     } else {
+       const operation = editFeature.getAttribute('operation');
+-
+       if (isDelete === true) {
+-        this.deletePendingLayerFeature(layerID, pendingFeature, dialog, currentLayer);
++        this.deletePendingLayerFeature(layerID, pendingFeature, dialog, currentLayer, operation, isDelete);
+ 
+         const action = 'Veri Düzenleme Red';
+         const description = `${originalFeature.attributes['objectid']} ID'li veri düzenleme işlemi reddedildi`;
+         this.auth.createLog(description, action);
+       } else {
+         if (operation === 'UPDATE') {
+-          this.deletePendingInsertUpdate(layerID, originalFeature, editFeature, dialog);
++          this.deletePendingInsertUpdate(layerID, originalFeature, editFeature, dialog, isDelete);
+         } else if (operation === 'DELETE') {
+           const layer = <esri.FeatureLayer>originalFeature.layer;
+ 
+-          if (layer.title === 'Kadastro Parselleri') {
+-            this.deleteSerhBeyanMalik(originalFeature);
+-          }
+-
+           const applyEdits = <esri.FeatureLayerApplyEditsEdits>{
+             deleteFeatures: [originalFeature]
+           };
+@@ -1002,7 +1020,7 @@ export class MainComponent implements OnInit {
+             const errorResult = editResults.find(editResult => editResult.error !== null);
+             if (errorResult === undefined) {
+               this.addToHistory(dialog, originalFeature, 2, currentLayer, '', originalFeature).then(hist => {
+-                this.deletePendingLayerFeature(layerID, pendingFeature, dialog, currentLayer);
++                this.deletePendingLayerFeature(layerID, pendingFeature, dialog, currentLayer, operation, isDelete);
+               });
+             } else {
+               this.notify.open('Düzenleme Onay/Red Hatalı Sonuçlandı', 'danger', 10);
+@@ -1101,7 +1119,8 @@ export class MainComponent implements OnInit {
+     });
+   }
+ 
+-  deletePendingInsertUpdate(layerID: number, originalFeature: esri.Graphic, editFeature: esri.Graphic, dialog: DialogRef) {
++  deletePendingInsertUpdate(layerID: number, originalFeature: esri.Graphic, editFeature: esri.Graphic,
++    dialog: DialogRef, isDelete: boolean) {
+     const layer = <esri.FeatureLayer>originalFeature.layer;
+     const operation = editFeature.getAttribute('operation');
+     const applyEdits = <esri.FeatureLayerApplyEditsEdits>{
+@@ -1141,46 +1160,54 @@ export class MainComponent implements OnInit {
+           });
+         }
+ 
+-        let progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Çekiliyor', false, {}, false, 'light');
+-        dialog.close();
++        if (tasinmazID !== 0) {
++          let progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Çekiliyor', false, {}, false, 'light');
++          dialog.close();
+ 
+-        this.webDataService.getSerhBeyanMalik(tasinmazID, tapuAlan, mahalleID, ada, parsel).subscribe(serhBeyanMalikData => {
+-          progressRef.close();
+-          const malikData = serhBeyanMalikData.malik;
+-          const malikFields = serhBeyanMalikData.malikFields;
+-          const serhData = serhBeyanMalikData.serhBeyan;
+-          const serhFields = serhBeyanMalikData.serhBeyanFields;
++          this.webDataService.getSerhBeyanMalik(tasinmazID, tapuAlan, mahalleID, ada, parsel).subscribe(serhBeyanMalikData => {
++            progressRef.close();
++            const malikData = serhBeyanMalikData.malik;
++            const malikFields = serhBeyanMalikData.malikFields;
++            const serhData = serhBeyanMalikData.serhBeyan;
++            const serhFields = serhBeyanMalikData.serhBeyanFields;
+ 
+-          this.convertSerhBeyanFields(malikData, malikFields);
+-          this.convertSerhBeyanFields(serhData, serhFields);
++            this.convertSerhBeyanFields(malikData, malikFields);
++            this.convertSerhBeyanFields(serhData, serhFields);
+ 
+-          const malikTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 15 + '/addFeatures';
+-          const serhTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 16 + '/addFeatures';
++            const malikTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 15 + '/addFeatures';
++            const serhTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 16 + '/addFeatures';
+ 
+-          const requests = [];
+-          requests.push(this.addSerhBeyanMalik(malikTableURL, malikData));
+-          requests.push(this.addSerhBeyanMalik(serhTableURL, serhData));
++            const requests = [];
++            requests.push(this.addSerhBeyanMalik(malikTableURL, malikData));
++            requests.push(this.addSerhBeyanMalik(serhTableURL, serhData));
+ 
+-          progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Kaydediliyor', false, {}, false, 'light');
++            progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Malik-Ş-B-İ Kaydediliyor', false, {}, false, 'light');
+ 
+-          forkJoin(requests).subscribe(addFeatureResponses => {
+-            progressRef.close();
+-            progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Parsel Kaydediliyor', false, {}, false, 'light');
++            forkJoin(requests).subscribe(addFeatureResponses => {
++              progressRef.close();
++              progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Parsel Kaydediliyor', false, {}, false, 'light');
+ 
+-            this.applyApprovedFeature(layerID, applyEdits, originalFeature, progressRef, operation, cloneEditFeature);
++              this.applyApprovedFeature(layerID, applyEdits, originalFeature, progressRef, operation, cloneEditFeature, isDelete);
++            });
+           });
+-        });
++        } else {
++          const progressRef = this.dialogService.openUnClosable(ProgressInfoComponent, 'Parsel Kaydediliyor', false, {}, false, 'light');
++          dialog.close();
++
++          this.applyApprovedFeature(layerID, applyEdits, originalFeature, progressRef, operation, cloneEditFeature, isDelete);
++        }
++
+       } else {
+-        this.applyApprovedFeature(layerID, applyEdits, originalFeature, dialog, operation, cloneEditFeature);
++        this.applyApprovedFeature(layerID, applyEdits, originalFeature, dialog, operation, cloneEditFeature, isDelete);
+       }
+     } else {
+-      this.applyApprovedFeature(layerID, applyEdits, originalFeature, dialog, operation, cloneEditFeature);
++      this.applyApprovedFeature(layerID, applyEdits, originalFeature, dialog, operation, cloneEditFeature, isDelete);
+     }
+ 
+   }
+ 
+   applyApprovedFeature(layerID: number, applyEdits: esri.FeatureLayerApplyEditsEdits, originalFeature: esri.Graphic,
+-    dialog: DialogRef, operation, cloneEditFeature: esri.Graphic) {
++    dialog: DialogRef, operation, cloneEditFeature: esri.Graphic, isDelete: boolean) {
+     const layer = <esri.FeatureLayer>originalFeature.layer;
+ 
+     layer.applyEdits(applyEdits).then(editRes => {
+@@ -1189,13 +1216,13 @@ export class MainComponent implements OnInit {
+       const errorResult = editResults.find(editResult => editResult.error !== null);
+       if (errorResult === undefined) {
+         if (operation === 'UPDATE') {
+-          this.addToHistory(dialog, originalFeature, operation, layer, '').then(res => {
+-            this.deletePendingLayerFeature(layerID, cloneEditFeature, dialog, layer);
++          this.addToHistory(dialog, originalFeature, operation, layer, '', isDelete).then(res => {
++            this.deletePendingLayerFeature(layerID, cloneEditFeature, dialog, layer, operation, isDelete);
+           }, err => {
+-            this.deletePendingLayerFeature(layerID, cloneEditFeature, dialog, layer);
++            this.deletePendingLayerFeature(layerID, cloneEditFeature, dialog, layer, operation, isDelete);
+           });
+         } else {
+-          this.deletePendingLayerFeature(layerID, cloneEditFeature, dialog, layer);
++          this.deletePendingLayerFeature(layerID, cloneEditFeature, dialog, layer, operation, isDelete);
+         }
+       } else {
+         this.notify.open('Düzenleme Onay/Red Hatalı Sonuçlandı', 'danger', 10);
+@@ -1210,7 +1237,8 @@ export class MainComponent implements OnInit {
+     });
+   }
+ 
+-  deletePendingLayerFeature(layerID: number, feature: esri.Graphic, dialog: DialogRef, currentLayer: esri.FeatureLayer) {
++  deletePendingLayerFeature(layerID: number, feature: esri.Graphic, dialog: DialogRef,
++    currentLayer: esri.FeatureLayer, operation: string, isDelete: boolean) {
+     return loadModules([
+       'esri/layers/FeatureLayer'
+       // @ts-ignore
+@@ -1233,6 +1261,9 @@ export class MainComponent implements OnInit {
+       };
+ 
+       return pendingLayer.applyEdits(pendingQueryProperties).then(editRes => {
++        if (!isDelete && currentLayer.title === 'Kadastro Parselleri' && operation === 'DELETE') {
++          this.deleteSerhBeyanMalik(feature);
++        }
+         const editResults: Array<esri.FeatureEditResult> = editRes.deleteFeatureResults;
+ 
+         const errorResult = editResults.find(editResult => editResult.error !== null);
+diff --git a/src/app/mapUtils/layer-utils.service.ts b/src/app/mapUtils/layer-utils.service.ts
+index 3c58389acf6757d4e0d4eb383b1bde6782674111..ffb7d4f6c6309f58d0001556ca529178c32f34ae 100644
+--- a/src/app/mapUtils/layer-utils.service.ts
++++ b/src/app/mapUtils/layer-utils.service.ts
+@@ -584,7 +584,7 @@ export class LayerUtilsService {
+             isActive: true,
+             closedFields: ['objectid', 'id', 'globalid', 'guncelleme_tarih',
+               'tkgm_guncelleme', 'tkgm_il', 'tkgm_ilce', 'mahalle_id', 'refid', 'plan_kampus_donusum'],
+-            requiredFields: ['mevcut_kullanim', 'ada_no', 'parsel_no', 'mahalle', 'kimlik_no', 'tasinmaz_id', 'il', 'ilce', 'aktif_mi']
++            requiredFields: ['mevcut_kullanim', 'ada_no', 'parsel_no', 'kimlik_no', 'tasinmaz_id', 'il', 'ilce', 'aktif_mi']
+           },
+           {
+             layerName: 'Müstakil Hazine Parselleri',
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 06177fc9a1890f963308de7e5c4f70e2a1f298a7..2d8a63089163f3d4b308d0392665a2ec80ee9a55 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -63,7 +63,7 @@ export class ModuleReportComponent implements OnInit {
+   onRowClicked(rowClickedEvent: RowClickedEvent) {
+     let status = 0;
+     let search_id = rowClickedEvent.data.i_bina_id;
+-    if (search_id === null) {
++    if (search_id === null || search_id === undefined) {
+       status = 1;
+       search_id = rowClickedEvent.data.i_parsel_id;
+     }
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index d9dfad2ce571422c60f94f6d123d94f79f482b30..da167e699c1f730b2ce6f8d4f7023e170af94ae1 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -750,12 +750,10 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           } else {
+             this.notify.open('İşlem Eklerken Hata Oluştu Lütfen Kontrol Ediniz', 'danger', 10);
+             dialog.close();
+-            this.dialog.close(true);
+           }
+         }, error => {
+           this.notify.open('İşlem Eklerken Hata Oluştu Lütfen Kontrol Ediniz', 'danger', 10);
+           dialog.close();
+-          this.dialog.close(false);
+           console.error(error);
+         });
+       }
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index c9b8dd5e968ff1e0611f920d0317dd63c256a535..7e5223f058474882c5c1257513f7ed10e7b58a36 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -1208,7 +1208,11 @@
+       "name": "durumu",
+       "type": "domain",
+       "required": true,
+-      "domain_values": [{
++      "domain_values": [        {
++          "value": 7,
++          "name": ""
++        },
++        {
+           "value": 8,
+           "name": ""
+         },
+@@ -1257,6 +1261,10 @@
+     },
+     "defaultField": "durumu",
+     "allowedStates": [{
++        "state": 7,
++        "values": [1, 2, 3, 4, 5, 6, 7]
++      },
++      {
+         "state": 8,
+         "values": [8, 9, 10, 11, 12, 13, 14, 5, 15, 16, 17]
+       },
+@@ -1302,6 +1310,30 @@
+       }
+     ],
+     "formData": [{
++        "states": [
++          7
++        ],
++        "fields": [{
++            "alias": "Gelen Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Gelen Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
++      },
++      {
+         "states": [
+           8,
+           9,
+@@ -1636,6 +1668,10 @@
+         {
+           "value": 18,
+           "name": ""
++        },
++        {
++          "value": 7,
++          "name": ""
+         }
+       ],
+       "chosen_values": []
+@@ -1664,6 +1700,10 @@
+       {
+         "state": 18,
+         "values": [1, 4, 5, 2, 3, 18]
++      },
++      {
++        "state": 7,
++        "values": [1, 2, 3, 4, 5, 6, 7]
+       }
+     ],
+     "formData": [{
+@@ -1773,6 +1813,30 @@
+             "required": false
+           }
+         ]
++      },
++      {
++        "states": [
++          7
++        ],
++        "fields": [{
++            "alias": "Gelen Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Gelen Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
+       }
+     ]
+   },
+@@ -1784,6 +1848,10 @@
+       "type": "domain",
+       "required": true,
+       "domain_values": [{
++          "value": 7,
++          "name": ""
++        },
++        {
+           "value": 8,
+           "name": ""
+         },
+@@ -1820,6 +1888,10 @@
+     },
+     "defaultField": "durumu",
+     "allowedStates": [{
++        "state": 7,
++        "values": [1, 2, 3, 4, 5, 6, 7]
++      },
++      {
+         "state": 8,
+         "values": [8, 11, 12, 13, 14, 5, 19, 20]
+       },
+@@ -1853,6 +1925,30 @@
+       }
+     ],
+     "formData": [{
++        "states": [
++          7
++        ],
++        "fields": [{
++            "alias": "Gelen Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Gelen Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
++      },
++      {
+         "states": [
+           8,
+           19
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 6daa925dafe7566dddc01c2838a8bd4b8dbea90a..a7b069c94d04d1f2d431ade3b500d984d736326c 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -1486,7 +1486,7 @@
+       [{
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+-          "type": "",
++          "type": "date",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+diff --git a/src/environments/environment.hetzner.ts b/src/environments/environment.hetzner.ts
+index a0a0cf1df5fd9c17af6f3ac6dbe0b5ffaacad13f..ea72cd3e5a2f21a4ae1da3f5e280e1cfab14b1e1 100644
+--- a/src/environments/environment.hetzner.ts
++++ b/src/environments/environment.hetzner.ts
+@@ -15,7 +15,10 @@ export const environment = {
+     arcgisOzelOkullarURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
+     arcgisOzelOkulPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_pending/',
+     arcgisOzelOkulHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_histry/',
+-    arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/'
++    arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
++    mapIstPlan1000Tadilat: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
++    mapIstPlan1000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
++    mapIstPlan5000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer',
+ };
+ 
+ 
+diff --git a/src/environments/environment.prod.ts b/src/environments/environment.prod.ts
+index e752df1513806967203cca09a364297e3b323cba..1c53b90b7b9c651910a5105f501417dc89527daa 100644
+--- a/src/environments/environment.prod.ts
++++ b/src/environments/environment.prod.ts
+@@ -14,5 +14,8 @@ export const environment = {
+   yapiURL: 'http://localhost:443/',
+   arcgisOzelOkulPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_pending/',
+   arcgisOzelOkulHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_histry/',
+-  arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/'
++  arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
++  mapIstPlan1000Tadilat: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
++  mapIstPlan1000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
++  mapIstPlan5000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer'
+ };
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index a0e7638d1cd463c983a8bf069c90d79383301a50..37790421c3ae27d5a9de555348eb43d4b1478ba0 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -17,7 +17,10 @@ export const environment = {
+   mapIstServiceUrl: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/',
+   arcgisOzelOkulPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_pending/',
+   arcgisOzelOkulHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_histry/',
+-  arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/'
++  arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
++  mapIstPlan1000Tadilat: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
++  mapIstPlan1000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
++  mapIstPlan5000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer',
+ };
+ 
+ /*
