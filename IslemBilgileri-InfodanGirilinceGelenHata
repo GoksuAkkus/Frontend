@@ -1,0 +1,32 @@
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index 2c9678e0c35e886285318db0e34c85bcc377e81f..d48e6a960a3da1eb66340e6e5b98620df0dab239 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -61,7 +61,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     const layerWhereField = moduleData.layerField;
+     const whereField = moduleData.moduleField;
+ 
+-    this.initializeLastMovement(whereField);
++    this.initializeLastMovement(whereField, layerWhereField, featureData);
+     this.initalizeAGGrid();
+ 
+     setTimeout(() => {
+@@ -155,7 +155,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     this.agGrid.context = { componentParent: this };
+   }
+ 
+-  initializeLastMovement(whereField: string) {
++  initializeLastMovement(whereField: string, layerWhereField: string, featureData: any) {
+     const movementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Hareket');
+     const processMovementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem_Hareket');
+     const durumuField = movementLayer.fields.find(field => (field.name === 'durumu' || field.name === 'h_durumu'));
+@@ -163,7 +163,8 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       this.hDurumuDomains = durumuField.domain['codedValues'];
+     }
+ 
+-    const value = this.emitObject.rowClickData[`i_${whereField}`];
++
++    const value = featureData['attributes'][`${layerWhereField}`];
+     const queryProp: esri.QueryProperties = {
+       where: `i_${whereField}=${value}`,
+       returnGeometry: false,
