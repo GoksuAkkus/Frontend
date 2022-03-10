@@ -1,0 +1,49 @@
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index f199ab553778a4f7e19c7a1bb8ccafeddacc0366..0cd239df277fb83948626cb0c897935a37d8f7a8 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -55,10 +55,10 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     const layerWhereField = moduleData.layerField;
+ 
+     const whereField = moduleData.moduleField;
++
+     this.initalizeAGGrid();
+     this.getRequiredFields(featureData, layerWhereField).then(feature => {
+       const whereValue = feature.getAttribute(layerWhereField);
+-
+       this.getLayerFields().subscribe(fields => {
+         this.fields = fields;
+         const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
+@@ -173,8 +173,11 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         this.getFeatureCount(url, filteredParams).subscribe(filterCount => {
+           this.getFeatures(url, filteredParams).subscribe(res => {
+             let objectModel = res.features.map(feature => feature.attributes);
++            const isFilter = this.agGrid.api.isAnyFilterPresent();
++            // Filter yapılmışsa Object Model setlenmemeli
+ 
+-            if (this.emitObject !== undefined && this.emitObject.fromReports) {
++            // Burası Sadece İşlemler Modülünden Row Seçildiğinde Çalışmalı
++            if (this.emitObject !== undefined && this.emitObject.fromReports && !isFilter) {
+               const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.emitObject.objectId));
+ 
+               const firstPart = objectModel[selectedRowIndex];
+@@ -185,7 +188,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+             params.successCallback(objectModel, filterCount);
+ 
+-            if (this.emitObject !== undefined) {
++            if (this.emitObject !== undefined && !isFilter) {
+               this.colorYellowSelectedRow(this.emitObject.fromReports);
+             }
+           });
+@@ -207,7 +210,9 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         }
+       }
+ 
+-      selectedRow.style.backgroundColor = 'yellow';
++      if (selectedRow !== undefined) {
++        selectedRow.style.backgroundColor = 'yellow';
++      }
+     }
+   }
+ 
