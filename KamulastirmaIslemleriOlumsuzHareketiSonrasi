@@ -1,0 +1,45 @@
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index 71eb4b2d073f567a04589aca50bec87a9585ab33..87246585825ad802d89ce7448adfea3687fc0459 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -1566,9 +1566,38 @@
+       },
+       {
+         "states": [
+-          3, 5
++          3
+         ],
+-        "fields": []
++        "fields": [{
++            "alias": "Giden Tarih",
++            "name": "giden_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Giden Sayı",
++            "name": "giden_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
++      },
++      {
++        "states": [
++          5
++        ],
++        "fields": [{
++          "alias": "Açıklama",
++          "name": "aciklama",
++          "type": "text",
++          "required": false
++        }]
+       },
+       {
+         "states": [
