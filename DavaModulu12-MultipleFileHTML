@@ -1,0 +1,67 @@
+diff --git a/src/app/modules/create-module/create-module.component.html b/src/app/modules/create-module/create-module.component.html
+index f85ac029e934d9cfef257a13024f782031308e1c..ed82a2fc6612a85b0fc51b99f5950b330067cacb 100644
+--- a/src/app/modules/create-module/create-module.component.html
++++ b/src/app/modules/create-module/create-module.component.html
+@@ -4,21 +4,39 @@
+       *ngFor="let formData of moduleFormData;let i = index">
+       <ng-container *ngIf="formData.type === 'file' && processState === 0; else elseTemplate">
+         <label>{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
+-        <div style="display: flex;flex-direction: row;justify-content: space-between">
+-          <label *ngFor="let attachmentInfo of attachmentData">{{attachmentInfo.name}}</label>
+-          <input type="button" value="İndir" style="background: white;border-color: #80bdff" (click)="downloadFile()">
++        <div *ngFor="let attachmentInfo of attachmentData; index as i"
++          style="display: flex;flex-direction: row;justify-content: space-between">
++          <label>{{attachmentInfo.name}}</label>
++          <input name="attachment_{{i}}" type="button" value="İndir" style="background: white;border-color: #80bdff" (click)="downloadFile($event)">
+         </div>
+       </ng-container>
+       <ng-template #elseTemplate>
+-        <label>{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
++        <label *ngIf="formData.type !== 'file'">{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container>
++        </label>
++        <input *ngIf="formData.type === 'numberText'" [name]="formData.name" type="text"
++          [formControlName]="formData.name" [attr.realType]="formData.type" (input)="onChangeFormControl($event)">
+         <input
+-          *ngIf="!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'malik') && formData.name !== 'aciklama'"
++          *ngIf="!(formData.type === 'domain' || formData.type === 'file' || formData.type === 'localDomain' || formData.type === 'malik' || formData.type === 'numberText') && formData.name !== 'aciklama'"
+           [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
+           (input)="onChangeFormControl($event)">
+         <textarea
+-          *ngIf="!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'malik') && formData.name === 'aciklama'"
++          *ngIf="!(formData.type === 'domain' || formData.type === 'file' || formData.type === 'localDomain' || formData.type === 'malik' || formData.type === 'numberText') && formData.name === 'aciklama'"
+           [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"></textarea>
+       </ng-template>
++      <div *ngIf="formData.type === 'file' && processState !== 0" class="file-container">
++        <div class="file-formdata">
++          <label >{{formData.alias}}<ng-container *ngIf="formData.required">*
++            </ng-container></label>
++          <input [name]="formData.name" [type]="formData.type"
++            [formControlName]="formData.name" (input)="onChangeFormControl($event)" multiple="multiple">
++        </div>
++        <!-- <div class="file-process">
++          <button type="button" (click)="addAnotherFile($event)"
++            *ngIf="!formData.name.includes('_')">+</button>
++          <button type="button" (click)="onClickFileCloseButton($event)"
++            *ngIf="formData.name.includes('_')">x</button>
++        </div> -->
++      </div>
+       <select *ngIf="formData.type === 'domain' || formData.type === 'localDomain'" [name]="formData.name"
+         [formControlName]="formData.name" (change)="onChangeFormControl($event)">
+         <option value="-1">{{formData.alias}} Seçiniz..</option>
+@@ -30,7 +48,8 @@
+         <p>Maliye Hazinesi Alanı - {{selectionData.maliye_area}} Metrekare</p>
+         <p>Diğer Malik Alanı - {{selectionData.other_area}} Metrekare</p>
+         <ag-grid-angular style="height: 300px;width: 420px" #agGrid class="ag-theme-balham ag-grid"
+-          (gridReady)="onGridReady()" (rowSelected)="rowSelected()" [pagination]="true" [paginationAutoPageSize]="true"
++          (gridReady)="onGridReady()" (rowSelected)="rowSelected($event)"
++          [suppressRowClickSelection]="suppressRowClickSelection" [pagination]="true" [paginationAutoPageSize]="true"
+           [rowDeselection]="true" [rowMultiSelectWithClick]="true" [defaultColDef]="defaultColDef"
+           [localeText]="localeText" [rowSelection]="rowSelection">
+         </ag-grid-angular>
+@@ -45,4 +64,4 @@
+         (click)="onDeleteProcess()">
+     </div>
+   </form>
+-</div>
++</div>
+\ No newline at end of file
