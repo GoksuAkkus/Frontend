@@ -1,0 +1,129 @@
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 3bf2f41e3ce312398a0950d1bcc30ed1c1351a6c..e70ae0d6d60da9cedd2401c2bd92b67f026be0f6 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -329,8 +329,7 @@ export class MovementCreateComponent implements OnInit {
+       }
+     }
+     // tslint:disable-next-line:triple-equals
+-    if (this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] === 26) {
+-      // if (this.movementData.type === 13 && formElement.name === 'aciklama' && formObject['durumu'] ===  26) {
++    if (this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] == 26) {
+       formObject['aciklama'] = this.dotMethod(formElement.value);
+     }
+     if (formElement.name === 'ucret') {  // UCRET FIELDI ARTIK TEXT OLDU BURAYA DA DOT METHOD EKLENİYOR
+@@ -345,12 +344,17 @@ export class MovementCreateComponent implements OnInit {
+       formElement.classList.add('error');
+     }
+     // tslint:disable-next-line:triple-equals
+-    if (this.movementData.type === 14 && formObject['durumu'] === 26) {
+-      // if (this.movementData.type === 13 && formObject['durumu'] === 26) {
++    if (this.movementData.type === 14 && formObject['durumu'] == 26) {
++      if (this.formGroup.controls['proje_no'] !== undefined) {
++        formObject['proje_no'] = this.formGroup.controls['proje_no'].value;
++      }
++      // tslint:disable-next-line:triple-equals
++    } else if (this.movementData.type === 12 && formObject['durumu'] == 26) {
+       if (this.formGroup.controls['proje_no'] !== undefined) {
+         formObject['proje_no'] = this.formGroup.controls['proje_no'].value;
+       }
+     }
++
+     this.initalizeWithFormData(this.movementData, formObject);
+   }
+ 
+@@ -380,7 +384,6 @@ export class MovementCreateComponent implements OnInit {
+     let atolyeIslemAttribute = '';
+ 
+     if (movementDataType === 14) {
+-      // if (movementDataType === 13) {
+       atolyeIslemAttribute = this.moduleData['talep_amaci'];
+     }
+ 
+@@ -392,7 +395,6 @@ export class MovementCreateComponent implements OnInit {
+ 
+       const lastValue = <number>lastFeature.attributes['durumu'];
+       if (movementDataType === 14) {
+-        // if (movementDataType === 13) {
+         if (lastValue === 26 && atolyeIslemAttribute === 'Sadece Mal Alımı') {
+           movementData = this.setDefaultFieldDomains(movementData, -2);
+         } else {
+@@ -403,7 +405,6 @@ export class MovementCreateComponent implements OnInit {
+       }
+     } else {
+       if (movementDataType === 14) {
+-        // if (movementDataType === 13) {
+         movementData = this.setDefaultFieldDomains(movementData, -1);
+       }
+     }
+@@ -484,8 +485,10 @@ export class MovementCreateComponent implements OnInit {
+ 
+           this.formGroup.addControl(formControlName, createdFormControl);
+           // tslint:disable-next-line:triple-equals
+-          if (this.movementData.type === 14 && formObject['durumu'] === 26 && formControlName === 'proje_no') {
+-            // if (this.movementData.type === 13 && formControlName === 'proje_no' && formObject['durumu'] === 26) {
++          if (this.movementData.type === 14 && formObject['durumu'] == 26 && formControlName === 'proje_no') {
++            this.formGroup.controls['proje_no'].disable();
++            // tslint:disable-next-line:triple-equals
++          } else if (this.movementData.type === 12 && formObject['durumu'] == 26 && formControlName === 'proje_no') {
+             this.formGroup.controls['proje_no'].disable();
+           }
+         }
+@@ -626,7 +629,8 @@ export class MovementCreateComponent implements OnInit {
+       if ((degisiklik_turu !== undefined && degisiklik_turu === '1')) {
+         this.openModuleDetail(this.refValue, url, formValues);
+         return;
+-      } else if (islem_turu === 12 && durumu === 35) {
++        // tslint:disable-next-line:triple-equals
++      } else if (islem_turu === 12 && durumu == 35) {
+         this.openModuleDetail(this.refValue, url, formValues);
+         return;
+       }
+@@ -801,7 +805,8 @@ export class MovementCreateComponent implements OnInit {
+           if (islem_turu === 12) {
+ 
+             // TODO hareket durum reddedildi ve plana alindi degil ise
+-            if (durumu !== 15 && durumu !== 25) {
++            // tslint:disable-next-line:triple-equals
++            if (durumu != 15 && durumu != 25) {
+               this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'mevcut_kullanim', 5);
+             }
+ 
+@@ -810,9 +815,11 @@ export class MovementCreateComponent implements OnInit {
+ 
+             if (islem_edinim_sekli === 3) {
+               // TODO kabul edildi veya ertelendi
+-              if (durumu === 22 || durumu === 24) {
++              // tslint:disable-next-line:triple-equals
++              if (durumu == 22 || durumu == 24) {
+                 this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 9);
+-              } else if (durumu === 23) { // TODO durum reddedildi
++                // tslint:disable-next-line:triple-equals
++              } else if (durumu == 23) { // TODO durum reddedildi
+                 this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 11);
+               }
+             }
+@@ -826,13 +833,21 @@ export class MovementCreateComponent implements OnInit {
+         const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+ 
+         // tslint:disable-next-line:triple-equals
+-        if (this.movementData.type === 14 && formValues['durumu'] === 26) {
+-          // if (this.movementData.type === 13 && formValues['durumu'] === 26) {
++        if (this.movementData.type === 14 && formValues['durumu'] == 26) {
+           const objectid = results[0].objectId;
+           formValues['proje_no'] = objectid;
+           formValues['objectid'] = objectid;
+ 
+           this.updateProjeNo(formValues);
++          // tslint:disable-next-line:triple-equals
++        } else if (this.movementData.type === 12 && formValues['durumu'] == 26) {
++          // Artık Yatırım Teklif Onaylandı Durumu İçin ProjeNo Otomatik Oluşturulacak. IlceKodTeklifYılıObjectId şeklinde
++          const objectid = results[0].objectId;
++          // const teklifYili = this.moduleData['teklif_yili'].toString();
++          // const ilceKodu = this.featureData.attributes['ilce'].toString();
++          formValues['proje_no'] = objectid;
++          formValues['objectid'] = objectid;
++          this.updateProjeNo(formValues);
+         }
+ 
+         if (formValues.attachment !== undefined) {
