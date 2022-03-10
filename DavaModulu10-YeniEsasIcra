@@ -1,0 +1,124 @@
+diff --git a/src/app/movements/movement-create/movement-create.component.css b/src/app/movements/movement-create/movement-create.component.css
+index e0aa8fb3b24ada65fea097729e16f40cc259c9a6..d30fe2f5fac1cc1908dde205de295a8244a8d4e6 100644
+--- a/src/app/movements/movement-create/movement-create.component.css
++++ b/src/app/movements/movement-create/movement-create.component.css
+@@ -83,6 +83,25 @@
+   padding-bottom: 5px;
+ }
+ 
++.icra-movement {
++  display: flex;
++  flex-direction: column
++}
++
++.icra-movement label {
++  font-size: 14px;
++  padding-bottom: 5px;
++}
++
++.icra-movement input {
++  padding: 0.2rem .75rem;
++  color: #495057;
++  border: 1px solid #ced4da;
++  border-radius: .25rem;
++  height: 17.5px;
++  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
++}
++
+ .form-group input:focus {
+   border-color: #80bdff;
+   outline: 0;
+@@ -95,3 +114,18 @@
+   outline: 0;
+   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
+ }
++
++.file-container {
++  display: flex;
++  align-items: baseline;
++  justify-content: space-between;
++  width: 100%;
++}
++
++.file-container .file-formdata {
++  width: 90%;
++}
++
++.form-group:nth-of-type(even) .file-formdata {
++  margin-left: -5px;
++}
+diff --git a/src/app/movements/movement-create/movement-create.component.html b/src/app/movements/movement-create/movement-create.component.html
+index def3991203f82db7d5ed0676bcb6eadf4a4df1e0..f938068f95b05c47972a91521b966ad5541caac4 100644
+--- a/src/app/movements/movement-create/movement-create.component.html
++++ b/src/app/movements/movement-create/movement-create.component.html
+@@ -1,19 +1,28 @@
+ <div class="modal-content">
+   <form [formGroup]="formGroup" class="module-form" (ngSubmit)="onSubmit()">
++    <div class="icra-movement"
++      *ngIf="yeniIslemPenceresiAcilacakDomainList.includes(features['durumu']) || yeniIslemPenceresiAcilacakDomainList.includes(durumu)">
++      <label>Dosya No</label>
++      <input [value]="moduleData['dosya_no']" disabled>
++      <label>Esas No</label>
++      <input [value]="moduleData['esas_no']" disabled>
++    </div>
+     <div class="form-group" *ngFor="let formData of movementFormData;let i = index">
+-      <label>{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
++      <label *ngIf="formData.type !== 'file'">{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
+       <input
+-        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file' ) && formData.name !== 'aciklama' && readMode)"
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name !== 'aciklama' && readMode)"
+         [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
+         (input)="onChangeFormControl($event)" [disabled]="formData.disabled">
+-      <textarea *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name === 'aciklama' && readMode )"
++      <textarea
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name === 'aciklama' && readMode )"
+         [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
+         [disabled]="formData.disabled"></textarea>
+-      <input *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain') && formData.name !== 'aciklama' && !readMode)"
++      <input
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name !== 'aciklama' && !readMode)"
+         [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
+         (input)="onChangeFormControl($event)" [disabled]="formData.disabled">
+       <textarea
+-        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain') && formData.name === 'aciklama' && !readMode )"
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name === 'aciklama' && !readMode )"
+         [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
+         [disabled]="formData.disabled"></textarea>
+       <select *ngIf="formData.type === 'domain' || formData.type === 'localDomain'" [name]="formData.name"
+@@ -22,20 +31,29 @@
+         <option *ngFor="let domainValue of formData.domain_values" [value]="domainValue.value">{{domainValue.name}}
+         </option>
+       </select>
+-      <label
+-        *ngIf="formData.type ==='file' && this.fileReadMode && attachmentData !== undefined && attachmentData[0] !== undefined && attachmentData[0].name !== undefined">
+-        {{attachmentData[0].name}}</label>
++      <div *ngIf="formData.type === 'file' && !readMode" class="file-container">
++        <div class="file-formdata">
++          <label>{{formData.alias}}<ng-container *ngIf="formData.required">*
++            </ng-container></label>
++          <input [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
++            (input)="onChangeFormControl($event)" multiple="multiple">
++        </div>
++      </div>
++      <div  *ngIf="formData.type ==='file' && this.fileReadMode && attachmentData !== undefined && attachmentData[0] !== undefined && attachmentData[0].name !== undefined">
++        <label *ngFor="let attachment of attachmentData; index as i">
++          {{attachmentData[i].name}}</label>
++      </div>
+     </div>
+     <div class="form-group">
+-      <input *ngIf="createMode" type="submit" value="Kaydet" [disabled]="formGroup.invalid">
++      <input *ngIf="createMode && durumu !== 39" type="submit" value="Kaydet" [disabled]="formGroup.invalid">
+       <input *ngIf="editMode === true" type="submit" value="Düzenle" [disabled]="formGroup.invalid">
+       <ng-container *ngIf="editMode === true && isMovementDeletableByTheUser">
+         <input [disabled]="!isMovementRelationAllowsToDelete" type="button" (click)="onDeleteMovement()" value="Sil"
+           style="margin-top: 8px;">
+         <p *ngIf="!isMovementRelationAllowsToDelete" style="color: red;">
+-          Bu hareket silinemez, önceki hareket ve sonraki hareket arasında ilikşi bulunmamaktadır.
++          Bu hareket silinemez, önceki hareket ve sonraki hareket arasında ilişki bulunmamaktadır.
+         </p>
+       </ng-container>
+     </div>
+   </form>
+-</div>
++</div>
+\ No newline at end of file
