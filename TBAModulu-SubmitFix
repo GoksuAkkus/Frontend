@@ -1,0 +1,95 @@
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 28dcc2fa39ac6eefa6f76e861367e6b2f315e66e..96110feee055985e95daf9e5791c98ec5f565a5b 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -514,9 +514,9 @@ export class EsriMapComponent implements OnInit {
+     map.add(malik_tasinmazLayer);
+     map.add(serhBeyanLayer);
+     map.add(mebDetailExtraLayer);
+-    map.add(yapisalDurumLayer);
+-    map.add(yapisalBilgiLayer);
+-    map.add(yapiEnerjiLayer);
++    // map.add(yapisalDurumLayer);
++    // map.add(yapisalBilgiLayer);
++    // map.add(yapiEnerjiLayer);
+   }
+ 
+   createMaksLayers(map: esri.Map) {
+diff --git a/src/app/info/generic-info/generic-info.component.html b/src/app/info/generic-info/generic-info.component.html
+index 6231778aa379e688026fe286d38439e09d39f9e4..1593eb9699e34f2161f241d0fd50633ffe7da14d 100644
+--- a/src/app/info/generic-info/generic-info.component.html
++++ b/src/app/info/generic-info/generic-info.component.html
+@@ -100,13 +100,7 @@
+           Bu Veri Değiştirildi, Onay Beklenmektedir
+         </p>
+         <input type="button" class="additional-buttons" value="Veriyi Sisteme Ekle" (click)="onClickAddSystem()">
+-
+-
+-
+-        <input *ngIf="_tabData.features[0].layer['originalTitle'] === 'Bina Kurum' || _tabData.features[0].layer['originalTitle'] === 'Bina Diğer'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()">
+-
+-
+-
++        <!-- <input *ngIf="_tabData.features[0].layer['originalTitle'] === 'Bina Kurum' || _tabData.features[0].layer['originalTitle'] === 'Bina Diğer'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()"> -->
+         <div *ngIf="historyData.length > 1" style="display: flex;align-items: center;">
+           <svg (click)="onFirstClick()" style="padding-right: 5px" xmlns="http://www.w3.org/2000/svg" width="12.448"
+             height="12.358" viewBox="0 0 12.448 12.358">
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 3ba5c20a93dc38edcbc46461b5ef2acbe7f2acdd..8d2ac722a670b3fae56a4c7eb6c7b98083c15388 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -220,7 +220,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     } else if (formElement.name === 'bina_sayi') {
+       const count = Number(formElement.value);
+       this.addOrRemoveDynamicFields(count, formElement.name, count, formObject);
+-    } else if ( this.moduleData.value === 14 && formElement.name.includes('talep_amaci')) {
++    } else if (this.moduleData.value === 14 && formElement.name.includes('talep_amaci')) {
+       this.addOrRemoveDynamicFields(1, formElement.name, formElement.value, formObject);
+       this.setAtolyeIslemPreviousSelections(formElement);
+     } else if (formElement.type === 'number') {
+@@ -527,6 +527,21 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+           field1Value = field1ValueArray[i - 1];
+           field2Value = field2ValueArray[i - 1];
++          if (this.moduleData.value === 14 && formControlName.includes('talep_amaci')) {
++
++            const lastcharacter = Number(formControlName[formControlName.length - 1]);
++            const secondLastCharacter = Number(formControlName[formControlName.length - 2]);
++
++            if (isNaN(secondLastCharacter)) {
++              field1Value = field1ValueArray[lastcharacter - 1];
++              field2Value = field2ValueArray[lastcharacter - 1];
++            } else {
++              const mergedNumber = Number(`${secondLastCharacter}${lastcharacter}`);
++              
++              field1Value = field1ValueArray[mergedNumber - 1];
++              field2Value = field2ValueArray[mergedNumber - 1];
++            }
++          }
+         }
+         if (formControlName.includes('talep_amaci')) {
+           this.addOrRemoveDynamicFieldsForAtolyeIslem(field1FormControlName, field1FormData, field1Value);
+diff --git a/src/environments/environment.prod.ts b/src/environments/environment.prod.ts
+index ae6368a1430a23521793bc29cc682b96dcbf952f..1907b669643b67027750ed56f48f9487ce720e14 100644
+--- a/src/environments/environment.prod.ts
++++ b/src/environments/environment.prod.ts
+@@ -11,5 +11,6 @@ export const environment = {
+   arcgisMEBReportsURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer',
+   arcgisEkServislerURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ek_servisler/',
+   arcgisMEBRaporURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer',
+-  mapIstServiceUrl: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/'
++  mapIstServiceUrl: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/',
++  yapiURL: 'http://localhost:443/'
+ };
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index 83ed86863e802c17e4ccee06cae6304206b36ea7..5904150911938ce2da2200839f43a02a6b0834a8 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -13,7 +13,6 @@ export const environment = {
+   arcgisMEBHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/history/',
+   arcgisMEBAnalysisURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/analiz/MapServer',
+   yapiURL: 'http://localhost:443/',
+-  yapiServerUrl: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer',
+   arcgisEkServislerURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ek_servisler/',
+   arcgisMEBRaporURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/rapor/MapServer',
+   mapIstServiceUrl: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/'
