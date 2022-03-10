@@ -1,0 +1,13 @@
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 206b95a931de4e205b9d7eb6abdec6cf27b3ad31..67a71b56b2d5fa05797e171992ecc6ca5099a2a7 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -869,7 +869,7 @@ export class DataTableComponent implements OnInit, OnDestroy {
+             this.selectedLayer.queryFeatures(filteredParams).then(res => {
+               if (this.bufferAnalysisState) {
+                 const num = params.endRow - params.startRow;
+-                res.features = res.features.slice(0, num);
++                res.features = res.features.slice(params.startRow, params.startRow + 100);
+                 const featureCount = res.features.length;
+                 const feature = res.features[featureCount - 1];
+ 
