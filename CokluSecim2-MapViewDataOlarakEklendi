@@ -1,0 +1,14 @@
+diff --git a/src/app/multi-feature-select/multi-feature-select.component.ts b/src/app/multi-feature-select/multi-feature-select.component.ts
+index 0a56de6078c3d57806cf978d5ce8e04047292c7b..a59b04c7ca8a41b882f107d8599a0f6d2423df80 100644
+--- a/src/app/multi-feature-select/multi-feature-select.component.ts
++++ b/src/app/multi-feature-select/multi-feature-select.component.ts
+@@ -260,7 +260,8 @@ export class MultiFeatureSelectComponent implements OnInit, OnDestroy {
+     this.dialogService.open(MultiModuleListComponent, 'İşlem Bilgileri', false, {
+       data: {
+         multiModulesData,
+-        featureDatas: cloneArray
++        featureDatas: cloneArray,
++        mapView: this.mainComponent.mapView
+       }
+     }, true, 'blue');
+   }
