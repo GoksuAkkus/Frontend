@@ -1,0 +1,1551 @@
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index a5c075587d123ebc5712154157760d7e9dc7f26b..03ba14994c02adf52672d4e6518ce5681739e48c 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -7,7 +7,7 @@ import { HttpClient } from '@angular/common/http';
+ import { MovementData } from 'src/app/models/movement/movement-data';
+ import { FormData, ModuleFormData } from 'src/app/models/Modules/module-form-data';
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
+-import { Observable } from 'rxjs';
++import { forkJoin, Observable } from 'rxjs';
+ import { environment } from 'src/environments/environment';
+ import { LoginResponse } from 'src/app/models/Login/login-response';
+ import esri = __esri;
+@@ -15,7 +15,7 @@ import { map } from 'rxjs/operators';
+ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AcceptDialogComponent } from 'src/app/accept-dialog/accept-dialog.component';
+ import { CreateModuleComponent } from 'src/app/modules/create-module/create-module.component';
+-import { FieldValues, ProcessMovementRel } from 'src/app/models/ProcessMovementRel';
++import { FieldValues, MovementRel, MovementValues, ProcessMovementRel } from 'src/app/models/ProcessMovementRel';
+ 
+ interface DeleteResults {
+   deleteResults: {
+@@ -51,6 +51,8 @@ export class MovementCreateComponent implements OnInit {
+   createMode = false;
+   readMode = false;
+   updateMode = false;
++  isContainsDosyaNo = false;
++  isContainsCokluSecimNo = false;
+ 
+   acceptanceDialog: DialogRef;
+   _loginResponse: LoginResponse;
+@@ -62,12 +64,25 @@ export class MovementCreateComponent implements OnInit {
+   mapView: esri.MapView;
+   foundModuleForm: ModuleFormData;
+   defaultDomainValues: any;
++  durumu: number;
++  yeniIslemPenceresiAcilacakDomainList = [39, 40];
++  moduleRefId: number;
++  moduleWhereField: string;
++  attachmentDataArray = [];
++
++  multiSelectAcceptanceDialog: DialogRef;
++  msMovementsIdenticalState = false;
++  msAllMovementList = [];
++  progressDialog: DialogRef;
++  toBeUpdatedParselIDList = [];
++  updatedParselIDList = [];
++  notUpdatedParselIDList = [];
+ 
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder,
+     private dialogService: DialogService, private notify: NotificationService) { }
+ 
+-  ngOnInit() {
++  async ngOnInit() {
+     this.initUserInfo();
+     const data = this.dialogConfig.data;
+     this.isMovementDeletableByTheUser = this._loginResponse.unique_name === this._loginResponse.unique_name;
+@@ -83,12 +98,15 @@ export class MovementCreateComponent implements OnInit {
+     const moduleData = data.moduleData;
+     this.moduleData = moduleData;
+ 
+-    const foundModuleForm: ModuleFormData = data['foundModuleForm'];
++    let foundModuleForm: ModuleFormData = data['foundModuleForm'];
+     this.foundModuleForm = foundModuleForm;
+ 
+     const movementData = <MovementData>data.movementData;
+     this.defaultDomainValues = movementData.field.domain_values;
+ 
++    this.moduleWhereField = data['moduleWhereField'];
++    this.moduleRefId = data['moduleRefId'];
++
+     // ÖNEMLİ SİLME PLAN HAREKETİ TALEP TÜRÜNE GÖRE DEĞİŞİM REVİZYON ADDORREMOVEMOVEMENTS
+     // SONRASINDA KAMULAŞTIRMADAKİ DEĞİŞİKLİKLERE DE EKLENECEK
+     // Hiç hareket olmadığı durumda (this.features boş ise) Plan işleminde domainler 6 ve 7 değilse son 3 domain (9,36,37) silinmeli.
+@@ -101,6 +119,16 @@ export class MovementCreateComponent implements OnInit {
+     //   }
+     // }
+ 
++    if (this.moduleData['dosya_no'] !== null) {
++      this.isContainsDosyaNo = true;
++    }
++
++    // GAGA BURASI DEĞİŞTİRİLECEK
++    // coklusecim_no olacak
++    if (this.moduleData['e_yatirim_proje_no'] !== null) {
++      this.isContainsCokluSecimNo = true;
++    }
++
+     if (this.moduleData['islem_turu'] === 8) { // Kamulaştırma'da (type:8) talep türüne göre hareketler değişmeli
+       // Talep türü Uzlaşma Dilekçesi(10) veya Diğer(12) ise hareketler değişecek
+       const talepTuru = this.moduleData['talep_turu'];
+@@ -130,56 +158,79 @@ export class MovementCreateComponent implements OnInit {
+         }
+       }
+     }
++
++    // UNDEFİNEDSA İŞLEMLER RAPORUNDAN MODULE SEÇMEMİŞ DEMEKTİR DİREKT LİSTEDEN MODULE LİSTELEMEDEN İŞLEME TIKLAMIŞ
++    // YA DA PARSELLERDEN İŞLEMLER BUTONUNA TIKLAMIŞ DEMEKTİR.
++    // BU DURUMDA GETTYPE İLE PROCESSDATA ALINACAK.
++    if (foundModuleForm === undefined) {
++      await this.getType().toPromise().then(processRes => {
++        foundModuleForm = processRes.find(process => process.value === moduleData['islem_turu']);
++        this.foundModuleForm = foundModuleForm;
++      });
++    }
++
+     // FoundModuleForm Şuan Sadece Plan Hareketleri Düzenlemeleri İçin Kullanılmaktadır.
+-    if (foundModuleForm !== undefined) {
++    if (this.moduleData['islem_turu'] === 5) {
+       this.processMovementRelationOperation(foundModuleForm, movementData);
+-    } else {
+-      this.getType().subscribe(processRes => {
+-        console.log(processRes);
+-        const foundProcessModule: ModuleFormData = processRes.find(process => process.value === moduleData['islem_turu']);
+-        this.processMovementRelationOperation(foundProcessModule, movementData);
+-      });
+-      // UNDEFİNEDSA İŞLEMLER RAPORUNDAN MODULE SEÇMEMİŞ DEMEKTİR DİREKT LİSTEDEN MODULE LİSTELEMEDEN İŞLEME TIKLAMIŞ
+-      // YA DA PARSELLERDEN İŞLEMLER BUTONUNA TIKLAMIŞ DEMEKTİR.
+-      // BU DURUMDA GETTYPE İLE PROCESSDATA ALINACAK.
+     }
+ 
+-    this.movementData = movementData;
++    this.getAllMovements().subscribe(allMovements => {
++      // Karar Hareketi Girilmişse Tekrar Karar Hareketi Giremez.
++      // Karar Hareketi Girilmeden Yeni Esas ve İcra Hareketi de Giremez.
++      const kararMovement = allMovements.find(feature => feature.attributes['durumu'] === 'Karar');
+ 
+-    const whereField = <string>data.moduleWhereField;
+-    this.refField = whereField;
+-    const moduleRefId = <number>data.moduleRefId;
+-    this.refValue = moduleRefId;
++      // BURASI PROCESSMOVEMENTREL VE MOVEMENTREL YAPISI İLE ÇÖZÜLDÜ
++      if (!kararMovement) {
++        // TODO: Karar Hareketi Girilmemişse Hareket Listesinde Karar Hareketi Olacak. Karar Hareketi Olmadığı İçin de Yeni Esas Giremezz
++        // Bu yüzden Karar Hareketi Girilmemişse Yeni Esas Hareketi Kaldırılacak.
++      } else {
++        // TODO: Karar Hareketi Girilmişse Yeni Esas Hareketi Girebilecek.
++        // TODO: Karar Hareketi Girilmişse Karar Hareketinin Tekrar Gözükmesine Gerek Yok.
++        // Bu yüzden Karar Hareketi Girilmişse Yeni Esas Hareketi Eklenecek Karar Hareketi Silinecek
++      }
+ 
+-    this.createMode = data.createMode;
+-    this.readMode = data.readMode;
+-    this.updateMode = data.updateMode;
++      const whereField = <string>data.moduleWhereField;
++      this.refField = whereField;
++      const moduleRefId = <number>data.moduleRefId;
++      this.refValue = moduleRefId;
+ 
+-    if (this.updateMode) {
+-      const prevNextFeatures = data.prevNextFeatures;
++      this.createMode = data.createMode;
++      this.readMode = data.readMode;
++      this.updateMode = data.updateMode;
+ 
+-      this.editMode = true;
+-      this.initializeEditMovement(prevNextFeatures, features, movementData);
+-    }
++      if (this.moduleData['islem_turu'] === 10 && this.createMode) {
++        this.movementRelationOperation(foundModuleForm, movementData, allMovements);
++      }
+ 
+-    if (this.createMode) {
+-      this.createInitializedForm(movementData, features);
+-    }
++      this.movementData = movementData;
+ 
+-    if (this.readMode) {
+-      this.initializeReadMovement(features, movementData);
+-    }
+-    // if (data.prevNextFeatures !== undefined) {
+-    //   const prevNextFeatures = data.prevNextFeatures;
++      if (this.updateMode) {
++        const prevNextFeatures = data.prevNextFeatures;
+ 
+-    //   this.editMode = true;
+-    //   this.initializeEditMovement(prevNextFeatures, features, movementData);
+-    // } else {
+-    //   this.createInitializedForm(movementData, features);
+-    // }
++        this.editMode = true;
++        this.initializeEditMovement(prevNextFeatures, features, movementData);
++      }
++
++      if (this.createMode) {
++        this.createInitializedForm(movementData, features);
++      }
++
++      if (this.readMode) {
++        this.initializeReadMovement(features, movementData);
++      }
++      // if (data.prevNextFeatures !== undefined) {
++      //   const prevNextFeatures = data.prevNextFeatures;
++
++      //   this.editMode = true;
++      //   this.initializeEditMovement(prevNextFeatures, features, movementData);
++      // } else {
++      //   this.createInitializedForm(movementData, features);
++      // }
++
++    });
+   }
+ 
+-  removeMovements(movementData: MovementData, fieldValues: FieldValues) {
++  removeMovements(movementData: MovementData, fieldValues: FieldValues | MovementValues) {
+     const movementsToDelete = fieldValues.movements_todelete;
+ 
+     if (movementsToDelete.length > 0) {
+@@ -188,7 +239,72 @@ export class MovementCreateComponent implements OnInit {
+         const foundIndex = movementData.field.domain_values.findIndex(extDomain => extDomain.value === movementToDelete);
+         if (foundIndex !== -1) {
+           movementData.field.domain_values.splice(foundIndex, 1);
+-          fieldValues.numberof_deletedmovements++;
++          // fieldValues.numberof_deletedmovements++;
++        }
++      });
++    }
++  }
++
++  movementRelationOperation(foundModuleForm: ModuleFormData, movementData: MovementData, allMovements: Array<esri.Graphic>) {
++    const movementRel: Array<MovementRel> = foundModuleForm.movementRel;
++    const movementsCodes = allMovements.map(movement => movement.attributes['durumu']);
++
++    if (movementRel !== undefined) {
++      movementRel.forEach(rel => {
++        const relation: MovementRel = rel[0];
++        const islemTuru = relation.islem_turu;
++        if (this.moduleData['islem_turu'] === islemTuru) {
++          const movementValuesArray: Array<Array<MovementValues>> = relation.movement_values;
++          movementValuesArray.forEach((val, index) => {
++            const movementValues = val[0];
++            const ifHas = movementValues.if_has;
++            const ifNotHave = movementValues.if_not_have;
++            let values: Array<number>;
++            let valueState = true;
++            let count = 0;
++
++            if (ifHas.length > 0) {
++              values = ifHas;
++            } else if (ifNotHave.length > 0) {
++              values = ifNotHave;
++              valueState = false;
++            }
++
++            movementsCodes.forEach(movement => {
++              if (values.includes(movement)) {
++                count++;
++              }
++            });
++
++            // GAGA KONTROL EDİLECEK
++            if (count === values.length) { // valuesdekilerin hepsi movementsdaysa alttakine gerek kalmıycak
++              if (valueState) {
++                // eğer state true ise şu hareket varsa silinecek demek eğer state false ise şu hareket yoksa silinecek
++                // yani konu olan hareket eğer bulunursa ve state true ise silinir.
++                // ama konu olan hareket bulunurve state false ise silinmez
++                this.removeMovements(movementData, movementValuesArray[index][0]);
++              }
++            } else {
++              if (!valueState) {
++                this.removeMovements(movementData, movementValuesArray[index][0]);
++              }
++            }
++
++            // TODO: İFHAS VE İFHAVE BİRDEN FAZLAYSA DİNAMİK OLARAK NASIL KONTROL EDİLİR BAKILACAK
++            // TODO: ŞUAN
++            // values.forEach((value) => {
++            //   const foundMovement = allMovements.find(movement => movement.attributes['durumu'] === value);
++            //   if (valueState && foundMovement !== undefined) {
++            //     // eğer state true ise şu hareket varsa silinecek demek eğer state false ise şu hareket yoksa silinecek
++            //     // yani konu olan hareket eğer bulunursa ve state true ise silinir.
++            //     // ama konu olan hareket bulunurve state false ise silinmez
++            //     this.removeMovements(movementData, movementValuesArray[index][0]);
++            //   } else if (!valueState && foundMovement === undefined) {
++            //     this.removeMovements(movementData, movementValuesArray[index][0]);
++            //   }
++            // });
++
++          });
+         }
+       });
+     }
+@@ -381,7 +497,13 @@ export class MovementCreateComponent implements OnInit {
+   }
+ 
+   onChangeFormControl(event: Event) {
++    this.attachmentDataArray = [];
+     const formObject = this.formGroup.value;
++    this.durumu = formObject['durumu'];
++    if (this.moduleCreateRef) {
++      this.moduleCreateRef.close();
++      this.moduleCreateRef = undefined;
++    }
+     const formGroup = this.formGroup;
+     const target = <HTMLElement>event.target;
+     let formElement: HTMLInputElement | HTMLSelectElement;
+@@ -397,12 +519,15 @@ export class MovementCreateComponent implements OnInit {
+ 
+       if ((<HTMLInputElement>formElement).files && (<HTMLInputElement>formElement).files.length) {
+         const fileList = (<HTMLInputElement>formElement).files;
++        for (let i = 0; i < fileList.length; i++) {
++          this.attachmentDataArray.push(fileList[i]);
++        }
+         const file = fileList.item(0);
+         reader.readAsDataURL(file);
+ 
+         reader.onload = () => {
+           this.formGroup.patchValue({
+-            attachment: (<HTMLInputElement>formElement).files[0]
++            attachment: (<HTMLInputElement>formElement).files
+           });
+         };
+       }
+@@ -557,7 +682,11 @@ export class MovementCreateComponent implements OnInit {
+             if (field.type === 'file' && this.readMode) {
+               const featureAttributes = this.features;
+               const objectid = featureAttributes['objectid'];
+-              const movementUrl = `${environment.arcgisMEBURL}FeatureServer/13/${objectid}/`;
++              // GAGA BURASI AÇILACAK
++              // const movementUrl = `${environment.arcgisMEBURL}FeatureServer/13/${objectid}/`;
++              const movementUrl = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectid}/`;
++              // GAGA BURASI AÇILACAK
++              // const attachmentInfosURL = movementUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
+               const attachmentInfosURL = movementUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
+               this.getAttachments(attachmentInfosURL).subscribe(attachmentData => {
+                 this.attachmentData = attachmentData;
+@@ -581,7 +710,11 @@ export class MovementCreateComponent implements OnInit {
+           if (field.type === 'file' && this.readMode) {
+             const featureAttributes = this.features;
+             const objectid = featureAttributes['objectid'];
+-            const movementUrl = `${environment.arcgisMEBURL}FeatureServer/13/${objectid}/`;
++            // GAGA BURASI AÇILACAK
++            // const movementUrl = `${environment.arcgisMEBURL}FeatureServer/13/${objectid}/`;
++            const movementUrl = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectid}/`;
++            // GAGA BURASI AÇILACAK
++            // const attachmentInfosURL = movementUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
+             const attachmentInfosURL = movementUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
+             this.getAttachments(attachmentInfosURL).subscribe(attachmentData => {
+               this.attachmentData = attachmentData;
+@@ -684,6 +817,7 @@ export class MovementCreateComponent implements OnInit {
+     }
+   }
+ 
++
+   getFeatures(url: string, queryProperties: esri.QueryProperties) {
+     const formData = this.createFormData(queryProperties);
+ 
+@@ -717,21 +851,27 @@ export class MovementCreateComponent implements OnInit {
+     let url: string;
+     let message = '';
+     let header = '';
++    const islem_turu = this.moduleData['islem_turu'];
+     if (this.acceptanceDialog === undefined) {
+       if (this.createMode === true) {
+-        url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/addFeatures';
++        // GAGA BURASI AÇILACAK
++        // url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/addFeatures';
++        url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/addFeatures';
+         message = 'Hareket Kaydı Eklemek İstediğinizden Emin Misiniz';
+         header = 'Kayıt';
+       }
+-      if (this.updateMode) {
+-        url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/updateFeatures';
++      if (this.updateMode && !this.isContainsCokluSecimNo) {
++        // GAGA BURASI AÇILACAK
++        // url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/updateFeatures';
++        url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/updateFeatures';
+         message = 'Hareketi Düzenlemek İstediğinizden Emin Misiniz';
+         header = 'Düzenleme';
+       }
++
+       const formValues = this.formGroup.value;
+       const degisiklik_turu = formValues['degisiklik_turu'];
+       const durumu = formValues['durumu'];
+-      const islem_turu = this.moduleData['islem_turu'];
++      this.durumu = durumu;
+       // Yatırım Teklif Yeni Teklif Girince Tıpkı Durum Revizyon-Proje Seçilmesi Gibi İşlem Bilgileri Penceresi Gelip Düzenlenebilir Olacak
+       if ((degisiklik_turu !== undefined && degisiklik_turu === '1')) {
+         this.openModuleDetail(this.refValue, url, formValues);
+@@ -740,6 +880,9 @@ export class MovementCreateComponent implements OnInit {
+       } else if (islem_turu === 12 && durumu == 35) {
+         this.openModuleDetail(this.refValue, url, formValues);
+         return;
++        // Kamulaştırma Davaları(10) İşlemi İçin Yeni Esas (42) Hareketi Seçilirse Yeni İşlem Penceresi Açılacak ve Bu İşlem
++        // Penceresinde Oluşturulacak Olan Dosya No Bu Hareketin Bağlı Olduğu Bir Önceki İşleme Atanarak İşlem ile Hareket
++        // Arasında Bağlantı Kurulması Sağlanmış Olacak
+       }
+ 
+       this.addMovementData(header, message, url, formValues);
+@@ -747,15 +890,21 @@ export class MovementCreateComponent implements OnInit {
+   }
+ 
+   openModuleDetail(objectid: number, movementUrl: string, formValues: any) {
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
++    let isInfo = 1;
+     const queryProperties = <esri.QueryProperties>{
+       outFields: ['*'],
+       where: `objectid = ${objectid}`,
+     };
+     const progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'İşlem Detayı Alınıyor', false, {}, false, 'light');
++    const yeniIslemPenceresiAcilacakDomainList = this.yeniIslemPenceresiAcilacakDomainList;
+ 
+     this.getFeatures(url, queryProperties).subscribe(res => {
+-      this.getLayerFields().subscribe(fields => {
++      // GAGA BURASI AÇILACAK
++      // this.getLayerFields().subscribe(fields => {
++      this.getTestLayerFields().subscribe(fields => {
+         this.moduleFields = fields;
+ 
+         progress.close();
+@@ -772,16 +921,28 @@ export class MovementCreateComponent implements OnInit {
+ 
+               const refField = this.moduleData.layerField;
+               const moduleRefField = this.moduleData.moduleField;
++              let createFromHareket = false;
++
++              if (formValues !== undefined) {
++                // Bu iki harekette de yeni işlem açılacak ve hareket eklenirken sadece dosya no ile esas no gösterilecek.
++                const foundHareketDomain = yeniIslemPenceresiAcilacakDomainList.find(x => x === formValues['durumu']);
++                if (this.moduleData['islem_turu'] === 10 && foundHareketDomain) {
++                  isInfo = -1;
++                  createFromHareket = true;
++                }
++              }
+ 
+               this.moduleCreateRef = this.dialogService.open(CreateModuleComponent, foundCodedValue.name + ' Detayı', false, {
+                 data: {
+-                  isInfo: 1,
++                  isInfo: isInfo,
+                   refField: refField,
+                   moduleRefField: moduleRefField,
+                   type: foundCodedValue.name,
+                   feature: this.featureData,
+                   moduleData: foundFeature.attributes,
+                   specialState: false,
++                  formValues: formValues,
++                  createFromHareket: createFromHareket
+                 }
+               }, false, 'light');
+ 
+@@ -806,6 +967,15 @@ export class MovementCreateComponent implements OnInit {
+     });
+   }
+ 
++  getTestLayerFields() {
++    return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1', {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson',
++      }
++    }).pipe(map(response => response['fields']));
++  }
++
+   getLayerFields() {
+     return this.http.get<Array<esri.Field>>(environment.arcgisMEBURL + 'FeatureServer/' + 14, {
+       params: {
+@@ -825,55 +995,186 @@ export class MovementCreateComponent implements OnInit {
+     }
+   }
+ 
++  getAllMovements() {
++    const queryProperties = <esri.QueryProperties>{
++      where: `${this.moduleWhereField} = ${this.moduleRefId}`,
++      orderByFields: ['create_date desc'],
++      outFields: ['*']
++    };
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
++
++    return this.getFeatures(url, queryProperties).pipe(map(response => response.features));
++  }
++
++  getMultiSelectMovements(islemRefId: any) {
++    const queryProperties = <esri.QueryProperties>{
++      where: `islem_refid = ${islemRefId} `,
++      orderByFields: ['create_date desc'],
++      outFields: ['*']
++    };
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
++
++    return this.getFeatures(url, queryProperties).pipe(map(response => response.features));
++  }
++
++  setMSMovementsIdenticalState() {
++    // e yatirim proje no modüldekinden olan hepsinin tek tek hareketlerine bakılıp ortak olanlar alınır.
++    return this.getMultiSelectDatas().toPromise().then(response => {
++      const foundFeatures = response['features'];
++      const movementArray = [];
++      const promises = [];
++      foundFeatures.forEach(foundFeature => {
++        const promise = this.getMultiSelectMovements(foundFeature['attributes']['objectid']).toPromise().then(allMovements => {
++          let movementText = '';
++          this.msAllMovementList.push(allMovements);
++          const movementList = allMovements.map(feature => feature.attributes['durumu']);
++          movementList.forEach(durumu => {
++            movementText += durumu.toString();
++          });
++          movementArray.push(movementText);
++        });
++
++        promises.push(promise);
++      });
++
++      return Promise.all(promises).then(res => {
++        let isSame = false;
++        for (let i = 0; i < movementArray.length; i++) {
++          const nextIndex = movementArray[i + 1];
++          if (nextIndex !== undefined) {
++            const currentMovementText = movementArray[i];
++            const nextMovementText = movementArray[i + 1];
++
++            if (currentMovementText === nextMovementText) {
++              isSame = true;
++            } else {
++              isSame = false;
++            }
++          }
++        }
++
++        this.msMovementsIdenticalState = isSame;
++        return isSame;
++      });
++    });
++  }
++
+   addMovementData(header: string, message: string, url: string, formValues: any) {
+-    this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, {
+-      data: {
+-        message: message
+-      }
+-    }, false, 'light');
+ 
+-    this.acceptanceDialog.afterClosed.subscribe(chosenResult => {
+-      if (chosenResult === true) {
+-        this.createMovementData(url, formValues);
++    // Durumu icra (39) ise yeni işlem penceresi açıcak o işlemi kaydettiğinde icra hareketini ilk işlemin dosya ve esasno'sunu
++    // alarak kaydedecek
++    if (this.yeniIslemPenceresiAcilacakDomainList.includes(this.durumu)) {
++      this.openModuleDetail(this.refValue, url, formValues);
++    } else {
++      if (this.isContainsCokluSecimNo) {
++        const warningMessage = 'Bu İşlem Çoklu Seçimle Eklenmiştir.';
++
++        // Çoklu Olarak Eklenmiş İşlemlerin Hareketleri Arasında Senkronizasyon Yoksa Bütün İşlemlerin Hareketlerine
++        // Bu Hareketi Eklemek veya Bütün İşlemlerin Hareketlerini Bu Şekilde Güncelleme Seçeneği Disable Olacak.
++        if (this.createMode) {
++          this.setMSMovementsIdenticalState().then(res => {
++            if (this.multiSelectAcceptanceDialog === undefined) {
++              if (this.createMode) {
++                this.multiSelectAcceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'UYARI', false, {
++                  data: {
++                    message: warningMessage,
++                    multiSelectAddMovement: true,
++                    msIdenticalState: res
++                  }
++                }, false, 'light');
++              }
++              this.multiSelectAcceptanceDialog.afterClosed.subscribe(multiSelectChoise => {
++                let msChoise = 1;
++                // 1: onlyThisProcess, 2:allProcess
++                if (multiSelectChoise === 'allProcess') {
++                  msChoise = 2;
++                }
++                // tslint:disable-next-line:max-line-length
++                if (this.acceptanceDialog === undefined && multiSelectChoise !== undefined) {
++                  this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, {
++                    data: {
++                      message: 'Hareketleri Eklemek İstediğinize Emin Misiniz?'
++                    }
++                  }, false, 'light');
++                  this.acceptanceDialog.afterClosed.subscribe(closeResult => {
++                    if (closeResult === true) {
++                      this.createMovementData(url, formValues, msChoise);
++                    }
++                    this.acceptanceDialog = undefined;
++                    this.dialog.close(true);
++                  });
++                }
++                this.multiSelectAcceptanceDialog = undefined;
++                this.dialog.close(true);
++              });
++            }
++          });
++        } else if (this.editMode) {
++          this.onUpdateMovement();
++        }
++      } else {
++        this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, {
++          data: {
++            message: message
++          }
++        }, false, 'light');
++        this.acceptanceDialog.afterClosed.subscribe(chosenResult => {
++          if (chosenResult === true) {
++            this.createMovementData(url, formValues);
++          }
++          this.acceptanceDialog = undefined;
++        });
+       }
+-      this.acceptanceDialog = undefined;
+-    });
++    }
+   }
+ 
+   updateParselProperty(kadastroParselLayer: esri.FeatureLayer, tasinmaz_id: number,
+     propertyType: string, domainValue: number) {
++
+     const queryProperties: esri.QueryProperties = {
+       where: `tasinmaz_id=${tasinmaz_id}`,
+       outFields: [`objectid, ${propertyType}`],
+       returnGeometry: false
+     };
+ 
+-    kadastroParselLayer.queryFeatures(queryProperties).then(result => {
+-      const feature: esri.Graphic = result.features[0];
+-      const updatedPropertyValue = feature.getAttribute(propertyType);
++    kadastroParselLayer.queryFeatures(queryProperties).then(results => {
++      const featureList = [];
++      for (let i = 0; i < results.features.length; i++) {
++        const feature: esri.Graphic = results.features[i];
++        const updatedPropertyValue = feature.getAttribute(propertyType);
+ 
+-      if (propertyType === 'mevcut_kullanim' && updatedPropertyValue === 5) {
+-        return;
+-      }
++        if (propertyType === 'mevcut_kullanim' && updatedPropertyValue === 5) {
++          return;
++        }
+ 
+-      feature.setAttribute(propertyType, domainValue);
++        feature.setAttribute(propertyType, domainValue);
++        featureList.push(feature);
++      }
+       const applyEdits = <esri.FeatureLayerApplyEditsEdits>{
+-        updateFeatures: [feature]
++        updateFeatures: featureList
+       };
+ 
+       kadastroParselLayer.applyEdits(applyEdits).then(updateRes => {
+-        const resultsValue = <Array<{ success: boolean, objectId: number }>>updateRes['updateFeatureResults'];
+-        if (resultsValue !== undefined) {
+-          this.notify.open('Parsele ait ' + propertyType + ' güncellendi', 'success', 10);
+-        } else {
+-          this.notify.open('Parsele ait ' + propertyType + ' güncellenirken hata oluştu', 'danger', 10);
++        for (let j = 0; j < updateRes.length; j++) {
++          const resultsValue = <Array<{ success: boolean, objectId: number }>>updateRes[j]['updateFeatureResults'];
++          if (resultsValue !== undefined) {
++            this.notify.open('Parsele ait ' + propertyType + ' güncellendi', 'success', 10);
++          } else {
++            this.notify.open('Parsele ait ' + propertyType + ' güncellenirken hata oluştu', 'danger', 10);
++          }
+         }
+       });
+     });
+   }
+ 
+   updateProjeNo(formValues: any) {
+-    const url = `${environment.arcgisMEBURL}FeatureServer/13/updateFeatures`;
++    // GAGA BURASI AÇILACAK
++    // const url = `${environment.arcgisMEBURL}FeatureServer/13/updateFeatures`;
++    const url = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/updateFeatures`;
+ 
+     const formData = new FormData();
+     const features: Array<esri.Graphic> = [];
+@@ -890,106 +1191,403 @@ export class MovementCreateComponent implements OnInit {
+     this.http.post(url, formData, { params: { token: sessionStorage.getItem('CBSArcToken') } }).subscribe();
+   }
+ 
+-  createMovementData(url: string, formValues: any) {
++  createMovementData(url: string, formValues: any, msChoise?: number) {
+     const dialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'İşlem Yapılıyor', false,
+       { data: {} }, false, 'light');
+ 
+-    this.addOrEditMovement(url).subscribe(res => {
++    const processUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
++    const movementUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
++    this.notUpdatedParselIDList = this.toBeUpdatedParselIDList;
+ 
+-      if (Object.keys(res).length === 0) {
+-        this.notify.open('Bir Hata Oluştu Hareket Kaydedilemedi', 'danger', 10);
+-        dialog.close();
+-      } else {
+-        if (formValues.hasOwnProperty('durumu')) {
+-          const kadastroParselLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.allLayers.find(layer =>
+-            layer.title === 'Kadastro Parselleri');
+-
+-          const moduleData = this.moduleData;
+-          const islem_turu = moduleData['islem_turu'];
+-          const durumu = formValues['durumu'];
+-          const tasinmaz_id = moduleData['parsel_id'];
+-          // TODO islem turu yatirim teklif ise
+-          if (islem_turu === 12) {
+-
+-            // TODO hareket durum reddedildi ve plana alindi degil ise
+-            // tslint:disable-next-line:triple-equals
+-            if (durumu != 15 && durumu != 25) {
+-              this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'mevcut_kullanim', 5);
+-            }
++    if (msChoise === 2) {
++      if (this.createMode) {
++        this.msAddMovement(url, msChoise).then(promiseArray => {
++          Promise.all(promiseArray).then(promiseResponses => {
++            promiseResponses.forEach(response => {
++              if (Object.keys(response).length === 0) {
++                this.notify.open('Bir Hata Oluştu Hareketler Kaydedilemedi', 'danger', 10);
++                dialog.close();
++                this.progressDialog.close();
++              } else {
++
++                let resultValue = 'addResults';
++                if (this.updateMode) {
++                  resultValue = 'updateResults';
++                }
+ 
+-          } else if (islem_turu === 11 && tasinmaz_id !== null) { // TODO islem turu kamulastirma teklifi
+-            const islem_edinim_sekli = moduleData['edinim_sekli'];
++                const results = <Array<{ success: boolean, objectId: number }>>response[resultValue];
++
++                if (formValues.hasOwnProperty('durumu')) {
++                  const kadastroParselLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.allLayers.find(layer =>
++                    layer.title === 'Kadastro Parselleri');
++                  const formData = new FormData();
++                  formData.append('where', `objectid=${results[0].objectId}`);
++                  formData.append('f', 'json');
++                  formData.append('outFields', '*');
++                  formData.append('rollbackOnFailure', 'true');
++
++                  // BURASI SIRALI YAPILMASI LAZIM BAKILACAK TODO GAGA
++                  const deneme = this.http.post(movementUrl, formData, {
++                    params: {
++                      token: sessionStorage.getItem('CBSArcToken')
++                    }
++                  }).toPromise().then(movementRes => {
++                    const features = movementRes['features'][0]['attributes'];
++                    const formData2 = new FormData();
++                    formData2.append('where', `objectid=${features['islem_refid']}`);
++                    formData2.append('f', 'json');
++                    formData2.append('outFields', '*');
++                    formData2.append('rollbackOnFailure', 'true');
++
++                    const deneme2 = this.http.post(processUrl, formData2, {
++                      params: {
++                        token: sessionStorage.getItem('CBSArcToken')
++                      }
++                    }).toPromise().then(processRes => {
++                      const features2 = processRes['features'][0];
++                      const attributes = features2['attributes'];
++                      const tasinmaz_id = attributes['parsel_id'];
++                      const islem_turu = attributes['islem_turu'];
++                      const durumu = attributes['durumu'];
++
++                      const foundIndex = this.toBeUpdatedParselIDList.findIndex(id => id === tasinmaz_id);
++                      if (foundIndex) {
++                        const firstPart = this.notUpdatedParselIDList.slice(0, foundIndex);
++                        const secondPart = this.notUpdatedParselIDList.slice(foundIndex + 1);
++
++                        this.notUpdatedParselIDList = [].concat(firstPart, secondPart);
++                      }
++
++                      this.updatedParselIDList.push(tasinmaz_id);
++                      if (islem_turu === 12) {
++                        // tslint:disable-next-line:triple-equals
++                        if (durumu != 15 && durumu != 25) {
++                          this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'mevcut_kullanim', 5);
++                        }
++                      } else if (islem_turu === 11 && tasinmaz_id !== null) { // TODO islem turu kamulastirma teklifi
++                        const islem_edinim_sekli = attributes['edinim_sekli'];
++                        if (islem_edinim_sekli === 3) {
++                          // TODO kabul edildi veya ertelendi
++                          // tslint:disable-next-line:triple-equals
++                          if (durumu == 22 || durumu == 24) {
++                            this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 9);
++                            // tslint:disable-next-line:triple-equals
++                          } else if (durumu == 23) { // TODO durum reddedildi
++                            this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 11);
++                          }
++                        }
++                      }
++
++                      // tslint:disable-next-line:triple-equals
++                      if (this.movementData.type === 14 && formValues['durumu'] == 26) {
++                        const objectid = results[0].objectId;
++                        formValues['proje_no'] = objectid;
++                        formValues['objectid'] = objectid;
++
++                        this.updateProjeNo(formValues);
++                        // tslint:disable-next-line:triple-equals
++                      } else if (this.movementData.type === 12 && formValues['durumu'] == 26) {
++                        // Artık Yatırım Teklif Onaylandı Durumu İçin ProjeNo Otomatik Oluşturulacak. IlceKodTeklifYılıObjectId şeklinde
++                        const objectid = results[0].objectId;
++                        // const teklifYili = this.moduleData['teklif_yili'].toString();
++                        // const ilceKodu = this.featureData.attributes['ilce'].toString();
++                        formValues['proje_no'] = objectid;
++                        formValues['objectid'] = objectid;
++                        this.updateProjeNo(formValues);
++                      }
++                      if (formValues.attachment !== undefined) {
++                        if (this.updateMode) {
++                          this.updateAttachments(formValues, dialog, results);
++                          this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++                        }
++                        if (this.createMode) {
++                          this.addAttachment(formValues, dialog, results);
++                          this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++                        }
++                      } else {
++                        if (this.updateMode === true) {
++                          this.removeIfHasAttachment(dialog);
++                          this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++                        }
++                        if (this.createMode) {
++                          this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++                          dialog.close();
++                          this.dialog.close(true);
++                          this.progressDialog.close();
++                        }
++                      }
++                      if (this.notUpdatedParselIDList.length > 0) {
++                        let notUpdatedParselIdListString = '';
++                        this.notUpdatedParselIDList.forEach(id => {
++                          notUpdatedParselIdListString += id + ',';
++                        });
++                        notUpdatedParselIdListString.slice(0, -1);
++                        this.notify.open(`Parsel ID'leri ${notUpdatedParselIdListString} Olan Veri/Verilerin Hareketi Kaydedilemedi.`,
++                          'danger', 10);
++                      }
++                    });
++                  });
++                }
++              }
++            });
++          });
++        }, error => {
++          dialog.close();
++          this.dialog.close(false);
++          console.error(error);
++        });
++      } else if (this.editMode) {
++        this.onUpdateMovement();
++      }
++    } else {
++      this.addOrEditMovement(url).subscribe(res => {
+ 
+-            if (islem_edinim_sekli === 3) {
+-              // TODO kabul edildi veya ertelendi
++        if (Object.keys(res).length === 0) {
++          this.notify.open('Bir Hata Oluştu Hareket Kaydedilemedi', 'danger', 10);
++          dialog.close();
++        } else {
++          if (formValues.hasOwnProperty('durumu')) {
++            const kadastroParselLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.allLayers.find(layer =>
++              layer.title === 'Kadastro Parselleri');
++
++            const moduleData = this.moduleData;
++            const islem_turu = moduleData['islem_turu'];
++            const durumu = formValues['durumu'];
++            const tasinmaz_id = moduleData['parsel_id'];
++            // TODO islem turu yatirim teklif ise
++            if (islem_turu === 12) {
++
++              // TODO hareket durum reddedildi ve plana alindi degil ise
+               // tslint:disable-next-line:triple-equals
+-              if (durumu == 22 || durumu == 24) {
+-                this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 9);
++              if (durumu != 15 && durumu != 25) {
++                this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'mevcut_kullanim', 5);
++              }
++
++            } else if (islem_turu === 11 && tasinmaz_id !== null) { // TODO islem turu kamulastirma teklifi
++              const islem_edinim_sekli = moduleData['edinim_sekli'];
++
++              if (islem_edinim_sekli === 3) {
++                // TODO kabul edildi veya ertelendi
+                 // tslint:disable-next-line:triple-equals
+-              } else if (durumu == 23) { // TODO durum reddedildi
+-                this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 11);
++                if (durumu == 22 || durumu == 24) {
++                  this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 9);
++                  // tslint:disable-next-line:triple-equals
++                } else if (durumu == 23) { // TODO durum reddedildi
++                  this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 11);
++                }
+               }
+             }
+           }
+-        }
+ 
+-        let resultValue = 'addResults';
+-        if (this.editMode === true) {
+-          resultValue = 'updateResults';
+-        }
+-        const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+-
+-        // tslint:disable-next-line:triple-equals
+-        if (this.movementData.type === 14 && formValues['durumu'] == 26) {
+-          const objectid = results[0].objectId;
+-          formValues['proje_no'] = objectid;
+-          formValues['objectid'] = objectid;
++          let resultValue = 'addResults';
++          if (this.editMode === true) {
++            resultValue = 'updateResults';
++          }
++          const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+ 
+-          this.updateProjeNo(formValues);
+           // tslint:disable-next-line:triple-equals
+-        } else if (this.movementData.type === 12 && formValues['durumu'] == 26) {
+-          // Artık Yatırım Teklif Onaylandı Durumu İçin ProjeNo Otomatik Oluşturulacak. IlceKodTeklifYılıObjectId şeklinde
+-          const objectid = results[0].objectId;
+-          // const teklifYili = this.moduleData['teklif_yili'].toString();
+-          // const ilceKodu = this.featureData.attributes['ilce'].toString();
+-          formValues['proje_no'] = objectid;
+-          formValues['objectid'] = objectid;
+-          this.updateProjeNo(formValues);
+-        }
++          if (this.movementData.type === 14 && formValues['durumu'] == 26) {
++            const objectid = results[0].objectId;
++            formValues['proje_no'] = objectid;
++            formValues['objectid'] = objectid;
+ 
+-        if (formValues.attachment !== undefined) {
+-          if (this.updateMode) {
+-            this.updateAttachments(formValues, dialog, results);
+-            this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++            this.updateProjeNo(formValues);
++            // tslint:disable-next-line:triple-equals
++          } else if (this.movementData.type === 12 && formValues['durumu'] == 26) {
++            // Artık Yatırım Teklif Onaylandı Durumu İçin ProjeNo Otomatik Oluşturulacak. IlceKodTeklifYılıObjectId şeklinde
++            const objectid = results[0].objectId;
++            // const teklifYili = this.moduleData['teklif_yili'].toString();
++            // const ilceKodu = this.featureData.attributes['ilce'].toString();
++            formValues['proje_no'] = objectid;
++            formValues['objectid'] = objectid;
++            this.updateProjeNo(formValues);
+           }
+-          if (this.createMode) {
+-            this.addAttachment(formValues, dialog, results);
+-            this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++
++          if (formValues.attachment !== undefined) {
++            if (this.updateMode) {
++              this.updateAttachments(formValues, dialog, results);
++              this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++            }
++            if (this.createMode) {
++              this.addAttachment(formValues, dialog, results);
++              this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++            }
++          } else {
++            if (this.updateMode === true) {
++              this.removeIfHasAttachment(dialog);
++              this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++            }
++            if (this.createMode) {
++              this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++              dialog.close();
++              this.dialog.close(true);
++            }
+           }
++        }
++      }, error => {
++        dialog.close();
++        this.dialog.close(false);
++        console.error(error);
++      });
++    }
++
++    // TODO: BURANIN SONUNDA ERRORA DÜŞÜYOR BUNA SONRA BAKILACAK
++  }
++
++  onMultiUpdateMovement(movementData: any, updateFeatureUrl: string) {
++    this.getMovementsOfMultiSelectDatas().subscribe(movements => {
++
++      const durumu = movementData['durumu'];
++      const touch_date = movementData['touch_date'];
++      const touch_by = movementData['touch_by'];
++      const toBeUpdatedMovements = movements['features'].filter(movement => movement.attributes.touch_by === touch_by &&
++        movement.attributes.durumu === durumu && movement.attributes.touch_date === touch_date);
++      const objectIDs = toBeUpdatedMovements.map(movement => movement.attributes.objectid);
++      const promises = [];
++      let progress;
++
++      const newFormData = new FormData();
++      const features: Array<esri.Graphic> = [];
++      // @ts-ignore
++      const feature: esri.Graphic = {
++        attributes: this.formGroup.value
++      };
++
++      features.push(feature);
++      const message = 'Hareketleri Güncellemek İstediğinizden Emin Misiniz';
++      const header = 'Çoklu Güncelleme';
++      const acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, { data: { message } }, false, 'light');
++
++      acceptanceDialog.afterClosed.subscribe((isOk) => {
++        if (!isOk) {
++          return;
+         } else {
+-          if (this.updateMode === true) {
+-            this.removeIfHasAttachment(dialog);
+-            this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++          progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'Hareketler Güncelleniyor..', false,
++            { data: {} }, false, 'light');
++          for (let i = 0; i < objectIDs.length; i++) {
++            // KONTROL EDİLCEK GAGA
++            feature.attributes['objectid'] = objectIDs[i];
++            newFormData.append('features', JSON.stringify(features));
++            newFormData.append('rollbackOnFailure', 'true');
++            newFormData.append('f', 'json');
++            newFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++            promises.push(this.http.post(updateFeatureUrl, newFormData).toPromise().then());
+           }
+-          if (this.createMode) {
+-            this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
+-            dialog.close();
++          Promise.all(promises).then((responses) => {
++            let isAllOk = true;
++            responses.forEach(response => {
++              if (response['updateResults'][0].success) {
++                isAllOk = true;
++              } else {
++                isAllOk = false;
++              }
++            });
++
++            if (isAllOk) {
++              this.notify.open('Çoklu Hareket Güncelleme Başarılı', 'success', 5);
++            } else {
++              this.notify.open('Çoklu Hareket Güncellerken Hata Oluştu', 'danger', 5);
++            }
++            progress.close();
+             this.dialog.close(true);
+-          }
++
++          });
++        }
++      });
++    });
++  }
++
++  onMultiDeleteMovement(movementData: any, deleteFeatureUrl: string) {
++    this.getMovementsOfMultiSelectDatas().subscribe(movements => {
++      const durumu = movementData['durumu'];
++      const touch_date = movementData['touch_date'];
++      const touch_by = movementData['touch_by'];
++      const toBeDeletedMovements = movements['features'].filter(movement => movement.attributes.touch_by === touch_by &&
++        movement.attributes.durumu === durumu && movement.attributes.touch_date === touch_date);
++      const objectIDs = toBeDeletedMovements.map(movement => movement.attributes.objectid);
++      const newFormData = new FormData();
++      newFormData.append('objectIds', objectIDs.toString());
++      newFormData.append('rollbackOnFailure', 'true');
++      newFormData.append('f', 'json');
++      newFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++      const message = 'Hareketleri Silmek İstediğinizden Emin Misiniz';
++      const header = 'Çoklu Silme';
++      const acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, { data: { message } }, false, 'light');
++
++      acceptanceDialog.afterClosed.subscribe((isOk) => {
++        this.acceptanceDialog = undefined;
++        if (!isOk) {
++          return;
+         }
++        const progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'Hareketler Siliniyor..', false,
++          { data: {} }, false, 'light');
++        this.http.post(deleteFeatureUrl, newFormData).subscribe((response: DeleteResults) => {
++          progress.close();
++          this.dialog.close(true);
++          if (response.deleteResults && response.deleteResults[0].success) {
++            this.notify.open('Çoklu Hareket Silme Başarılı', 'success', 5);
++          } else {
++            console.error(response);
++            this.notify.open('Çoklu Hareket Silerken Hata Oluştu', 'danger', 5);
++          }
++        }, (err) => {
++          console.error(err);
++          this.dialog.close(true);
++          progress.close();
++        });
++      });
++    });
++  }
++
++  updateMovement(movementData: any, updateFeatureUrl: string) {
++    const updateFormData = new FormData();
++    const features: Array<esri.Graphic> = [];
++    // @ts-ignore
++    const feature: esri.Graphic = {
++      attributes: this.formGroup.value
++    };
++
++    feature.attributes['objectid'] = movementData.objectid;
++
++    features.push(feature);
++    updateFormData.append('features', JSON.stringify(features));
++    updateFormData.append('rollbackOnFailure', 'true');
++    updateFormData.append('f', 'json');
++    updateFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++    const message = 'Hareketi Güncellemek İstediğinizden Emin Misiniz';
++    const header = 'Güncelleme';
++    const acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, { data: { message } }, false, 'light');
++
++    acceptanceDialog.afterClosed.subscribe((isOk) => {
++      this.acceptanceDialog = undefined;
++      if (!isOk) {
++        return;
+       }
+-    }, error => {
+-      dialog.close();
+-      this.dialog.close(false);
+-      console.error(error);
++      const progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'Hareket Güncelleniyor..', false,
++        { data: {} }, false, 'light');
++      this.http.post(updateFeatureUrl, updateFormData).subscribe((response) => {
++        progress.close();
++        this.dialog.close(true);
++        if (response['updateResults'] && response['updateResults'][0].success) {
++          this.notify.open('Hareket Güncelleme Başarılı', 'success', 5);
++        } else {
++          console.error(response);
++          this.notify.open('Hareket Güncellerken Hata Oluştu', 'danger', 5);
++        }
++      }, (err) => {
++        console.error(err);
++        this.dialog.close(true);
++        progress.close();
++      });
+     });
+ 
+-    // TODO: BURANIN SONUNDA ERRORA DÜŞÜYOR BUNA SONRA BAKILACAK
++    this.acceptanceDialog = acceptanceDialog;
+   }
+ 
+-  onDeleteMovement() {
+-    const movementData = this.dialogConfig.data.features;
+-    const deleteFeatureUrl = `${environment.arcgisMEBURL}FeatureServer/13/deleteFeatures`;
++  deleteMovement(movementData: any, deleteFeatureUrl: string) {
+     const deleteFormData = new FormData();
+     deleteFormData.append('objectIds', movementData.objectid);
+     deleteFormData.append('rollbackOnFailure', 'true');
+@@ -1023,11 +1621,173 @@ export class MovementCreateComponent implements OnInit {
+       });
+     });
+ 
+-
+     this.acceptanceDialog = acceptanceDialog;
++  }
++
++  onUpdateMovement() {
++    // GAGA BURASI DEĞİŞTİRİLECEK
++    const deleteFeatureUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/updateFeatures';
++    const movementData = this.dialogConfig.data.features;
++
++    if (this.isContainsCokluSecimNo) {
++      const warningMessage = 'Bu İşlem Çoklu Seçimle Eklenmiştir.';
++
++      this.setMSMovementsIdenticalState().then(res => {
++        if (this.multiSelectAcceptanceDialog === undefined) {
++          this.multiSelectAcceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'UYARI', false, {
++            data: {
++              message: warningMessage,
++              multiSelectUpdateMovement: true,
++              msIdenticalState: res
++            }
++          }, false, 'light');
++          this.multiSelectAcceptanceDialog.afterClosed.subscribe(multiSelectChoise => {
++            let msChoise = 1;
++            // 1: onlyThisProcess, 2:allProcess
++            if (multiSelectChoise === 'allProcess') {
++              msChoise = 2;
++            }
++            // tslint:disable-next-line:max-line-length
++            if (this.acceptanceDialog === undefined && multiSelectChoise !== undefined) {
++              if (msChoise === 2) {
++                this.onMultiUpdateMovement(movementData, deleteFeatureUrl);
++                return;
++
++              } else if (msChoise === 1) {
++                this.updateMovement(movementData, deleteFeatureUrl);
++              }
++            }
++            this.multiSelectAcceptanceDialog = undefined;
++          });
++        }
++      });
++    } else {
++      this.updateMovement(movementData, deleteFeatureUrl);
++    }
++  }
++
++  onDeleteMovement() {
++    // GAGA BURASI AÇILACAK
++    // const deleteFeatureUrl = `${environment.arcgisMEBURL}FeatureServer/13/deleteFeatures`;
++    const deleteFeatureUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/deleteFeatures';
++    const movementData = this.dialogConfig.data.features;
++
++    if (this.isContainsCokluSecimNo) {
++      const warningMessage = 'Bu İşlem Çoklu Seçimle Eklenmiştir.';
++
++      this.setMSMovementsIdenticalState().then(res => {
++        if (this.multiSelectAcceptanceDialog === undefined) {
++          this.multiSelectAcceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'UYARI', false, {
++            data: {
++              message: warningMessage,
++              multiSelectDeleteMovement: true,
++              msIdenticalState: res
++            }
++          }, false, 'light');
++          this.multiSelectAcceptanceDialog.afterClosed.subscribe(multiSelectChoise => {
++            let msChoise = 1;
++            // 1: onlyThisProcess, 2:allProcess
++            if (multiSelectChoise === 'allProcess') {
++              msChoise = 2;
++            }
++            // tslint:disable-next-line:max-line-length
++            if (this.acceptanceDialog === undefined && multiSelectChoise !== undefined) {
++              if (msChoise === 2) {
++                this.onMultiDeleteMovement(movementData, deleteFeatureUrl);
++                return;
++              } else if (msChoise === 1) {
++                this.deleteMovement(movementData, deleteFeatureUrl);
++              }
++            }
++            this.multiSelectAcceptanceDialog = undefined;
++          });
++        }
++      });
++    } else {
++      this.deleteMovement(movementData, deleteFeatureUrl);
++    }
++  }
++
++  getMovementsOfMultiSelectDatas() {
++    // GAGA BURASI DEĞİŞTİRİLECEK
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
++
++    return this.http.get(url, {
++      params: {
++        where: `islem_no='${this.moduleData['e_yatirim_proje_no']}'`,
++        outFields: ['*'],
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson'
++      }
++    });
++  }
++
++  getMultiSelectDatas() {
++    // GAGA BURASI DEĞİŞTİRİLECEK
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
++
++    return this.http.get(url, {
++      params: {
++        where: `e_yatirim_proje_no='${this.moduleData['e_yatirim_proje_no']}' and touch_by='goksuvat'`,
++        outFields: ['*'],
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson'
++      }
++    });
++  }
++
++  // onMultiAdd
++  msAddMovement(url: string, msChoise: number) {
++    const formData = this.formGroup.value;
+ 
+-    // this.dialog
++    const gonderilenTutar: string = formData['gonderilen_tutar'];
++    if (gonderilenTutar) {
++      formData['gonderilen_tutar'] = gonderilenTutar.replace('.', ',');
++    }
++
++    const feature = <esri.Graphic>{
++      attributes: formData,
++    };
++
++    const features = <Array<esri.Graphic>>[];
++
++    features.push(feature);
++    this.addFeatureBoundData(features);
++
++    if (this.isContainsCokluSecimNo && msChoise === 2) {
++      const toBeUpdatedParselIDList = [];
++
++      return this.getMultiSelectDatas().toPromise().then(response => {
++        console.log(response);
++        const foundFeatures = response['features'];
++        const promises = [];
++        foundFeatures.forEach(foundFeature => {
++          feature.attributes['islem_refid'] = foundFeature['attributes']['objectid'];
++          feature.attributes['id'] = foundFeature['attributes']['objectid'];
++          feature.attributes['islem_no'] = foundFeature['attributes']['e_yatirim_proje_no'];
++          toBeUpdatedParselIDList.push(foundFeature['attributes']['parsel_id']);
++
++          const newFormData = new FormData();
++          newFormData.append('features', JSON.stringify([feature]));
++          newFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++          newFormData.append('f', 'pjson');
++          newFormData.append('rollbackOnFailure', 'true');
++          if (this.progressDialog === undefined) {
++            const progressDialog = this.dialogService.
++              openUnClosable(ProgressInfoComponent, 'Kayıtlar Ekleniyor', false, {}, false, 'light');
++            this.progressDialog = progressDialog;
++          }
++
++          // GAGA BURASI AÇILACAK
++          // this.http.post(environment.arcgisMEBURL + 'FeatureServer/14/addFeatures', insertFormData)
++          promises.push(this.http.post(url, newFormData).toPromise());
++        });
++        this.toBeUpdatedParselIDList = toBeUpdatedParselIDList;
++        return promises;
++      });
++    }
+   }
++
+   addOrEditMovement(url: string): Observable<Object> {
+     const formData = this.formGroup.value;
+ 
+@@ -1044,7 +1804,6 @@ export class MovementCreateComponent implements OnInit {
+       attributes: formData,
+     };
+ 
+-
+     const features = <Array<esri.Graphic>>[];
+ 
+     features.push(feature);
+@@ -1062,61 +1821,121 @@ export class MovementCreateComponent implements OnInit {
+   }
+ 
+   addAttachment(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+-    const addAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/13/${results[0].objectId}/addAttachment`;
+-
+-    const attachmentFormData = new FormData();
+-
+-    attachmentFormData.append('attachment', formValues.attachment);
+-    attachmentFormData.append('f', 'json');
+-    attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+-
+-
+-    this.http.post(addAttachmentURL, attachmentFormData).subscribe(attachmentAddResult => {
+-      const addedAttachmentData = <any>attachmentAddResult['addAttachmentResult'];
+-
+-      if (addedAttachmentData !== undefined) {
+-        const status = addedAttachmentData.success;
+-        if (status !== true) {
+-          console.error('Attachment cannot add');
+-          // TODO: Notify Error
++    // GAGA BURASI AÇILACAK
++    // const addAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/13/${results[0].objectId}/addAttachment`;
++    // tslint:disable-next-line:max-line-length
++    const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${results[0].objectId}/addAttachment`;
++    const newAttachments = this.attachmentDataArray;
++    const addObservables = [];
++
++    for (let i = 0; i < newAttachments.length; i++) {
++      const attachmentFormData = new FormData();
++
++      attachmentFormData.append('attachment', newAttachments[i]);
++      attachmentFormData.append('f', 'json');
++      attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++      addObservables.push(this.http.post(addAttachmentURL, attachmentFormData));
++      forkJoin(addObservables).subscribe(attachmentAddResult => {
++        const addedAttachmentData = <any>attachmentAddResult['addAttachmentResult'];
++
++        if (addedAttachmentData !== undefined) {
++          const status = addedAttachmentData.success;
++          if (status !== true) {
++            console.error('Attachment Could Not Be Added, /* Movement Create AddAttachment Error */');
++            // TODO: Notify Error
++          }
++          dialog.close();
++          this.dialog.close(true);
++        } else {
++          dialog.close();
++          this.dialog.close(true);
+         }
+-        dialog.close();
+-        this.dialog.close(true);
+-      } else {
+-        dialog.close();
+-        this.dialog.close(true);
+-      }
++      });
++    }
++  }
+ 
+-    });
++  postAddAttachment(url: string, attachment: any) {
++    const attachmentForm = new FormData();
++    attachmentForm.append('attachment', attachment);
++    attachmentForm.append('rollbackOnFailure', 'true');
++    attachmentForm.append('f', 'json');
++    attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++
++    return this.http.post(url, attachmentForm);
+   }
+ 
+   updateAttachments(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+     const featureAttributes = <any>this.features;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`
++    // GAGA BURASI AÇILACAK
++    // const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`
++    //   + `&token=${sessionStorage.getItem('CBSArcToken')}`;
++    // tslint:disable-next-line:max-line-length
++    const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/attachments?f=pjson`
+       + `&token=${sessionStorage.getItem('CBSArcToken')}`;
++      // GAGA BURASI DEĞİŞTİRİLECEK
++      // tslint:disable-next-line:max-line-length
++    const deleteAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/deleteAttachments`;
++    // GAGA BURASI DEĞİŞTİRİLECEK
++    // tslint:disable-next-line:max-line-length
++    const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/addAttachment`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined && attachments.length === 0) {
+         this.addAttachment(formValues, dialog, results);
+       } else {
+-        const attachment = attachments[0];
+-        const editAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/updateAttachment`;
+-        const attachmentId = attachment.id;
++        const deleteObservables = [];
++        const newAttachments = this.formGroup.value['attachment'];
++        const previousAttachments = attachments;
+ 
+-        const attachmentForm = new FormData();
++        for (let i = 0; i < previousAttachments.length; i++) {
++          const attachmentForm = new FormData();
+ 
+-        attachmentForm.append('attachmentId', attachmentId.toString());
+-        attachmentForm.append('attachment', formValues.attachment);
+-        attachmentForm.append('f', 'json');
+-        attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++          attachmentForm.append('attachmentIds', previousAttachments[i].id.toString());
++          attachmentForm.append('rollbackOnFailure', 'true');
++          attachmentForm.append('f', 'json');
++          attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
+ 
+-        this.http.post(editAttachmentURL, attachmentForm).subscribe(updateAttachmentRes => {
+-          const updatedAttachmentData = <any>updateAttachmentRes['updateAttachmentResult'];
+-
+-          if (updatedAttachmentData !== undefined) {
+-            const status = updatedAttachmentData.success;
++          deleteObservables.push(this.http.post(deleteAttachmentURL, attachmentForm));
++        }
++        forkJoin(deleteObservables).subscribe(attachmentDeleteResults => {
++          const deleteAttachmentData = <any>attachmentDeleteResults;
++          let status = true;
++          deleteAttachmentData.find(data => {
++            const success = data['deleteAttachmentResults'][0].success;
++            if (!success) {
++              status = false;
++            }
++          });
++          if (deleteAttachmentData !== undefined) {
+             if (status !== true) {
+-              console.error('Attachment did not updated');
++              console.error('Old Attachment Could Not Be Deleted, /*Movement Create UpdateAttachments Error*/');
++              // TODO: Notify Error
++            } else {
++              const addObservables = [];
++              for (let j = 0; j < newAttachments.length; j++) {
++                addObservables.push(this.postAddAttachment(addAttachmentURL, newAttachments[j]));
++              }
++              forkJoin(addObservables).subscribe(attachmentAddResults => {
++                let addStatus = true;
++                const uaddAttachmentData = <any>attachmentAddResults;
++                uaddAttachmentData.find(data => {
++                  const success = data['addAttachmentResult'].success;
++                  if (!success) {
++                    addStatus = false;
++                  }
++                });
++                if (uaddAttachmentData !== undefined) {
++                  if (addStatus !== true) {
++                    console.error('New Attachment Could Not Be Added, /*Movement Create UpdateAttachments Error*/');
++                  }
++                  this.dialog.close();
++                  this.dialog.close(true);
++                } else {
++                  this.dialog.close();
++                  this.dialog.close(true);
++                }
++              });
+             }
+             dialog.close();
+             this.dialog.close(true);
+@@ -1124,20 +1943,53 @@ export class MovementCreateComponent implements OnInit {
+             dialog.close();
+             this.dialog.close(true);
+           }
+-
+         });
++        // const attachment = attachments[0];
++        // tslint:disable-next-line:max-line-length
++        // const editAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/updateAttachment`;
++        // const attachmentId = attachment.id;
++
++        // const attachmentForm = new FormData();
++
++        // attachmentForm.append('attachmentId', attachmentId.toString());
++        // attachmentForm.append('attachment', formValues.attachment);
++        // attachmentForm.append('f', 'json');
++        // attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++
++        // this.http.post(editAttachmentURL, attachmentForm).subscribe(updateAttachmentRes => {
++        //   const updatedAttachmentData = <any>updateAttachmentRes['updateAttachmentResult'];
++
++        //   if (updatedAttachmentData !== undefined) {
++        //     const status = updatedAttachmentData.success;
++        //     if (status !== true) {
++        //       console.error('Attachment did not updated');
++        //     }
++        //     dialog.close();
++        //     this.dialog.close(true);
++        //   } else {
++        //     dialog.close();
++        //     this.dialog.close(true);
++        //   }
++        // });
+       }
+     });
+   }
+ 
+   removeIfHasAttachment(dialog: DialogRef) {
+     const featureAttributes = <any>this.features;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`
++    // GAGA BURASI AÇILACAK
++    // const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/attachments?f=pjson`
++    //   + `&token=${sessionStorage.getItem('CBSArcToken')}`;
++    // tslint:disable-next-line:max-line-length
++    const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/attachments?f=pjson`
+       + `&token=${sessionStorage.getItem('CBSArcToken')}`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined && attachments.length > 0) {
+-        const editAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/deleteAttachments`;
++        // GAGA BURASI AÇILACAK
++        // const editAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/13/${featureAttributes.objectid}/deleteAttachments`;
++        // tslint:disable-next-line:max-line-length
++        const editAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/deleteAttachments`;
+ 
+         const attachmentForm = new FormData();
+         const attachmentIds = attachments.map(attachmentObject => attachmentObject.id);
