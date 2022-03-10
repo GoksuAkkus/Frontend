@@ -1,0 +1,102 @@
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index 0cd239df277fb83948626cb0c897935a37d8f7a8..240caf905507ceb993237d1c0545ce6a656b5106 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -38,6 +38,8 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+   emitObject: EmitObject;
+ 
++  lastMovementTitle = 'Son Hareket';
++
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient) { }
+ 
+@@ -218,6 +220,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+   createColumnDefinitions(fields: Array<esri.Field>, showFields: Array<string>): Array<ColDef> {
+     const colDefs: Array<ColDef> = [];
++
+     fields.forEach(field => {
+       if (showFields.find(showField => showField === field.name) !== undefined) {
+         if (field.name === 'objectid') {
+@@ -268,6 +271,14 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         colDefs.push(colDef);
+       }
+     });
++
++    const lastMovementColDef: ColDef = {
++      headerName: 'Son Hareket',
++      colId: 'lastMovement',
++      field: 'lastMovement',
++      filter: 'agTextColumnFilter'
++    };
++    colDefs.push(lastMovementColDef);
+     return colDefs;
+   }
+ 
+@@ -290,9 +301,20 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       filter: false,
+       width: 100
+     };
++    const lastMovementCol = <ColDef>{
++      colId: 'lastMovement',
++      colKey: 'lastMovement',
++      headerName: 'Son Hareket',
++      cellRendererFramework: RendererComponent,
++      cellRendererParams: { title: this.lastMovementTitle },
++      sortable: false,
++      filter: false,
++      width: 100
++    };
+ 
+     fieldColDefs.push(processCol);
+     fieldColDefs.push(transactionsCol);
++    fieldColDefs.push(lastMovementCol);
+ 
+     return fieldColDefs;
+   }
+@@ -529,6 +551,31 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     return formData;
+   }
+ 
++  forLastMovement(params: any, colDef: ColDef) {
++    const objectid = params.data['objectid'];
++    const rowIndex = params.rowIndex.toString();
++
++    const processMovementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem_Hareket');
++    const movementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Hareket');
++    const queryProp: esri.QueryProperties = {
++      where: `i_objectid=${objectid}`,
++      outFields: ['h_durumu']
++    };
++
++    processMovementLayer.queryFeatures(queryProp).then(response => {
++
++      const domainCode = response.features[0].attributes['h_durumu'];
++      const durumuField = movementLayer.fields.find(field => (field.name === 'durumu' || field.name === 'h_durumu'));
++      if (durumuField !== null) {
++        const domain = durumuField.domain['codedValues'].find(codeValue => codeValue.code === Number(domainCode));
++
++        const rowNode = this.agGrid.api.getRowNode(rowIndex);
++        rowNode.setDataValue('lastMovement', domain.name);
++        this.agGrid.api.refreshCells();
++      }
++    });
++  }
++
+   closeAllDialogRefs() {
+     if (this.moduleCreateRef !== undefined) {
+       this.moduleCreateRef.close();
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index ae80d0d2945ac1ba8c95ca75dcefa6ae4ec71a24..c4d74db55a5e1894f500d9b149ef002311637f04 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -178,6 +178,8 @@ export class RendererComponent implements ICellRendererAngularComp {
+             this.params.context.componentParent.onGetMalikSBIByHisseId(this.params.data);
+         } else if (this.params.title === 'Hareket Detay') {
+             this.params.context.componentParent.openMovementDetail(this.params.data);
++        } else if (this.params.title === 'Son Hareket') {
++            this.params.context.componentParent.forLastMovement(this.params, this.params.colDef);
+         }
+     }
+ 
