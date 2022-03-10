@@ -1,0 +1,191 @@
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index 8c1342302283da161673785e561bc33cdd69b103..1a16c0ce1c2483b8a066031f35bca1e34af2b5ee 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -58,12 +58,21 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   _modelType: string;
+ 
+   _infoObject: esri.Graphic;
+-
++  _selectedObjectIdInIslemler: string;
+   _highlightLayer: any;
+ 
+   _userPerm: UserPermission;
+   _diffMode = false;
+   _generalInstutationAnalyze: boolean;
++
++  @Input()
++  set selectedObjectIdInIslemler(selectedObjectIdInIslemler) {
++    this._selectedObjectIdInIslemler = selectedObjectIdInIslemler;
++  }
++  get selectedObjectIdInIslemler() {
++    return this._selectedObjectIdInIslemler;
++  }
++
+   @Input()
+   set infoObject(infoObject) {
+     this._infoObject = infoObject;
+@@ -811,6 +820,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     this.genericInfoComponent.showStatus = true;
+     this.genericInfoComponent.mapView = this._mapView;
+     this.genericInfoComponent._highlightLayer = this._highlightLayer;
++    // TODO: OBJECTID GENERİCE GÖNDERİLECEK 
+     if (header !== undefined) {
+       this.genericInfoComponent.header = header;
+     }
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index 806b4dd9d4e9a791c010938f97ec98e6f639d035..583053b65a0f0e5a5acfb9bdee4f43692330542b 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -46,7 +46,7 @@
+   (searchGercekKisi)="searchGercekKisiEvent($event)" (searchTuzelKisi)="searchTuzelKisiEvent($event)"
+   (searchNVI)="searchNVIEvent($event)" (openTasimali)="openTasimali($event)" (openYolBilgi)="openYolBilgi($event)"></app-search>
+ <app-info *ngIf="hitTestResult.length > 0 || infoObject !== undefined || generalInstutationAnalyze" [mapView]="mapView"
+-  [hitTestResult]="hitTestResult" [infoObject]="infoObject" (infoClose)="onCloseInfo()" [userPerm]="auth.userPerm"
++  [hitTestResult]="hitTestResult" [selectedObjectIdInIslemler]="selectedObjectIdInIslemler" [infoObject]="infoObject" (infoClose)="onCloseInfo()" [userPerm]="auth.userPerm"
+   (initEdit)="initEditEvent($event)" (finalizeEdit)="finalizeEditEvent($event)" (finalizeTkgmParcelEdit)="finalizeEditEvent($event)"
+   (acceptRejectChanges)="acceptRejectChangesEvent($event)" (otherSchoolTypeSelect)="otherSchoolTypeSelectEvent($event)"
+   (schoolTypeSelect)="schoolTypeSelectEvent($event)" (districtSelect)="convertAndOpenInfoWithFeatureSet($event)"
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index f78e930f8e779d7ae6d121b19812be1973e90a5c..9444e0c0cdee919b323ca65044247d41663b99cd 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -38,6 +38,7 @@ import { TkgmparcellistDatatableComponent } from '../search/tkgmparcellist-datat
+ import { TKGMFeatureSet } from '../models/TKGM/parcel-object';
+ import { CreateQuadComponent } from '../drawing-tools/create-quad/create-quad.component';
+ import { MalikData } from '../models/TKGM/serh-malik';
++import { EmitObject } from '../models/emitObject';
+ 
+ @Component({
+   selector: 'app-main',
+@@ -92,6 +93,7 @@ export class MainComponent implements OnInit {
+   geojsonGraphicsLayerImportSubject: Subject<any>;
+ 
+   infoData: ModelData;
++  selectedObjectIdInIslemler: string;
+ 
+   constructor(private projectionService: ProjectionService, public mapService: MapService,
+     public measureService: MeasureService, private dialogService: DialogService, public auth: AuthService,
+@@ -1606,8 +1608,9 @@ export class MainComponent implements OnInit {
+     this.analysisLayerWindowState = false;
+   }
+ 
+-  openInfoDialogEvent(featureSet: esri.FeatureSet) {
+-    this.convertAndOpenInfoWithFeatureSet(featureSet, true);
++  openInfoDialogEvent(emitObject: EmitObject) {
++    this.selectedObjectIdInIslemler = emitObject.objectId;
++    this.convertAndOpenInfoWithFeatureSet(emitObject.featureSet, true);
+   }
+ 
+   isAuthorized(geometry): IPromise<boolean> {
+diff --git a/src/app/models/emitObject.ts b/src/app/models/emitObject.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4a35c85b451cbcfee79d96031ee0dddad22f1560
+--- /dev/null
++++ b/src/app/models/emitObject.ts
+@@ -0,0 +1,4 @@
++export class EmitObject {
++    featureSet: any;
++    objectId: string;
++}
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index ca51e177c7de8982ca51cbb91b039e2dd03513da..ef9253dd106a20cb0c526afdd83edeebdc7ba3d6 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -19,6 +19,9 @@ import { environment } from 'src/environments/environment';
+ import { UserPermission } from '../models/Login/user-permission';
+ import { LayerSymbologyComponent } from '../layer-symbology/layer-symbology.component';
+ import { ModuleReportStatisticsComponent } from './module-report-statistics/module-report-statistics.component';
++import { stringify } from '@angular/compiler/src/util';
++import { EmitObject } from '../models/emitObject';
++import Feature from 'esri/widgets/Feature';
+ @Component({
+   selector: 'app-module-report',
+   templateUrl: './module-report.component.html',
+@@ -33,6 +36,7 @@ export class ModuleReportComponent implements OnInit {
+   allowedModules: { ids: Array<number>, names: Array<string> } = { ids: [], names: [] };
+   filterParams: esri.QueryProperties;
+   processMovementLayer: esri.FeatureLayer;
++  selectedRowObjectId = '';
+ 
+   guiPermissions: Array<boolean> = [];
+   symbologyBuilderDialog: DialogRef;
+@@ -65,6 +69,9 @@ export class ModuleReportComponent implements OnInit {
+   onRowClicked(rowClickedEvent: RowClickedEvent) {
+     let status = 0;
+     let search_id = rowClickedEvent.data.i_bina_id;
++    this.selectedRowObjectId = rowClickedEvent.data['i_objectid'];
++    const emitObject: EmitObject = new EmitObject();
++    emitObject.objectId = this.selectedRowObjectId;
+     let ada_no, parsel_no;
+     if (search_id === null || search_id === undefined) {
+       status = 1;
+@@ -85,9 +92,13 @@ export class ModuleReportComponent implements OnInit {
+       };
+       queryLayer.queryFeatures(queryProperties).then(featureSet => {
+         if (featureSet.features.length === 0) {
+-          yapilarDigerLayer.queryFeatures(queryProperties).then(featureSetRes => this.dialogRef.emit(featureSetRes));
++          yapilarDigerLayer.queryFeatures(queryProperties).then(featureSetRes => {
++            emitObject.featureSet = featureSet;
++            this.dialogRef.emit(emitObject);
++          });
+         } else {
+-          this.dialogRef.emit(featureSet);
++          emitObject.featureSet = featureSet;
++          this.dialogRef.emit(emitObject);
+         }
+       });
+     } else {
+@@ -97,7 +108,11 @@ export class ModuleReportComponent implements OnInit {
+         returnGeometry: true,
+         outFields: ['*']
+       };
+-      queryLayer.queryFeatures(queryProperties).then(featureSet => this.dialogRef.emit(featureSet));
++      emitObject.objectId = this.selectedRowObjectId;
++      queryLayer.queryFeatures(queryProperties).then(featureSet => {
++        emitObject.featureSet = featureSet;
++        this.dialogRef.emit(emitObject);
++      });
+     }
+   }
+ 
+@@ -617,6 +632,7 @@ export class ModuleReportComponent implements OnInit {
+ 
+     const whereQuery = 'i_islem_turu=' + foundModuleForm.value;
+     const outFields = fields.map(field => field.name);
++    outFields.push('i_objectid');
+     if (foundModuleForm.value === 14) {
+       outFields.push('i_sayi');
+     }
+diff --git a/src/app/reports/reports.component.ts b/src/app/reports/reports.component.ts
+index b2b11bac12eeaec1427be915bb93d50fffe225e4..1bfcc1d8d6787f55951d5cc3de1199a6550d53a2 100644
+--- a/src/app/reports/reports.component.ts
++++ b/src/app/reports/reports.component.ts
+@@ -14,6 +14,7 @@ import { environment } from 'src/environments/environment';
+ import { ServiceInfo, LayerInfo, GroupLayerModel } from '../models/ArcgisService/service-info';
+ import { ReportTableComponent } from '../report-table/report-table.component';
+ import { ProgressInfoComponent } from '../progress-info/progress-info.component';
++import { EmitObject } from '../models/emitObject';
+ 
+ @Component({
+   selector: 'app-reports',
+@@ -21,7 +22,7 @@ import { ProgressInfoComponent } from '../progress-info/progress-info.component'
+   styleUrls: ['./reports.component.css']
+ })
+ export class ReportsComponent implements OnInit {
+-  @Output() openInfoDialog = new EventEmitter<esri.FeatureSet>();
++  @Output() openInfoDialog = new EventEmitter<EmitObject>();
+   @Output() clickSayistayRow = new EventEmitter();
+   @Output() clickedReportRow = new EventEmitter<esri.FeatureSet>();
+ 
+@@ -122,8 +123,8 @@ export class ReportsComponent implements OnInit {
+       }
+     }, true, 'blue');
+ 
+-    this.moduleDialogRef.emitEvent.subscribe(featureSet => {
+-      this.openInfoDialog.emit(featureSet);
++    this.moduleDialogRef.emitEvent.subscribe(emitObject => {
++      this.openInfoDialog.emit(emitObject);
+     });
+ 
+     this.moduleDialogRef.afterClosed.subscribe(res => {
