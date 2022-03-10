@@ -1,0 +1,432 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index fe664ca388d2e3344f22209acc48fc8f743d0180..cc024b28d427373978b05715fe0c7a07d456beab 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -188,7 +188,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     } else if (formElement.name === 'bina_sayi') {
+       const count = Number(formElement.value);
+       this.addOrRemoveDynamicFields(count, formElement.name, count, formObject);
+-    } else if (formElement.name.includes('atolye_islem')) {
++    } else if (formElement.name.includes('talep_amaci')) {
+       this.addOrRemoveDynamicFields(1, formElement.name, formElement.value, formObject);
+       this.setAtolyeIslemPreviousSelections(formElement);
+     }
+@@ -225,7 +225,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+   }
+ 
+-  addOrRemoveDynamicFieldsForAtolyeIslem(formControlName: string, formData: FormData, fieldValue: any) {
++  addOrRemoveDynamicFieldsForAtolyeIslem(formControlName: string, formData: FormData, fieldValue: any, control?: number) {
+ 
+     const index = this.moduleFormData.findIndex(moduleFormData => moduleFormData.name === this.onChangeFormElement.name);
+ 
+@@ -236,7 +236,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     let firstPart = [];
+     let secondPart = [];
+ 
+-    if (formControlName.includes('tm_malAlimi')) {
++    // if (formControlName.includes('tm_malAlimi')) {
++    if (control !== undefined) {
+       firstPart = this.moduleFormData.slice(0, (index + 2));
+     } else {
+       firstPart = this.moduleFormData.slice(0, (index + 1));
+@@ -244,13 +245,14 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     firstPart.push(formData);
+ 
+-    if (formControlName.includes('tm_malAlimi')) {
++    // if (formControlName.includes('tm_malAlimi')) {
++    if (control !== undefined) {
+       secondPart = this.moduleFormData.slice(index + 2);
+     } else {
+       secondPart = this.moduleFormData.slice(index + 1);
+     }
+ 
+-    const foundFirstAtolyeTuruFieldIndex = secondPart.findIndex(a => a.name.includes('turu'));
++    const foundFirstAtolyeTuruFieldIndex = secondPart.findIndex(a => a.name.includes('yatirim'));
+ 
+     if (secondPart.length > 0 && foundFirstAtolyeTuruFieldIndex >= 0) {
+ 
+@@ -262,87 +264,89 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     }
+     this.moduleFormData = firstPart;
++    this.moduleData.formData[0] = firstPart;
+ 
+   }
+ 
+-  addOrRemoveDynamicFieldsForAtolye(count: number, recentFormValues?: Object) {
+-    const atolyeTuruFieldName = 'atolye_turu';
+-    const atolyeIslemFieldName = 'atolye_islem';
++  // addOrRemoveDynamicFieldsForAtolye(count: number, recentFormValues?: Object) {
++  //   const atolyeTuruFieldName = 'atolye_turu';
++  //   const atolyeIslemFieldName = 'atolye_islem';
+ 
+-    let atolyeTuruValue: any;
+-    let atolyeIslemValue: any;
++  //   let atolyeTuruValue: any;
++  //   let atolyeIslemValue: any;
+ 
+-    let startIndex = 1;
+-    const filteredFormControls = this.moduleFormData
+-      .filter(formControl => formControl.name.includes('atolye_turu'));
++  //   let startIndex = 1;
++  //   const filteredFormControls = this.moduleFormData
++  //     .filter(formControl => formControl.name.includes('atolye_turu'));
+ 
+-    const dynamicFieldLength = filteredFormControls.length;
++  //   const dynamicFieldLength = filteredFormControls.length;
+ 
+-    if (dynamicFieldLength === count) {
+-      return;
+-    } else if (dynamicFieldLength > count) {
+-      const deleteIndex = count + 1;
+-      this.removeDynamicFieldsForAtolye(deleteIndex, dynamicFieldLength);
+-      startIndex = dynamicFieldLength;
+-    } else if (dynamicFieldLength < count) {
+-      startIndex = count - (count - dynamicFieldLength) + 1;
+-    }
+-    for (let i = startIndex; i <= count; i++) {
+-      const atolyeTuruField = atolyeTuruFieldName + i;
+-      const atolyeIslemField = atolyeIslemFieldName + i;
++  //   if (dynamicFieldLength === count) {
++  //     return;
++  //   } else if (dynamicFieldLength > count) {
++  //     const deleteIndex = count + 1;
++  //     this.removeDynamicFieldsForAtolye(deleteIndex, dynamicFieldLength);
++  //     startIndex = dynamicFieldLength;
++  //   } else if (dynamicFieldLength < count) {
++  //     startIndex = count - (count - dynamicFieldLength) + 1;
++  //   }
++  //   for (let i = startIndex; i <= count; i++) {
++  //     const atolyeTuruField = atolyeTuruFieldName + i;
++  //     const atolyeIslemField = atolyeIslemFieldName + i;
++
++  //     const atolyeTuruFormData = <FormData>{
++  //       alias: `Atolye ${i} Türü`,
++  //       name: atolyeTuruField,
++  //       type: 'localDomain',
++  //       required: true,
++  //       chosen_values: [],
++  //       domain_values: this.getAtolyeTuruDomains()
++  //     }
++  //     const atolyeIslemFormData = <FormData>{
++  //       alias: ` Atölye ${i} İşlem`,
++  //       name: atolyeIslemField,
++  //       type: 'localDomain',
++  //       required: true,
++  //       chosen_values: [],
++  //       domain_values: this.getAtolyeIslemDomains()
++  //     }
++  //     const atolyeTuruFormControlName = atolyeTuruFormData.name;
++  //     const atolyeIslemFormControlName = atolyeIslemFormData.name;
++  //     const atolyeTuruFormControlType = atolyeTuruFormData.type;
++  //     const atolyeIslemFormControlType = atolyeIslemFormData.type;
++  //     const required = true;
++  //     if (recentFormValues !== undefined) {
++  //       atolyeTuruValue = recentFormValues[atolyeTuruFormControlName];
++  //       atolyeIslemValue = recentFormValues[atolyeIslemFormControlName];
++  //     }
++  //     if (this.processState === 0) {
++  //       const atolyeTuruValueArray = (<string>recentFormValues[atolyeTuruFormControlName]).split(',');
++  //       const atolyeIslemValueArray = (<string>recentFormValues[atolyeIslemFormControlName]).split(',');
+ 
+-      const atolyeTuruFormData = <FormData>{
+-        alias: `Atolye ${i} Türü`,
+-        name: atolyeTuruField,
+-        type: 'localDomain',
+-        required: true,
+-        chosen_values: [],
+-        domain_values: this.getAtolyeTuruDomains()
+-      }
+-      const atolyeIslemFormData = <FormData>{
+-        alias: ` Atölye ${i} İşlem`,
+-        name: atolyeIslemField,
+-        type: 'localDomain',
+-        required: true,
+-        chosen_values: [],
+-        domain_values: this.getAtolyeIslemDomains()
+-      }
+-      const atolyeTuruFormControlName = atolyeTuruFormData.name;
+-      const atolyeIslemFormControlName = atolyeIslemFormData.name;
+-      const atolyeTuruFormControlType = atolyeTuruFormData.type;
+-      const atolyeIslemFormControlType = atolyeIslemFormData.type;
+-      const required = true;
+-      if (recentFormValues !== undefined) {
+-        atolyeTuruValue = recentFormValues[atolyeTuruFormControlName];
+-        atolyeIslemValue = recentFormValues[atolyeIslemFormControlName];
+-      }
+-      if (this.processState === 0) {
+-        const atolyeTuruValueArray = (<string>recentFormValues[atolyeTuruFormControlName]).split(',');
+-        const atolyeIslemValueArray = (<string>recentFormValues[atolyeIslemFormControlName]).split(',');
++  //       atolyeTuruValue = atolyeTuruValueArray[i - 1];
++  //       atolyeIslemValue = atolyeIslemValueArray[i - 1];
+ 
+-        atolyeTuruValue = atolyeTuruValueArray[i - 1];
+-        atolyeIslemValue = atolyeIslemValueArray[i - 1];
+-      }
++  //     }
+ 
+-      const atolyeTuruFormControl = this.createFormControl(atolyeTuruFormControlName, atolyeTuruFormControlType
+-        , required, atolyeTuruValue);
++  //     const atolyeTuruFormControl = this.createFormControl(atolyeTuruFormControlName, atolyeTuruFormControlType
++  //       , required, atolyeTuruValue);
+ 
+-      this.formGroup.addControl(atolyeTuruFormControlName, atolyeTuruFormControl);
++  //     this.formGroup.addControl(atolyeTuruFormControlName, atolyeTuruFormControl);
+ 
+-      const atolyeIslemFormControl = this.createFormControl(atolyeIslemFormControlName, atolyeIslemFormControlType, required,
+-        atolyeIslemValue);
+-      this.formGroup.addControl(atolyeIslemFormControlName, atolyeIslemFormControl);
++  //     const atolyeIslemFormControl = this.createFormControl(atolyeIslemFormControlName, atolyeIslemFormControlType, required,
++  //       atolyeIslemValue);
++  //     this.formGroup.addControl(atolyeIslemFormControlName, atolyeIslemFormControl);
+ 
+-      if (this.processState === 0) {
+-        this.formGroup.controls[atolyeTuruFormControlName].disable();
+-        this.formGroup.controls[atolyeIslemFormControlName].disable();
+-      }
++  //     if (this.processState === 0) {
++  //       this.formGroup.controls[atolyeTuruFormControlName].disable();
++  //       this.formGroup.controls[atolyeIslemFormControlName].disable();
++  //     }
+ 
+-      this.moduleFormData.push(atolyeTuruFormData);
+-      this.moduleFormData.push(atolyeIslemFormData);
+-    }
++  //     this.moduleFormData.push(atolyeTuruFormData);
++  //     this.moduleFormData.push(atolyeIslemFormData);
++  //   }
+ 
+-  }
++  // }
+ 
+   getAtolyeTuruDomains() {
+     return [{
+@@ -372,10 +376,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       name: 'Tadilat ve Mal Alımı',
+       value: 'Tadilat ve Mal Alımı',
+     },
+-    {
+-      name: 'Sadece Tadilat',
+-      value: 'Sadece Tadilat',
+-    },
+     {
+       name: 'Sadece Mal Alımı',
+       value: 'Sadece Mal Alımı',
+@@ -393,16 +393,14 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     if (this.moduleData.value === 14) {
+       if (formControlName === 'bina_sayi') {
+-        field1Name = 'atolye_turu';
+-        field2Name = 'atolye_islem';
+-      } else if (formControlName.includes('atolye_islem')) {
+-        if (formControlValue === 'Sadece Tadilat') {
+-          field1Name = 'tadilatMaliyet';
+-        } else if (formControlValue === 'Sadece Mal Alımı') {
+-          field1Name = 'malAlimiMaliyet';
++        field1Name = 'yatirim_ad';
++        field2Name = 'talep_amaci';
++      } else if (formControlName.includes('talep_amaci')) {
++        if (formControlValue === 'Sadece Mal Alımı') {
++          field1Name = 'karar_no';
+         } else if (formControlValue === 'Tadilat ve Mal Alımı') {
+-          field1Name = 'tm_tadilatMaliyet';
+-          field2Name = 'tm_malAlimiMaliyet';
++          field1Name = 'esas_no';
++          field2Name = 'karar_no';
+         }
+       }
+     } else {
+@@ -410,7 +408,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       field2Name = 'kapasite';
+     }
+ 
+-    if (!formControlName.includes('atolye_islem')) {
++    if (!formControlName.includes('talep_amaci')) {
+       const filteredFormControls = this.moduleFormData
+         .filter(formControl => formControl.name.includes(field1Name));
+       const dynamicFieldLength = filteredFormControls.length;
+@@ -433,8 +431,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         let field2Field;
+         let index;
+ 
+-        if (formControlName.includes('atolye_islem')) {
+-          const indexStr = formControlName.slice(12);
++        if (formControlName.includes('talep_amaci')) {
++          const indexStr = formControlName.slice(11);
+           index = Number(indexStr);
+ 
+           field1Field = field1Name + index;
+@@ -520,9 +518,9 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           field1Value = field1ValueArray[i - 1];
+           field2Value = field2ValueArray[i - 1];
+         }
+-        if (formControlName.includes('atolye_islem')) {
++        if (formControlName.includes('talep_amaci')) {
+           this.addOrRemoveDynamicFieldsForAtolyeIslem(field1FormControlName, field1FormData, field1Value);
+-          this.addOrRemoveDynamicFieldsForAtolyeIslem(field2FormControlName, field2FormData, field2Value);
++          this.addOrRemoveDynamicFieldsForAtolyeIslem(field2FormControlName, field2FormData, field2Value, 1);
+           return;
+         }
+         const field1FormControl = this.createFormControl(field1FormControlName, field1FormControlType
+@@ -543,29 +541,19 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     } else {
+ 
+-      const indexStr = formControlName.slice(12);
++      const indexStr = formControlName.slice(11);
+       const index = Number(indexStr);
+       const field1Field = field1Name + index;
+ 
+-      if (formControlValue === 'Sadece Tadilat') {
+-        field1FormData = {
+-          alias: `Atölye ${index} Tadilat Maliyet`,
+-          name: field1Field,
+-          type: 'number',
+-          required: true,
+-          chosen_values: [],
+-          domain_values: []
+-        };
+-      } else {
+-        field1FormData = {
+-          alias: `Atölye ${index} Mal Alımı Maliyet`,
+-          name: field1Field,
+-          type: 'number',
+-          required: true,
+-          chosen_values: [],
+-          domain_values: []
+-        };
+-      }
++      field1FormData = {
++        alias: `Atölye ${index} Mal Alımı Maliyet`,
++        name: field1Field,
++        type: 'number',
++        required: true,
++        chosen_values: [],
++        domain_values: []
++      };
++
+ 
+       const field1FormControlName = field1FormData.name;
+       const field1FormControlType = field1FormData.type;
+@@ -580,7 +568,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+         field1Value = field1ValueArray[index - 1];
+       }
+-      if (formControlName.includes('atolye_islem')) {
++      if (formControlName.includes('talep_amaci')) {
+         this.addOrRemoveDynamicFieldsForAtolyeIslem(formControlName, field1FormData, field1Value);
+         return;
+       }
+@@ -618,8 +606,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     moduleFormData.length = field1Index;
+   }
+   removeDynamicFieldsForAtolye(startingIndex: number, dynamicFieldLength: number) {
+-    const atolyeTuruFieldName = 'atolye_turu';
+-    const atolyeIslemFieldName = 'atolye_islem';
++    const atolyeTuruFieldName = 'yatirim_ad';
++    const atolyeIslemFieldName = 'talep_amaci';
+ 
+     const moduleFormData = this.moduleFormData;
+ 
+@@ -1141,17 +1129,20 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     });
+ 
+     const foundBinaSayiField = formData.find(formControl => formControl.name === 'bina_sayi');
+-    const foundAtolyeTuruFields = formData.filter(formControl => formControl.name === 'atolye_islem');
+ 
+     if (foundBinaSayiField !== undefined && recentFormValues !== undefined) {
+       const binaSayiValue = Number(recentFormValues[foundBinaSayiField.name]);
+       this.addOrRemoveDynamicFields(binaSayiValue, foundBinaSayiField.name, binaSayiValue, recentFormValues);
+-    } else {
+-      foundAtolyeTuruFields.forEach(atolyeTuruField => {
+-        const atolyeTuruValue = recentFormValues[atolyeTuruField.name];
+-        this.addOrRemoveDynamicFields(1, foundBinaSayiField.name, atolyeTuruValue, recentFormValues);
+-      });
+     }
++
++    const foundAtolyeIslemFields = formData.filter(formControl => formControl.name.includes('talep_amaci'));
++
++    foundAtolyeIslemFields.forEach( (atolyeIslemField, i) => {
++      this.onChangeFormElement = { name: atolyeIslemField.name};
++      
++      const atolyeIslemValue = recentFormValues['talep_amaci'].split(',')[i];
++      this.addOrRemoveDynamicFields(1, atolyeIslemField.name, atolyeIslemValue, recentFormValues);
++    });
+   }
+ 
+   bindFieldDomainValues(formControl: FormData) {
+@@ -1328,22 +1319,61 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       let kapasiteFieldValue = '';
+       let karakteristikFieldValue = '';
++      let atolyeTuruFieldValue = '';
++      let atolyeIslemFieldValue = '';
++      let tadilatMaliyetFieldValue = '';
++      let malAlimiMaliyetFieldValue = '';
++
+       for (let i = 1; i <= binaCount; i++) {
+-        const karakteristikField = 'karakteristik' + i;
+-        const kapasiteField = 'kapasite' + i;
++        if (this.moduleData.value === 14) {
++          const atolyeTuruField = 'yatirim_ad' + i;
++          const atolyeIslemField = 'talep_amaci' + i;
+ 
+-        const karakteristikValue = formData[karakteristikField];
+-        const kapasiteValue = formData[kapasiteField];
++          const atolyeTuruValue = formData[atolyeTuruField];
++          const atolyeIslemValue = formData[atolyeIslemField];
+ 
+-        karakteristikFieldValue += karakteristikValue + ',';
+-        kapasiteFieldValue += kapasiteValue + ',';
+-      }
++          atolyeTuruFieldValue += atolyeTuruValue + ',';
++          atolyeIslemFieldValue += atolyeIslemValue + ',';
++
++          const tadilatMaliyetField = 'esas_no' + i;
++          const malAlimiMaliyetField = 'karar_no' + i;
++
++          let tadilatMaliyetValue = formData[tadilatMaliyetField];
++          const malAlimiMaliyetValue = formData[malAlimiMaliyetField];
++          if( tadilatMaliyetValue === undefined) {
++            tadilatMaliyetValue = 0;
++          }
++          tadilatMaliyetFieldValue += tadilatMaliyetValue + ',';
++          malAlimiMaliyetFieldValue += malAlimiMaliyetValue + ',';
+ 
+-      kapasiteFieldValue = kapasiteFieldValue.slice(0, -1);
+-      karakteristikFieldValue = karakteristikFieldValue.slice(0, -1);
++        } else {
++          const karakteristikField = 'karakteristik' + i;
++          const kapasiteField = 'kapasite' + i;
++
++          const karakteristikValue = formData[karakteristikField];
++          const kapasiteValue = formData[kapasiteField];
+ 
+-      formData['karakteristik'] = karakteristikFieldValue;
+-      formData['kapasite'] = kapasiteFieldValue;
++          karakteristikFieldValue += karakteristikValue + ',';
++          kapasiteFieldValue += kapasiteValue + ',';
++        }
++      }
++
++      if (this.moduleData.value !== 14) {
++        kapasiteFieldValue = kapasiteFieldValue.slice(0, -1);
++        karakteristikFieldValue = karakteristikFieldValue.slice(0, -1);
++        formData['karakteristik'] = karakteristikFieldValue;
++        formData['kapasite'] = kapasiteFieldValue;
++      } else {
++        atolyeTuruFieldValue = atolyeTuruFieldValue.slice(0, -1);
++        atolyeIslemFieldValue = atolyeIslemFieldValue.slice(0, -1);
++        formData['yatirim_ad'] = atolyeTuruFieldValue;
++        formData['talep_amaci'] = atolyeIslemFieldValue;
++
++        tadilatMaliyetFieldValue = tadilatMaliyetFieldValue.slice(0, -1);
++        malAlimiMaliyetFieldValue = malAlimiMaliyetFieldValue.slice(0, -1);
++        formData['esas_no'] = tadilatMaliyetFieldValue;
++        formData['karar_no'] = malAlimiMaliyetFieldValue;
++      }
+     }
+ 
+     const feature = <esri.Graphic>{
