@@ -1,0 +1,20 @@
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index 249e6c7aa59b421a99044dcd36ccd4716f0ef167..66c81b7bb1af6cb462d14068d493b8c92e713259 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -157,6 +157,15 @@ export class RendererComponent implements ICellRendererAngularComp {
+                 if (foundOperation === undefined) {
+                     this.btnDisabled = true;
+                 }
++
++                // DOSYANO İLE BAĞLANMIŞ İŞLEMLERİN SADECE İLK İŞLEMİNE HAREKET EKLENECEK O YÜZDEN DOSYANOSU AYNI OLUP CREATEDATESİ OLMAYANLARDA HAREKETLER KOLONU DİSABLE OLACAK
++                const dosyaNo = params.data['dosya_no'];
++                if(dosyaNo !== null) {
++                    const createDate = params.data['create_date'];
++                    if(createDate === null) {
++                        this.btnDisabled = true;
++                    }
++                }
+             }
+         }
+     }
