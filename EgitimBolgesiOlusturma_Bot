@@ -1,0 +1,251 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index 02a5bc4d8bb0d74ae853f0d57d789673a883bc95..39e516299a4b79b87a255bd8a275cf0270b60ab2 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -114,6 +114,7 @@ import { TkgmparcellistDatatableComponent } from './search/tkgmparcellist-datata
+ import { CreateQuadComponent } from './drawing-tools/create-quad/create-quad.component';
+ import { ModuleReportStatisticsComponent } from './module-report/module-report-statistics/module-report-statistics.component';
+ import { ProgressComponent } from './module-report/module-report-statistics/progress/progress.component';
++import { MaksAdresbinakoduComponent } from './search/maks-adresbinakodu/maks-adresbinakodu.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -219,7 +220,8 @@ import { ProgressComponent } from './module-report/module-report-statistics/prog
+     TkgmparcellistDatatableComponent,
+     CreateQuadComponent,
+     ModuleReportStatisticsComponent,
+-    ProgressComponent
++    ProgressComponent,
++    MaksAdresbinakoduComponent
+   ],
+   imports: [
+     BrowserAnimationsModule,
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.ts b/src/app/drawing-tools/create-quad/create-quad.component.ts
+index 6f89dde44e452b5ef998fcff6c28a77be062d487..7efe2a99606d302f86358d0d91753f657dafd855 100644
+--- a/src/app/drawing-tools/create-quad/create-quad.component.ts
++++ b/src/app/drawing-tools/create-quad/create-quad.component.ts
+@@ -1,9 +1,11 @@
++import { HttpClient } from '@angular/common/http';
+ import { Component, OnInit, OnDestroy } from '@angular/core';
+ import esri = __esri;
+ import { DialogConfig } from 'src/app/dialog/dialog-config';
+ import { loadModules } from 'esri-loader';
+ import { MapService } from 'src/app/mapUtils/map.service';
+ import { DialogRef } from 'src/app/dialog/dialog-ref';
++import hull from 'hull.js';
+ @Component({
+   selector: 'app-create-quad',
+   templateUrl: './create-quad.component.html',
+@@ -12,6 +14,7 @@ import { DialogRef } from 'src/app/dialog/dialog-ref';
+ export class CreateQuadComponent implements OnInit, OnDestroy {
+   mapView: esri.MapView;
+   polygonModule: esri.PolygonConstructor;
++  FeatureLayerConstructor: esri.FeatureLayerConstructor;
+   polylineModule: esri.PolylineConstructor;
+   graphicModule: esri.GraphicConstructor;
+   graphicsLayerModule: esri.GraphicsLayerConstructor;
+@@ -27,28 +30,118 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+   previousMapPoint: esri.Point;
+   previousScreenPoint: esri.ScreenPoint;
+   earthRadius = 6371;
+-  constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef, private mapService: MapService) {
++  constructor(private http: HttpClient, private dialogConfig: DialogConfig, private dialogRef: DialogRef, private mapService: MapService) {
+   }
+ 
+   ngOnInit() {
+     const data = this.dialogConfig.data;
+     this.mapView = data.view;
+     loadModules(['esri/geometry/Polygon', 'esri/Graphic', 'esri/layers/GraphicsLayer', 'esri/geometry/geometryEngine',
+-      'esri/geometry/Polyline', 'esri/geometry/support/webMercatorUtils'])
+-      .then(([Polygon, Graphic, GraphicsLayer, GeometryEngine, Polyline, WebMercatorUtils]) => {
++      'esri/geometry/Polyline', 'esri/geometry/support/webMercatorUtils', 'esri/layers/FeatureLayer'])
++      .then(([Polygon, Graphic, GraphicsLayer, GeometryEngine, Polyline, WebMercatorUtils, FeatureLayer]) => {
+         this.polygonModule = Polygon;
+         this.graphicModule = Graphic;
+         this.graphicsLayerModule = GraphicsLayer;
+         this.geometryEngine = GeometryEngine;
+         this.polylineModule = Polyline;
+         this.webMercatorUtils = WebMercatorUtils;
++        this.FeatureLayerConstructor = FeatureLayer;
+       });
++
++      this.getGroupByKurum();
+   }
+ 
+   ngOnDestroy() {
+     this.mapService.clearSelectedGraphics('drawBox', true);
+   }
+ 
++  createEgitimBolgesiLayer(url: string) {
++    const featureLayerProps = <esri.FeatureLayerProperties>{
++      url: url
++    };
++
++    const featureLayer = new this.FeatureLayerConstructor(featureLayerProps);
++
++    return featureLayer;
++  }
++
++  getGroupByKurum() {
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/bolge_olustur/FeatureServer/2/query?where=1=1&relationParam=' +
++      '&outFields=*&returnGeometry=true&groupByFieldsForStatistics=kurum_kodu&outStatistics=[%20{%20%22statisticType%22:%20%22count%22,' +
++      '%20%22onStatisticField%22:%20%22kurum_kodu%22,%20%22outStatisticFieldName%22:%20%22count%22%20}%20]&f=json';
++    const bolgeListesiLayerURI = 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/bolge_olustur/FeatureServer/2';
++    const bolgeLayerURI = 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/bolge_olustur/FeatureServer/1';
++    const featureLayer = this.createEgitimBolgesiLayer(bolgeListesiLayerURI);
++    const zoneLayer = this.createEgitimBolgesiLayer(bolgeLayerURI);
++
++    this.http.get(url + '?token=' + sessionStorage.getItem('CBSArcToken')).subscribe(res => {
++      const features = res['features'] as Array<any>;
++      this.createBolge(features, featureLayer, zoneLayer, 0);
++    });
++  }
++
++  createBolge(features: Array<any>, featureLayer: esri.FeatureLayer, zoneLayer: esri.FeatureLayer, index: number) {
++    const feature = features[index];
++
++    if (!feature) {
++      return;
++    }
++
++    const kurumKodu = feature['kurum_kodu'];
++    const count = feature['count'];
++    const requestCount = Math.ceil(count / 1000);
++
++    const promises = [] as Array<any>;
++
++    for (let j = 0; j < requestCount; j++) {
++      const queryParams = {
++        where: `kurum_kodu=${kurumKodu}`,
++        num: 1000,
++        start: count * 1000
++      } as esri.QueryProperties;
++
++      const requestPromise = featureLayer.queryFeatures(queryParams);
++      promises.push(requestPromise);
++    }
++
++    Promise.all(promises).then((res: Array<esri.FeatureSet>) => {
++      const totalFeatures = [];
++      res.forEach(featureResult => {
++        totalFeatures.push(...featureResult.features);
++      });
++
++      const zone = this.createHull(totalFeatures);
++      this.postZoneGeometry(zoneLayer, zone).then(zoneRes => {
++        console.log(zoneRes);
++        this.createBolge(features, featureLayer, zoneLayer, index + 1);
++      });
++    });
++  }
++
++  createHull(features: Array<esri.Feature>) {
++    const points = [];
++    features.forEach(feature => {
++      const rings = feature['geometry']['rings'] as Array<any>;
++
++      rings[0].forEach(ring => {
++        points.push([ring[0], ring[1]]);
++      });
++    });
++
++    const zone = hull(points, 0.0005);
++
++    return zone;
++  }
++
++  postZoneGeometry(zoneLayer: esri.FeatureLayer, zone: any) {
++    const polygon = new this.polygonModule({ rings: [zone] });
++    const polygonGraphic = new this.graphicModule({ geometry: polygon });
++    const applyEdits = {
++      addFeatures: [polygonGraphic]
++    } as esri.FeatureLayerApplyEditsEdits;
++    return zoneLayer.applyEdits(applyEdits);
++  }
++
+   onClickCreate(event: Event) {
+     if (this.feature !== undefined) {
+       const drawBoxGraphic = this.mapView.graphics.find(graphic => graphic.get('drawBox') === true);
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index 70ccd96be7faaac84dd05c7b2fcb82a352519c67..c3ee809decf35083d5bc86432e2a296d36b208af 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -37,7 +37,7 @@
+   (getParcelAtLocation)="getParcelAtLocationEvent()" [event]="rightClickEvent">
+ </app-right-click-menu>
+ <app-search *ngIf="searchWindowState" [userPerm]="auth.userPerm" [user]="auth.user" [mapView]="mapView" (closeSearch)="onCloseSearch()"
+-  (searchTKGMParcelInfo)="searchParcelInfoEvent($event)" (gotoTKGMGeometry)="gotoTKGMGeometryEvent($event)"
++  (searchTKGMParcelInfo)="searchParcelInfoEvent($event)" (searchMAKSAdresBinaKoduInfo)="searchMAKSAdresBinaKoduInfoEvent($event)" (gotoTKGMGeometry)="gotoTKGMGeometryEvent($event)"
+   (searchMebParcelInfo)="searchMebParcelInfoEvent($event)" (openDetailedSearch)="openDataTableClickedEvent()"
+   (openDynamicSearch)="openDynamicSearchEvent()"
+   (searchTKGMPassiveParcelInfo)="searchTKGMPassiveParcelInfoEvent($event)"
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f7d9dddbadb87708aa5e6d01f1c080ecab93b073
+--- /dev/null
++++ b/src/app/models/MaksData.ts
+@@ -0,0 +1,64 @@
++
++export class MaksData {
++    ilceler: Array<Ilce>;
++    mahalleler: Array<Mahalle>;
++    csbmler: Array<Csbm>;
++    binalar: Array<Bina>;
++    geometry: MaksGeometry;
++    error: Error;
++}
++
++export class Il {
++    ad: string;
++    uavtil: number;
++}
++
++export interface Ilce {
++    ad: string;
++    ilKod: number;
++    kod: number;
++}
++
++export interface Mahalle {
++    ad: string;
++    kod: number;
++}
++
++export interface Csbm {
++    ad: string;
++    ilKodu: number;
++    ilceKodu: number;
++    mahalleKodu: number;
++    kod: number;
++}
++
++export interface Bina {
++
++    ilKodu: number;
++    ilceKodu: number;
++    mahalleKodu: number;
++    csbmKodu: number;
++    binaKodu: number;
++
++    ada: number;
++    binaDurum: string;
++    binaNo: number;
++    binaNumaratajTipi: string;
++    binaYapiTipi: string;
++
++    disKapiNo: string;
++
++}
++
++export interface MaksGeometry {
++
++    rings: Array<Array<number[]>>;
++}
++
++export interface Error {
++    errorCode: number;
++    errorDescription: string;
++}
++
++
++
