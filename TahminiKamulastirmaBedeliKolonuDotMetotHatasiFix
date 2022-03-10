@@ -1,0 +1,13 @@
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 555a876643e78170ed9d439cdf15fcd156926fa9..35361f6d64468eaa2f583a0af058fddf1291d738 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -204,7 +204,7 @@ export class ModuleReportComponent implements OnInit {
+           }
+           // TODO: BURASI i_ucret OLMALI AMA ŞUAN YAPAMIYORUM ÇÜNKÜ UCRET STRİNG GELİRKEN İŞLEM HAREKETTE İ_ÜCRET DOUBLE KAYDEDİLMİŞ
+           //O YÜZDEN KOD PATLIYOR
+-          if (field.name === 'ucret') {
++          if (field.name === 'i_ucret') {
+             ucretFieldDotMethodUygState = true;
+           }
+ 
