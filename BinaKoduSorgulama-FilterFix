@@ -1,0 +1,26 @@
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index 3a28400778d5020fd9e1a85ec3cfce3e9fad737e..aabdba66edecc80e4d3c9742fa7d9ebc31e3391a 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -301,7 +301,8 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+         // O yüzden kod yani currenttargetin id si diskapino için index olarak kayıt ediliyor.
+         // Bu sayede selectte seçilen indexe göre binano maks servisine verilerek binaya git işlemi yapılıyor.
+         inputArray[4] = kod;
+-        this.selectedDiskapiNoIndex = kod;
++        const index = this.getIndexInDataArray(selectedElementTitle);
++        this.selectedDiskapiNoIndex = index.toString();
+         break;
+       }
+     }
+@@ -376,6 +377,11 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
++  getIndexInDataArray(diskapiNo: string) {
++    const foundIndex = this.dataArray[0].binalar.findIndex(bina => bina.disKapiNo === diskapiNo);
++    return foundIndex;
++  }
++
+   getIndexElement(inputContainerElement: HTMLElement): number {
+     let previousElementSibling = inputContainerElement.previousElementSibling;
+     let index = 0;
