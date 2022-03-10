@@ -1,0 +1,39 @@
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index 77a0ceb774251a771b981ad8e7d0ab9911424a69..482872bb3ca724c5a5107d8919581afad69d6256 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -332,7 +332,9 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   }
+ 
+   onClickIslemler(event: Event) {
+-    this._emitObject.fromReports = false;
++    if (this._emitObject !== undefined) {
++      this._emitObject.fromReports = false;
++    }
+     this.onOpenModules(event);
+   }
+ 
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index e65a2426d328ca4c4d3dfda3fbf1cd5231e836f3..f199ab553778a4f7e19c7a1bb8ccafeddacc0366 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -174,7 +174,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+           this.getFeatures(url, filteredParams).subscribe(res => {
+             let objectModel = res.features.map(feature => feature.attributes);
+ 
+-            if (this.emitObject.fromReports) {
++            if (this.emitObject !== undefined && this.emitObject.fromReports) {
+               const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.emitObject.objectId));
+ 
+               const firstPart = objectModel[selectedRowIndex];
+@@ -185,7 +185,9 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+             params.successCallback(objectModel, filterCount);
+ 
+-            this.colorYellowSelectedRow(this.emitObject.fromReports);
++            if (this.emitObject !== undefined) {
++              this.colorYellowSelectedRow(this.emitObject.fromReports);
++            }
+           });
+         });
+       }
