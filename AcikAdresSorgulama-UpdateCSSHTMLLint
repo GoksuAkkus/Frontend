@@ -1,0 +1,274 @@
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+index 4b0762b2d9a2743c842a65ecfe6938fab3248a66..81cac4f0a1df427929127b0515bf48926c979622 100644
+--- a/src/app/models/MaksData.ts
++++ b/src/app/models/MaksData.ts
+@@ -1,5 +1,3 @@
+-import IntegratedMeshLayer from "esri/layers/IntegratedMeshLayer";
+-
+ export class MaksData {
+     iller: Array<Il>;
+     ilceler: Array<Ilce>;
+diff --git a/src/app/other-layer/other-layer.component.ts b/src/app/other-layer/other-layer.component.ts
+index 0f8722b683a6cfb72adcb5a6a0790daf4e46673b..eb93b9470c074692216d85c0de9bb80dd1a6c785 100644
+--- a/src/app/other-layer/other-layer.component.ts
++++ b/src/app/other-layer/other-layer.component.ts
+@@ -314,7 +314,7 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+         featureData.geometry.type = 'MultiPoint';
+       } else if (geometryType === 'polyline') {
+         // Bazı durumlarda geojson dosyasında EPSG3857ye göre kayıt ediliyor.
+-        // Genelde nokta çiz ve poligon çiz araçlarında 3857 geldiği test edildi. 
++        // Genelde nokta çiz ve poligon çiz araçlarında 3857 geldiği test edildi.
+         // MEB sistemin sürükleyip bırakıldığında bu durum düzeltilebiliyor çünkü filedrop metodunda epsg3857 ise wgs84e convert ediliyor.
+         // Ancak dosyada 3857ye göre kayıt edilmiş koordinat olduğu zaman bu başka geojson viewerlarında görüntülenemiyor.
+         // Bu yüzden dosyaya her zaman wgs84 haliyle kayıt edilecek.
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.html b/src/app/search/acikadressorgulama/acikadressorgulama.component.html
+index c28b204831d1175cc250159a5c42d7274508e9d3..b5aee8e1fb5215bc4aa99be0a55c0def63776ac2 100644
+--- a/src/app/search/acikadressorgulama/acikadressorgulama.component.html
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.html
+@@ -17,7 +17,6 @@
+       <input type="button" name="adresNo" value="Adres No İle Sorgula" (click)="handleChange($event)">
+       <input type="button" name="binaKodu" value="Bina Kodu İle Sorgula" (click)="handleChange($event)">
+     </div>
+-
+     <div class="adresno-container" style="position: relative; width: 100%; padding-left: 5px;">
+       <form #adresNo="ngForm" (ngSubmit)="getAcikAdresFromAdresNo(adresNo.value['adresNo'])"
+         style="position: relative;width: 100%;">
+@@ -30,8 +29,8 @@
+           <button class="btn-info" type="submit" style="margin-right: 5px;">Getir</button>
+         </div>
+ 
+-        <label class="adres-label" *ngIf="acikAdres !== ''"> {{acikAdres}} </label>
+-        <label class="adres-label" *ngIf="errorMessage !== ''"> {{errorMessage}} </label>
++        <label class="adres-label" *ngIf="acikAdresWithAdresNo !== ''"> {{acikAdresWithAdresNo}} </label>
++        <label class="adres-label" *ngIf="errorMessageWithAdresNo !== ''"> {{errorMessageWithAdresNo}} </label>
+       </form>
+     </div>
+     <div class="binakodu-container" style="position: relative; width: 100%; padding-left: 5px;">
+@@ -56,8 +55,8 @@
+             (mousedown)="onSelectIcKapiNo($event)">{{bina.icKapiNo.fullPart}}</span>
+         </div>
+         <div style="margin-top: 20px;">
+-          <label class="adres-label" *ngIf="acikAdres !== ''"> {{acikAdres}} </label>
+-          <label class="adres-label" *ngIf="errorMessage !== ''"> {{errorMessage}} </label>
++          <label class="adres-label" *ngIf="acikAdresWithBinaKodu !== ''"> {{acikAdresWithBinaKodu}} </label>
++          <label class="adres-label" *ngIf="errorMessageWithBinaKodu !== ''"> {{errorMessageWithBinaKodu}} </label>
+         </div>
+       </form>
+     </div>
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.ts b/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
+index 3e3ce10ee0c12b9cf7ae2ac732ba4c26df0d3b61..4231af2bf68b81a4e2067ae60538860250480ee1 100644
+--- a/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
+@@ -1,9 +1,8 @@
+-import { HtmlAstPath } from '@angular/compiler';
+ import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+ import { BagimsizBolumBina } from 'src/app/models/MAKSData';
+-import { SearchFilterObject } from 'src/app/models/TKGM/tkgm-search-data';
+ import { WebDataService } from 'src/app/services/web-data.service';
+ import esri = __esri;
++
+ @Component({
+   selector: 'app-acikadressorgulama',
+   templateUrl: './acikadressorgulama.component.html',
+@@ -14,8 +13,10 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+   @Output() maksAcikAdresClicked = new EventEmitter();
+ 
+   _mapView: esri.MapView;
+-  acikAdres = '';
+-  errorMessage = '';
++  acikAdresWithAdresNo = '';
++  acikAdresWithBinaKodu = '';
++  errorMessageWithAdresNo = '';
++  errorMessageWithBinaKodu = '';
+   binaArray: Array<BagimsizBolumBina> = [];
+   icKapiNoFilterArray: Array<BagimsizBolumBina> = [];
+ 
+@@ -31,36 +32,31 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+   constructor(public webDataService: WebDataService) { }
+ 
+   ngOnInit() {
+-    this.resetGlobalVariables();
++    this.resetGlobalVariablesForBinaKodu();
++    this.resetGlobalVariablesForAdresNo();
+   }
+ 
+   ngOnDestroy() {
+-    this.resetGlobalVariables();
++    this.resetGlobalVariablesForBinaKodu();
++    this.resetGlobalVariablesForAdresNo();
+   }
+ 
+   getAcikAdresFromAdresNo(adresNo) {
+-    this.resetGlobalVariables();
+-    const formContainer = <HTMLDivElement>document.getElementById('form-container');
+-    if (formContainer.classList.contains('binakodu-adreslabel')) {
+-      formContainer.classList.remove('binakodu-adreslabel');
+-    }
+-
+-    // GAGA
+-    // TODO ADRES NO İLE SORGULANAN TEXT VE ERROR İLE BİNAKODU İLE SORGULANAN TEXT VE ERROR BİRBİRİNDEN AYIR
++    this.resetGlobalVariablesForAdresNo();
+ 
+     this.webDataService.getMaksAcikAdresWithAdresNo(adresNo).subscribe(res => {
+       if (res !== null && res !== undefined) {
+         if (res.error.description === null) {
+           const adres = res.acikAdresWithAdresNo;
+           if (adres !== null && adres !== undefined) {
+-            this.acikAdres = adres;
++            this.acikAdresWithAdresNo = adres;
+           }
+         } else {
+           console.log(res.error.description);
+           if (res.error.code === -1) {
+-            this.errorMessage = 'Lütfen Düzgün Giriniz.';
++            this.errorMessageWithAdresNo = 'Lütfen Düzgün Giriniz.';
+           } else {
+-            this.errorMessage = 'Maks Error:' + res.error.maksDescription;
++            this.errorMessageWithAdresNo = 'Maks Error:' + res.error.maksDescription;
+           }
+         }
+       }
+@@ -68,7 +64,7 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+   }
+ 
+   getAcikAdresFromBinaKodu(binaKodu: any) {
+-    this.resetGlobalVariables();
++    this.resetGlobalVariablesForBinaKodu();
+ 
+     const formContainer = <HTMLDivElement>document.getElementById('form-container');
+     if (formContainer.classList.contains('binakodu-adreslabel')) {
+@@ -77,7 +73,7 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+     // Getir diyince binaalr arayi setlencek
+     this.webDataService.getBinaNoFromBinaKodu(binaKodu).subscribe(binaNo => {
+       if (binaNo === '') {
+-        this.errorMessage = 'Girilen Bina Koduna Dair Bilgi Bulunamadı.';
++        this.errorMessageWithBinaKodu = 'Lütfen Düzgün Giriniz.';
+       } else if (binaNo !== null && binaNo !== undefined) {
+         this.webDataService.getAdresNoFromKimlikNo(binaNo).subscribe(binaArray => {
+           if (binaArray !== null && binaArray !== undefined) {
+@@ -112,25 +108,24 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+             this.binaArray = tempSortArray;
+             this.icKapiNoFilterArray = tempSortArray;
+             // console.log(tempSortArray);
++          } else {
++            this.errorMessageWithBinaKodu = 'Girilen Bina Koduna Dair Bilgi Bulunamadı.';
+           }
+         });
++      } else {
++        this.errorMessageWithBinaKodu = 'Girilen Bina Koduna Dair Bilgi Bulunamadı.';
+       }
+     });
+     // binalar setlenince bina ickapinoları alacak olan input gözükecek
+   }
+ 
+   onSelectIcKapiNo(event: Event) {
+-
+-    // TODO  &.show-binakodu-container ın height i 100 artırılacak
+-
+     // BURDAN GELEN İÇKAPINO BİNAARRAYDA ARATILIP ADRESNO BULUCAK VE MAKS SERVİSİNE VERİLECEK
+-    const target = event.target as HTMLElement;
+-    const value = target.innerText;
+-
+     const selectedElement: HTMLElement = <HTMLElement>event.target;
+     const selectContainer: HTMLElement = selectedElement.parentElement;
+     const form: HTMLFormElement = <HTMLFormElement>selectContainer.parentElement;
+     const formContainer: HTMLElement = <HTMLElement>form.parentElement.parentElement;
++    const value = selectedElement.innerText;
+ 
+     if (!formContainer.classList.contains('binakodu-adreslabel')) {
+       formContainer.classList.add('binakodu-adreslabel');
+@@ -138,7 +133,6 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+ 
+     const inputContainer: HTMLElement = <HTMLElement>selectContainer.previousElementSibling;
+     const selectInput: HTMLInputElement = <HTMLInputElement>inputContainer.firstElementChild;
+-
+     selectInput.value = value;
+ 
+     const foundBina = this.binaArray.find(bina => bina.icKapiNo.fullPart === value);
+@@ -149,14 +143,14 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+         if (res.error.description === null) {
+           const adres = res.acikAdresWithAdresNo;
+           if (adres !== null && adres !== undefined) {
+-            this.acikAdres = adres;
++            this.acikAdresWithBinaKodu = adres;
+           }
+         } else {
+           console.log(res.error.description);
+           if (res.error.code === -1) {
+-            this.errorMessage = 'Lütfen Düzgün Giriniz.';
++            this.errorMessageWithBinaKodu = 'Lütfen Düzgün Giriniz.';
+           } else {
+-            this.errorMessage = res.error.maksDescription;
++            this.errorMessageWithBinaKodu = res.error.maksDescription;
+           }
+         }
+       }
+@@ -165,6 +159,7 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+ 
+   onInput(event: Event) {
+     this.icKapiNoFilterArray = [];
++
+     const inputElement: HTMLInputElement = <HTMLInputElement>event.target;
+     const inputContainer = inputElement.parentElement;
+     const formElement: HTMLFormElement = <HTMLFormElement>inputContainer.parentElement;
+@@ -184,6 +179,7 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+   getIndexElement(inputContainerElement: HTMLElement): number {
+     let previousElementSibling = inputContainerElement.previousElementSibling;
+     let index = 0;
++
+     while (previousElementSibling !== null) {
+       if (!previousElementSibling.classList.contains('select-options')) {
+         index++;
+@@ -195,16 +191,12 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+   }
+ 
+   handleChange(event: Event) {
+-    this.acikAdres = '';
+-    this.errorMessage = '';
+     const targetElement: HTMLInputElement = <HTMLInputElement>event.target;
+     const parentElement: HTMLElement = <HTMLElement>targetElement.parentElement;
+     const formParentElement: HTMLElement = <HTMLElement>parentElement.parentElement;
+-
+     const adresNoDivElement = parentElement.nextElementSibling;
+     const binaKoduDivElement = adresNoDivElement.nextElementSibling;
+ 
+-
+     if (targetElement.name === 'adresNo') {
+       binaKoduDivElement.classList.remove('show-binakodu-container');
+ 
+@@ -279,9 +271,14 @@ export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
+-  resetGlobalVariables() {
+-    this.acikAdres = '';
+-    this.errorMessage = '';
++  resetGlobalVariablesForAdresNo() {
++    this.acikAdresWithAdresNo = '';
++    this.errorMessageWithAdresNo = '';
++  }
++
++  resetGlobalVariablesForBinaKodu() {
++    this.acikAdresWithBinaKodu = '';
++    this.errorMessageWithBinaKodu = '';
+     this.binaArray = [];
+     this.icKapiNoFilterArray = [];
+   }
+diff --git a/src/app/search/search.component.html b/src/app/search/search.component.html
+index 69486227c2acd933eda266fb07f161424a7bd283..38bb37a8aeee2f744356d3377d5647b156c654c3 100644
+--- a/src/app/search/search.component.html
++++ b/src/app/search/search.component.html
+@@ -29,11 +29,10 @@
+      </app-maks-adresbinakodu>
+    </div>
+ 
+-   <!-- AÇIK ADRES FİLTRELEME, CSS VE TEST İŞLEMLERİ BİTİNCE AÇILACAK -->
+-   <!-- <div class="tkgm-tapu-search search-form-parent">
++   <div class="tkgm-tapu-search search-form-parent">
+     <app-acikadressorgulama (maksAcikAdresClicked)="openSearchFormEvent($event)" (gotoSelectedObject)="gotoSelectedObjectEvent($event)">
+     </app-acikadressorgulama>
+-  </div> -->
++  </div>
+   
+    <div *ngIf="this.showElement && (guiPermissions[4] === true || guiPermissions[6] ==  true)"
+      class="person-search search-form-parent">
