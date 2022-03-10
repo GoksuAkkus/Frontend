@@ -1,0 +1,56 @@
+diff --git a/src/app/TKGM/kisi-tasinmaz-search/kisi-tasinmaz-search.component.ts b/src/app/TKGM/kisi-tasinmaz-search/kisi-tasinmaz-search.component.ts
+index 6dab905cf25647c6de9bddb342bafe6761181ecd..d913087d2177c1e656626afd3567e4870932468d 100644
+--- a/src/app/TKGM/kisi-tasinmaz-search/kisi-tasinmaz-search.component.ts
++++ b/src/app/TKGM/kisi-tasinmaz-search/kisi-tasinmaz-search.component.ts
+@@ -1,4 +1,4 @@
+-import { Component, OnInit, ViewChild, EventEmitter, Output } from '@angular/core';
++import { Component, OnInit, ViewChild } from '@angular/core';
+ import { AgGridNg2 } from 'ag-grid-angular';
+ import { ColDef, IDatasource, IGetRowsParams, RowClickedEvent } from 'ag-grid-community';
+ import { DialogConfig } from 'src/app/dialog/dialog-config';
+@@ -35,7 +35,7 @@ export class KisiTasinmazSearchComponent implements OnInit {
+     const infiniteState: boolean = data.infiniteState;
+     const state = data.state;
+ 
+-    this.map = <esri.Map> data.map;
++    this.map = <esri.Map>data.map;
+     this.state = state;
+ 
+     this.infiniteState = infiniteState;
+@@ -114,14 +114,23 @@ export class KisiTasinmazSearchComponent implements OnInit {
+   onRowClicked(rowClickedEvent: RowClickedEvent) {
+     const rowData = rowClickedEvent.data;
+ 
+-    const tasinmaz_id = rowData['mebcbs2023.sde.malik.tasinmazid'];
++    let tasinmaz_id = rowData['mebcbs2023.sde.malik.tasinmazid'];
++    if (tasinmaz_id === undefined) {
++      tasinmaz_id = rowData['tasinmazID'];
++    }
+     const queryProperties = <esri.QueryProperties>{
+       where: 'tasinmaz_id=' + tasinmaz_id,
+       returnGeometry: true,
+       outFields: ['*']
+     };
+ 
+-    const kadastroLayer = <esri.FeatureLayer>this.map.layers.find(layer => layer.title === 'Kadastro Parselleri');
++    let kadastroLayer;
++    if (this.map !== undefined) {
++      kadastroLayer = <esri.FeatureLayer>this.map.layers.find(layer => layer.title === 'Kadastro Parselleri');
++    } else {
++      kadastroLayer = <esri.FeatureLayer>this.dialogConfig.data['mapView']['map']['layers'].find(layer =>
++        layer.title === 'Kadastro Parselleri');
++    }
+ 
+     kadastroLayer.queryFeatures(queryProperties).then(responseObject => {
+       this.dialogRef.emit(responseObject);
+@@ -574,8 +583,8 @@ export class KisiTasinmazSearchComponent implements OnInit {
+     };
+ 
+     grid.gridOptions = {
+-      getRowStyle: function(params) {
+-        return { cursor: 'pointer'};
++      getRowStyle: function (params) {
++        return { cursor: 'pointer' };
+       }
+     };
+ 
