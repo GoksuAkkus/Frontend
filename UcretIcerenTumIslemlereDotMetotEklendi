@@ -1,0 +1,22 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 458c374208e0118bca7c22e37eef8b14b9b9815a..a811aeadb741171cb3e335f134afae5cae7de292 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -1304,7 +1304,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+   addModule(): Observable<Object> {
+     const formData = this.formGroup.value;
+-
++    const ucretFieldProcessArray = [8, 10, 11, 12, 13]; // ucret fieldını içeren işlemler
+     if (formData['bina_sayi'] !== undefined) {
+       const binaCount = Number(formData['bina_sayi']);
+ 
+@@ -1349,7 +1349,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       // const toplamMaliyetString = this.dotMethod(toplamMaliyetStringData);
+ 
+       formData['sayi'] = toplamMaliyetStringData;
+-    } else if(this.moduleData.value === 11) {
++    } else if( ucretFieldProcessArray.includes(this.moduleData.value)) {
+       let ucretField = <string>formData['ucret'];
+       ucretField = ucretField.replace(/\./g, '');
+       ucretField = ucretField.replace(/,/g, '.');
