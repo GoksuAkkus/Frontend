@@ -1,0 +1,217 @@
+diff --git a/src/app/dialog-info/dialog-info.component.html b/src/app/dialog-info/dialog-info.component.html
+index f6678cccc293a8c0374cc0792a12db869ad6d5ab..9b700bd5e719604e5aef4d1431794b4ba95d3c84 100644
+--- a/src/app/dialog-info/dialog-info.component.html
++++ b/src/app/dialog-info/dialog-info.component.html
+@@ -1,5 +1,4 @@
+ <div class="modal-content">
+-  <p>{{dialogConfig.data.message}}</p>
+   <div class= "table-container" *ngIf="this.maksBinaKoduSorgulaState">
+     <table>
+       <thead>
+diff --git a/src/app/dialog-info/dialog-info.component.ts b/src/app/dialog-info/dialog-info.component.ts
+index 77a2ed863f9d9c25468a613ec15309397a123f0a..4bd306ad6f89e5bf272780d4b2d163bc2d02533e 100644
+--- a/src/app/dialog-info/dialog-info.component.ts
++++ b/src/app/dialog-info/dialog-info.component.ts
+@@ -46,45 +46,48 @@ export class DialogInfoComponent implements OnInit {
+ 
+   ngOnInit() {
+     this.notificationMessage = '';
+-
+-    loadModules([
+-      'esri/geometry/Point',
+-      'esri/geometry/Polygon',
+-      'esri/Graphic'
+-    ]).then(([Point, Polygon, Graphic]) => {
+-      this.pointModule = Point;
+-      this.polygonModule = Polygon;
+-      this.graphicModule = Graphic;
+-
+-      this.userPerm = this.auth.userPerm;
+-      const data = this.dialogConfig.data;
+-      this.mapView = data.mapView;
+-      this.lat = data['coordinateData']['lat'];
+-      this.lon = data['coordinateData']['lon'];
+-      this.ilceLayer = data['ilceLayer'];
+-
+-      if (this.userPerm.permZone[0].zone !== '*') {
+-        this.setPermZones();
+-      } else {
+-        this.isPermittedForAllCities = true;
+-      }
+-
+-      this.getProperties();
+-      const queryPromise = this.queryIlceLayer().then(ilceRes => {
+-        this.ilceAttributes = ilceRes.features[0].attributes;
+-        if (this.isPermittedForAllCities === false) {
+-          this.isPermitted = this.testLocation();
+-        } else {
+-          this.isPermitted = 1;
+-        }
+-        if (this.isPermitted === 1) {
+-          this.getGeometryFromMaks(this.lat, this.lon);
++    const data = this.dialogConfig.data;
++    if (data['maksBinaKoduSorgulaState'] === false) {
++      this.notificationMessage = data['notificationMessage'];
++    } else {
++      loadModules([
++        'esri/geometry/Point',
++        'esri/geometry/Polygon',
++        'esri/Graphic'
++      ]).then(([Point, Polygon, Graphic]) => {
++        this.pointModule = Point;
++        this.polygonModule = Polygon;
++        this.graphicModule = Graphic;
++
++        this.userPerm = this.auth.userPerm;
++        this.mapView = data.mapView;
++        this.lat = data['coordinateData']['lat'];
++        this.lon = data['coordinateData']['lon'];
++        this.ilceLayer = data['ilceLayer'];
++
++        if (this.userPerm.permZone[0].zone !== '*') {
++          this.setPermZones();
+         } else {
+-          this.notificationMessage = 'Sorgulama Yapılmak İstenen Bölge Yetki Dahilinde Değildir.';
+-          console.log('YOU ARE NOT PERMITTED IN');
++          this.isPermittedForAllCities = true;
+         }
++
++        this.getProperties();
++        const queryPromise = this.queryIlceLayer().then(ilceRes => {
++          this.ilceAttributes = ilceRes.features[0].attributes;
++          if (this.isPermittedForAllCities === false) {
++            this.isPermitted = this.testLocation();
++          } else {
++            this.isPermitted = 1;
++          }
++          if (this.isPermitted === 1) {
++            this.getGeometryFromMaks(this.lat, this.lon);
++          } else {
++            this.notificationMessage = 'Sorgulama Yapılmak İstenen Bölge Yetki Dahilinde Değildir.';
++            console.log('YOU ARE NOT PERMITTED IN');
++          }
++        });
+       });
+-    });
++    }
+   }
+ 
+   async queryIlceLayer() {
+diff --git a/src/app/movements/movement-list/movement-list.component.ts b/src/app/movements/movement-list/movement-list.component.ts
+index 845d195a890e4976a9b37b62653606d65c250007..39662e200a18cadfac9bf4ca44e5b91bd855dea0 100644
+--- a/src/app/movements/movement-list/movement-list.component.ts
++++ b/src/app/movements/movement-list/movement-list.component.ts
+@@ -18,6 +18,7 @@ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.compo
+ import { RendererComponent } from 'src/app/modules/module-list/rendererClass/renderer.component';
+ import { LoginResponse } from 'src/app/models/Login/login-response';
+ import esri = __esri;
++import { DialogInfoComponent } from 'src/app/dialog-info/dialog-info.component';
+ @Component({
+   selector: 'app-movement-list',
+   templateUrl: './movement-list.component.html',
+@@ -82,6 +83,29 @@ export class MovementListComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
++  openHareketEkle(features: esri.Graphic[], foundMovement: MovementData) {
++    this.movementCreateDialogRef = this.dialogService.open(MovementCreateComponent, 'Hareket Ekle', false, {
++      data: {
++        fields: this.fields,
++        features: features,
++        featureData: this.featureData,
++        moduleData: this.dialogConfig.data.moduleData,
++        movementData: foundMovement,
++        moduleRefId: this.moduleRefId,
++        moduleWhereField: this.moduleWhereField,
++        mapView: this._mapView,
++        createMode: true
++      }
++    }, true, 'light');
++
++    this.movementCreateDialogRef.afterClosed.subscribe(closeParams => {
++      if (closeParams === true) {
++        this.agGrid.api.purgeInfiniteCache();
++      }
++      this.movementCreateDialogRef = undefined;
++    });
++  }
++
+   onCreateMovement() {
+     const progressInfoDialog = this.dialogService.openUnClosable(ProgressInfoComponent,
+       'Son Hareket Durumu Çekiliyor', false, {}, false, 'light');
+@@ -96,27 +120,55 @@ export class MovementListComponent implements OnInit, OnDestroy {
+           this.movementCreateDialogRef.close();
+           this.movementCreateDialogRef = undefined;
+         }
+-
+-        this.movementCreateDialogRef = this.dialogService.open(MovementCreateComponent, 'Hareket Ekle', false, {
+-          data: {
+-            fields: this.fields,
+-            features: features,
+-            featureData: this.featureData,
+-            moduleData: this.dialogConfig.data.moduleData,
+-            movementData: foundMovement,
+-            moduleRefId: this.moduleRefId,
+-            moduleWhereField: this.moduleWhereField,
+-            mapView: this._mapView,
+-            createMode: true
++        // YATIRIM TEKLİF DURUM REVİZYON/ARSA Hareketi seçildiyse yatırıma devam edilemez uyarısı verecek
++
++        if (features !== undefined) {
++          if (features.length !== 0) {
++            const attributes = features[0]['attributes'];
++            if (attributes !== undefined) {
++              const degisiklik_turu = attributes['degisiklik_turu'];
++              const durumu = attributes['durumu'];
++              const islem_turu = this.dialogConfig.data['moduleData']['islem_turu'];
++              let isYatirimTeklif = false;
++              let isDurumRevizyon = false;
++              let isArsaDegisikligi = false;
++              if (islem_turu !== undefined && degisiklik_turu !== undefined && durumu !== undefined) {
++                if (islem_turu === 12) {
++                  isYatirimTeklif = true;
++                }
++                if (durumu === 33) {
++                  isDurumRevizyon = true;
++                }
++                if (degisiklik_turu === 2) {
++                  isArsaDegisikligi = true;
++                }
++                if (isYatirimTeklif && isDurumRevizyon && isArsaDegisikligi) {
++                  this.movementCreateDialogRef = this.dialogService.open(DialogInfoComponent, 'Hareket Ekle', false, {
++                    data: {
++                      maksBinaKoduSorgulaState: false,
++                      notificationMessage: 'Arsa Değişikliği Yapıldığı İçin Bu Yatırıma Devam Edilemez. Lütfen ' +
++                        'Yeni Bir Yatırım Teklifi Üzerinden İşlem Yapınız.'
++                    }
++                  }, true, 'red-to-light');
++
++                  this.movementCreateDialogRef.afterClosed.subscribe(closeParams => {
++                    if (closeParams === true) {
++                      this.agGrid.api.purgeInfiniteCache();
++                    }
++                    this.movementCreateDialogRef = undefined;
++                  });
++
++                } else {
++                  this.openHareketEkle(features, foundMovement);
++                }
++              }
++            }
++          } else {
++            this.openHareketEkle(features, foundMovement);
+           }
+-        }, true, 'light');
+-
+-        this.movementCreateDialogRef.afterClosed.subscribe(closeParams => {
+-          if (closeParams === true) {
+-            this.agGrid.api.purgeInfiniteCache();
+-          }
+-          this.movementCreateDialogRef = undefined;
+-        });
++        } else {
++          this.openHareketEkle(features, foundMovement);
++        }
+       }, error => {
+         // progressInfoDialog.close();
+         console.error('Son Veri Çekilemedi');
