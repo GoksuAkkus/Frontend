@@ -1,0 +1,116 @@
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index 5ee72c7579969ac3f82fb1aeeb49a2e74dbc91b4..c07274317228180733fc8798ea558a2b1e6c9065 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -448,23 +448,34 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+       return;
+     }
+ 
++    let message = 'Veriyi Silmek İstediğinizden Emin Misiniz ?';
++    const deleteButton = <HTMLElement>event.target;
++    let contentContainer = deleteButton.parentElement;
++    if (contentContainer.classList.contains('content-collapse')) {
++      contentContainer = contentContainer.parentElement;
++    }
++    const index = this.getIndex(contentContainer);
++
++    const deleteFeature = this._tabData.features[index].clone();
++
++    const selectedLayerTitle = deleteFeature.layer['originalTitle'];
++
++    if (selectedLayerTitle !== undefined) {
++      if (selectedLayerTitle === 'Bina Kurum' || selectedLayerTitle === 'Bina Diğer') {
++        message = `Lütfen Bina Yıkıldıysa Yapı Durum'unu 'Yıkıldı' Olarak Düzenleyiniz. Hala Silmek İstiyor Musunuz? `;
++      } else if (selectedLayerTitle === 'Nokta Kurum') {
++        message = `Lütfen Kurum Kapandıysa Kurum Durumu'nu 'Kapalı' Olarak Düzenleyiniz. Hala Silmek İstiyor Musunuz? `;
++      }
++    }
++
+     this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'Silme', false, {
+       data: {
+-        message: 'Veriyi Silmek İstediğinizden Emin Misiniz ?'
++        message: message ,
+       }
+     }, false, 'light');
+ 
+     this.acceptanceDialog.afterClosed.subscribe(chosenResult => {
+       if (chosenResult === true) {
+-        const deleteButton = <HTMLElement>event.target;
+-
+-        let contentContainer = deleteButton.parentElement;
+-        if (contentContainer.classList.contains('content-collapse')) {
+-          contentContainer = contentContainer.parentElement;
+-        }
+-        const index = this.getIndex(contentContainer);
+-
+-        const deleteFeature = this._tabData.features[index].clone();
+ 
+         const yapim_yili = deleteFeature.getAttribute('yapim_yili');
+         const touch_date = deleteFeature.getAttribute('touch_date');
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 2e63b2e29fffa543c65c64feadb605f1e0db9cc9..24f5c77d761a98bd45d4ff26edcc3997c09a95e9 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -595,7 +595,7 @@ export class MainComponent implements OnInit {
+       ]).then(([FeatureLayer]) => {
+         let pendingUrl = '';
+         const isPrivateSchoolLayer = feature.layer['isPrivateSchoolLayer'];
+-        const isEgitimBolgeleriLayer = feature.layer['isEgitimBolgeleriLayer']
++        const isEgitimBolgeleriLayer = feature.layer['isEgitimBolgeleriLayer'];
+         const layerID = (<esri.FeatureLayer>feature.layer).layerId;
+ 
+         if (isPrivateSchoolLayer) {
+diff --git a/src/app/mapUtils/layer-utils.service.ts b/src/app/mapUtils/layer-utils.service.ts
+index e836bbda62f1a311a9b9048dbc93adc4f301dfbe..44164730820b726fbe9efdbebd3344c2405f6cb8 100644
+--- a/src/app/mapUtils/layer-utils.service.ts
++++ b/src/app/mapUtils/layer-utils.service.ts
+@@ -1064,7 +1064,8 @@ export class LayerUtilsService {
+             authorized: true,
+             isActive: true,
+             isEgitimBolgeleriLayer: true,
+-            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            requiredFields: ['il', 'ilce', 'bolge_tipi', 'bolge_adi', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi',
++              'kurum_ogrenci_sayisi'],
+             closedFields: ['objectid', 'globalid'],
+             id: 1,
+             renderer: {
+@@ -1089,7 +1090,8 @@ export class LayerUtilsService {
+             authorized: true,
+             isActive: true,
+             isEgitimBolgeleriLayer: true,
+-            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            requiredFields: ['il', 'ilce', 'bolge_tipi', 'bolge_adi', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi',
++              'kurum_ogrenci_sayisi'],
+             closedFields: ['objectid', 'globalid'],
+             id: 2,
+             renderer: {
+@@ -1114,7 +1116,8 @@ export class LayerUtilsService {
+             authorized: true,
+             isActive: true,
+             isEgitimBolgeleriLayer: true,
+-            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            requiredFields: ['il', 'ilce', 'bolge_tipi', 'bolge_adi', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi',
++              'kurum_ogrenci_sayisi'],
+             closedFields: ['objectid', 'globalid'],
+             id: 3,
+             renderer: {
+@@ -1139,7 +1142,8 @@ export class LayerUtilsService {
+             authorized: true,
+             isActive: true,
+             isEgitimBolgeleriLayer: true,
+-            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            requiredFields: ['il', 'ilce', 'bolge_tipi', 'bolge_adi', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi',
++              'kurum_ogrenci_sayisi'],
+             closedFields: ['objectid', 'globalid'],
+             id: 4,
+             renderer: {
+@@ -1164,7 +1168,8 @@ export class LayerUtilsService {
+             authorized: true,
+             isActive: true,
+             isEgitimBolgeleriLayer: true,
+-            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            requiredFields: ['il', 'ilce', 'bolge_tipi', 'bolge_adi', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi',
++              'kurum_ogrenci_sayisi'],
+             closedFields: ['objectid', 'globalid'],
+             id: 5,
+             renderer: {
