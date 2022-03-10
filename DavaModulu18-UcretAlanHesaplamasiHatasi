@@ -1,0 +1,199 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index b50761ba0d9765eaa253c806c9e487ee7f169a1f..92d7d51a0b80d606a2fc2631a612c454fe140e0b 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -13,7 +13,7 @@ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.compo
+ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AcceptDialogComponent } from 'src/app/accept-dialog/accept-dialog.component';
+ import { AgGridNg2 } from 'ag-grid-angular';
+-import { ColDef, RowClickedEvent } from 'ag-grid-community';
++import { ColDef, RowClickedEvent, RowNode } from 'ag-grid-community';
+ import esri = __esri;
+ import { KeyValue } from '../interfaces/keyvalue.modules';
+ import { MalikDosyaNo } from 'src/app/models/MalikDosyaNo';
+@@ -99,9 +99,11 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   multiSelectSuitabilityState = true;
+ 
+   lockRowSelectedEvent = false;
+-  headerCheckboxSelectionState = true;
++  headerCheckboxSelectionState = false;
+ 
+   multiSelectMovementCreateDialogRef: DialogRef;
++  selectedNodes: Array<RowNode> = [];
++  progressDialog: DialogRef;
+ 
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder, private dialogService: DialogService,
+@@ -303,6 +305,10 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   onChangeFormControl(event: Event) {
++    if (this.agGrid !== undefined) {
++      this.selectedNodes = this.agGrid.api.getSelectedNodes();
++    }
++
+     if (this.isMulti) {
+       const hasMalikSecimField = this.hasMalikFieldOnModuleFormDataForMultiSelect(event);
+       if (hasMalikSecimField) {
+@@ -489,6 +495,10 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }
+ 
+     this.checkAndUpdateCalculateFuntions(moduleData, formGroup);
++    if (this.agGrid !== undefined && this.moduleData.value === 10) {
++      const rows = this.agGrid.api.getSelectedRows();
++      this.setMalikCalculations(rows);
++    }
+   }
+ 
+   addDynamicFileField(currentFileFields: Array<FormData>) {
+@@ -695,31 +705,41 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       const calculateControls = calculateFunction.split(operation);
+       let operand1 = 0;
+       let operand2 = 0;
++      let temp;
+       calculateControls.forEach((calculateControl, index) => {
+         const formControl = formGroup.controls[calculateControl];
+ 
+-        if (formControl !== undefined && formControl.value !== undefined) {
+-          if (formControl.value === '') {
+-            formControl.setValue('0');
+-          }
++        if (formControl !== undefined) {
++          if (formControl.value !== undefined && formControl.value !== null) {
++            temp = formControl.value.replaceAll('.', '');
++            temp = temp.replaceAll(',', '.');
+ 
+-          if (index === 0) {
+-            // if (calculateControl === 'ucret') {
+-            //   if (formControl.value !== null) {
+-            //     let valWithoutDot = formControl.value.replaceAll('.', '');
+-            //     if (valWithoutDot.includes(',')) {
+-            //       const stringValWithoutDot: string = valWithoutDot.toString();
+-            //       const valWithoutComma = stringValWithoutDot.split(',');
+-            //       // ucret fieldındaki , checkandcalculate i patlatıyor o yüzden
+-            //       // , den sonraki kısmı atarak hesaplama yapmalı.
+-            //       valWithoutDot = valWithoutComma[0];
+-            //     }
+-            //     operand1 = Number(valWithoutDot);
+-            //   }
+-            // }
+-            operand1 = Number(formControl.value);
+-          } else {
+-            operand2 = Number(formControl.value);
++            if (formControl.value === '') {
++              formControl.setValue('0');
++            }
++            if(formControl.value.charAt(0) === '0') {
++              const temp = Number(formControl.value);
++              formControl.setValue(temp.toString());
++            }
++
++            if (index === 0) {
++              // if (calculateControl === 'ucret') {
++              //   if (formControl.value !== null) {
++              //     let valWithoutDot = formControl.value.replaceAll('.', '');
++              //     if (valWithoutDot.includes(',')) {
++              //       const stringValWithoutDot: string = valWithoutDot.toString();
++              //       const valWithoutComma = stringValWithoutDot.split(',');
++              //       // ucret fieldındaki , checkandcalculate i patlatıyor o yüzden
++              //       // , den sonraki kısmı atarak hesaplama yapmalı.
++              //       valWithoutDot = valWithoutComma[0];
++              //     }
++              //     operand1 = Number(valWithoutDot);
++              //   }
++              // }
++              operand1 = Number(temp);
++            } else {
++              operand2 = Number(temp);
++            }
+           }
+         }
+       });
+@@ -2375,7 +2395,6 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       filters: 'Filtreler',
+       noRowsToShow: 'Veri bulunamadı',
+     };
+-
+   }
+ 
+   onGridReady() {
+@@ -2410,6 +2429,13 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+         this.getMalikData(malikTableURL, where).subscribe(responseData => {
+           this.agGrid.api.setRowData(responseData);
++
++          this.agGrid.api.forEachNode(node => {
++            const foundRow = this.selectedNodes.find(rowData => rowData.data['tc_kimlikno'] === node.data['tc_kimlikno']) as RowNode;
++            if (foundRow) {
++              node.setSelected(true, false, false);
++            }
++          });
+         });
+       } else {
+         const tasinmazIDs = [];
+@@ -2425,6 +2451,10 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+         this.getMalikData(malikTableURL, where).subscribe(responseData => {
+           this.agGrid.api.setRowData(responseData);
++          const nodes = this.agGrid.api.getSelectedNodes();
++          nodes.forEach(node => {
++            node.setSelected(true, false, false);
++          });
+         });
+       }
+     } else if (processState === 0) {
+@@ -2725,12 +2755,22 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   rowSelected(event: RowClickedEvent) {
++    if(this.headerCheckboxSelectionState) {
++      if(this.progressDialog === undefined) {
++          this.progressDialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'Lütfen Bekleyiniz', false, {}, false, 'light');
++          setTimeout(() => {
++            this.progressDialog.close();
++            this.progressDialog = undefined;
++          }, 5000);
++      }
++    }
++
+     if (this.lockRowSelectedEvent) {
+       return;
+     }
+ 
+-    const rows = this.agGrid.api.getSelectedRows();
+-
++    let rows = this.agGrid.api.getSelectedRows();
++    this.setMalikCalculations(rows);
+     if (event.api.getFocusedCell() !== undefined && !this.headerCheckboxSelectionState) {
+       const focusedColID = event.api.getFocusedCell().column.getColId();
+       if (focusedColID === 'mirasci' || focusedColID === 'mirasci_detay') {
+@@ -2816,22 +2856,28 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             if (!selectedMalikInExactProcessState) {
+               // TODO UYARI VERİLECEK
+               event.node.setSelected(false);
++              rows = this.agGrid.api.getSelectedRows();
+               this.malikHasAlreadyAddedState = true;
+               const warningText = `Seçilen Malik Halihazırda Davalıktır. Lütfen #${dosyaNo} Numaralı 
+                 Dosya Üzerinden İşlemi Devam Ettiriniz`;
+               this.notify.open(warningText, 'danger', 5);
++              setTimeout(() => {
++                this.setMalikCalculations(rows);
++              });
+             } else {
++              rows = this.agGrid.api.getSelectedRows();
+               this.setMalikCalculations(rows);
+             }
+           }
+         } else {
++          rows = this.agGrid.api.getSelectedRows();
+           this.setMalikCalculations(rows);
+         }
+       });
+     } else {
++      rows = this.agGrid.api.getSelectedRows();
+       this.setMalikCalculations(rows);
+     }
+-
+   }
+ 
+   getMalikIds(url: string, where: string) {
