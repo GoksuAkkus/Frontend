@@ -1,0 +1,658 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index 5a892044fb37fbc5432f99ab27d46057331ee6b2..c53454f0aeda64055d6aa3efc71304f559cd8cbf 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -126,6 +126,7 @@ import { DurakMerkezMesafeKontrolComponent } from './tasimali/durak-merkez-mesaf
+ import { GuzergahSecComponent } from './tasimali/guzergah-sec/guzergah-sec.component';
+ import { OnayRendererComponent } from './info/renderers/onay-renderer.component';
+ import { MaksAdresbinakoduComponent } from './search/maks-adresbinakodu/maks-adresbinakodu.component';
++import { AcikadressorgulamaComponent } from './search/acikadressorgulama/acikadressorgulama.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -242,7 +243,8 @@ import { MaksAdresbinakoduComponent } from './search/maks-adresbinakodu/maks-adr
+     DurakMerkezMesafeKontrolComponent,
+     GuzergahSecComponent,
+     OnayRendererComponent,
+-    MaksAdresbinakoduComponent
++    MaksAdresbinakoduComponent,
++    AcikadressorgulamaComponent
+   ],
+   imports: [
+     BrowserAnimationsModule,
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+index 17a443fd69c6f33627812ec6f11d78c346ed22a3..66cc4c1c8945eaf6f1b1ddd85e1459fc7baaef1e 100644
+--- a/src/app/models/MaksData.ts
++++ b/src/app/models/MaksData.ts
+@@ -6,10 +6,20 @@ export class MaksData {
+     csbmler: Array<Csbm>;
+     binalar: Array<Bina>;
+     bucaklar: Array<Bucak>;
++    acikAdresWithAdresNo: string;
++    acikAdresWithBinaKoduArray: Array<BagimsizBolumBina>;
+     geometry: MaksGeometry;
+     error: Error;
+ }
+ 
++export class BagimsizBolumBina {
++    adresNo: number;
++    binaNo: number;
++    binaKodu: number;
++    icKapiNo: string;
++    hataBilgisi: string;
++}
++
+ export class IlClass {
+     ad: string;
+     uavtil: number;
+@@ -88,8 +98,9 @@ export interface MaksGeometry {
+ }
+ 
+ export interface Error {
+-    errorCode: number;
+-    errorDescription: string;
++    code: number;
++    description: string;
++    maksDescription: string;
+ }
+ 
+ 
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.html b/src/app/search/acikadressorgulama/acikadressorgulama.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..8895d12b5bd09cbade1082c2a7a6a4afc68a6352
+--- /dev/null
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.html
+@@ -0,0 +1,67 @@
++<div class="maks-acik-adres-search-container">
++  <div class="header" (click)="dispatchMaksAcikAdresSearchClicked($event)">
++    <h3> Açık Adres Sorgulama</h3>
++    <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
++      <g transform="translate(-4357.014 -110.735)">
++        <path
++          d="M4379.745,130.755a.94.94,0,0,1,.255.68,1.281,1.281,0,0,1-.255.619,4.95,4.95,0,0,1-.65.768,6.075,6.075,0,0,1-.77.647,1.179,1.179,0,0,1-.614.266.89.89,0,0,1-.674-.271l-5.169-5.153a10.006,10.006,0,0,1-2.521,1.17,9.548,9.548,0,0,1-6.46-.335,9.675,9.675,0,0,1-3.057-2.062,9.518,9.518,0,0,1-2.068-3.051,9.589,9.589,0,0,1,0-7.426,9.577,9.577,0,0,1,2.068-3.052,9.867,9.867,0,0,1,3.049-2.067,9.531,9.531,0,0,1,7.426,0,9.916,9.916,0,0,1,3.055,2.067,9.638,9.638,0,0,1,2.064,3.052,9.544,9.544,0,0,1,.338,6.47,9.627,9.627,0,0,1-1.173,2.509Zm-20.158-10.434a6.673,6.673,0,0,0,.564,2.745,7.066,7.066,0,0,0,3.732,3.7,6.81,6.81,0,0,0,2.72.549,6.725,6.725,0,0,0,2.706-.549,7.117,7.117,0,0,0,2.219-1.492,7.263,7.263,0,0,0,1.511-2.208,6.734,6.734,0,0,0,.559-2.745,6.662,6.662,0,0,0-.559-2.711,7.433,7.433,0,0,0-1.511-2.226,6.987,6.987,0,0,0-2.219-1.506,6.731,6.731,0,0,0-2.706-.556,6.816,6.816,0,0,0-2.72.556,7.008,7.008,0,0,0-2.225,1.506,7.351,7.351,0,0,0-1.507,2.226A6.6,6.6,0,0,0,4359.587,120.321Z"
++          fill="#d1000f" />
++        <path
++          d="M4366.933,114.443a1.125,1.125,0,0,1,.824.349,1.2,1.2,0,0,1,.348.873,1.143,1.143,0,0,1-.348.829,1.117,1.117,0,0,1-.824.352,3.616,3.616,0,0,0-3.641,3.634,1.15,1.15,0,0,1-.35.832,1.126,1.126,0,0,1-.821.338,1.188,1.188,0,0,1-.889-.338,1.157,1.157,0,0,1-.333-.832,5.894,5.894,0,0,1,.465-2.323,6.025,6.025,0,0,1,1.294-1.94,5.93,5.93,0,0,1,4.275-1.774Z"
++          fill="#d1000f" />
++      </g>
++    </svg>
++  </div>
++  <div class="form-container">
++    <div class="module-buttons">
++      <input type="button" name="adresNo" value="Adres No İle Sorgula" (click)="handleChange($event)">
++      <input type="button" name="binaKodu" value="Bina Kodu İle Sorgula" (click)="handleChange($event)">
++    </div>
++
++    <div class="adresno-container" style="position: relative; width: 100%; padding-left: 5px;">
++      <form #adresNo="ngForm" (ngSubmit)="getAcikAdresFromAdresNo(adresNo.value)"
++        style="position: relative;width: 100%;">
++        <div class="form-group">
++          <input id="adresNo" class="form-input" type="text" name="adresNo" autocomplete="off" ngModel required>
++          <label for="adresNo" class="form-label">Adres No</label>
++        </div>
++
++        <div class="btn-container">
++          <button class="btn-info" type="submit" style="margin-right: 5px;">Getir</button>
++        </div>
++
++        <label class= "adres-label" *ngIf="acikAdres !== ''"> {{acikAdres}} </label>
++        <label class= "adres-label" *ngIf="errorMessage !== ''"> {{errorMessage}} </label>
++      </form>
++    </div>
++    <div class="binakodu-container" style="position: relative; width: 100%; padding-left: 5px;">
++      <form #binaKodu="ngForm" (ngSubmit)="getAcikAdresFromBinaKodu(binaKodu.value)"
++        style="position: relative;width: 100%;">
++        <div class="form-group">
++          <input id="binaKodu" class="form-input" type="text" name="binaKodu" ngModel autocomplete="off" required>
++          <label for="binaKodu" class="form-label">Bina Kodu</label>
++        </div>
++
++        <div class="form-group"  *ngIf="binaArray.length > 0">
++            <input id="icKapiNolar" class="form-input" type="select" name="binaArray" autocomplete="off"
++              style="font-size:14px;"  (blur)="onToggleDropdown($event)"
++              (focus)="onToggleDropdown($event)" required readonly>
++            <label for="icKapiNolar" class="form-label">İç Kapı No Seçiniz</label>
++            <img src="assets/img/arrow.png" alt="" class="arrow-down">
++          </div>
++
++          <div class="select-options" *ngIf="binaArray.length > 0">
++            <span class="option" id="{{bina.adresNo}}" *ngFor="let bina of binaArray"
++              (mousedown)="onSelectIcKapiNo($event)">{{bina.icKapiNo}}</span>
++          </div>
++
++        <div class="btn-container">
++          <button class="btn-info" type="submit" style="margin-right: 5px;">Getir</button>
++        </div>
++
++        <label class= "adres-label" *ngIf="acikAdres !== ''"> {{acikAdres}} </label>
++        <label class= "adres-label" *ngIf="errorMessage !== ''"> {{errorMessage}} </label>
++      </form>
++    </div>
++  </div>
++</div>
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.scss b/src/app/search/acikadressorgulama/acikadressorgulama.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..00dba025badeecd982b664e56825af2ca4884533
+--- /dev/null
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.scss
+@@ -0,0 +1,240 @@
++@import '../../../global.scss';
++
++.maks-acik-adres-search-container {
++  border: 1px solid $primaryColor;
++  border-radius: 5px;
++  overflow: auto;
++  position: relative;
++  overflow: visible;
++
++  .btn-container {
++    position: relative;
++    margin: 12px 0;
++
++    .btn-info {
++      display: inline-block;
++      font-weight: 400;
++      background-color: $primaryColor;
++      color: white;
++      text-align: center;
++      vertical-align: middle;
++      user-select: none;
++      border: 1px solid transparent;
++      padding: .275rem 1rem;
++      font-size: 14px;
++      line-height: 1.5;
++      border-radius: .25rem;
++      transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
++      cursor: pointer;
++      outline: none;
++
++      &:hover {
++        background-color: lighten($color: $primaryColor, $amount: 10);
++      }
++
++      &:active {
++        background-color: lighten($color: $primaryColor, $amount: 20);
++      }
++    }
++  }
++
++  .header {
++    display: flex;
++    flex-direction: row;
++    justify-content: space-between;
++    align-items: center;
++    padding: 10px;
++    cursor: pointer;
++    color: $primaryColor;
++  }
++
++
++  .form-container {
++    display: flex;
++    flex-direction: column;
++    align-items: flex-start;
++    position: relative;
++    padding: 0 10px;
++    visibility: hidden;
++    height: 0;
++    opacity: 0;
++    overflow: auto;
++    transition: height 0.7s, opacity 0.5s;
++
++    .select-options {
++      display: flex;
++      position: absolute;
++      flex-direction: column;
++      justify-content: flex-start;
++      max-height: 175px;
++      left: 0;
++      right: 0;
++      overflow-y: auto;
++      animation: fadeIn 0.5s;
++      z-index: 10;
++      color: #4F97A3;
++      background-color: white;
++      display: none;
++      box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
++
++      >.option {
++        font-size: 14px;
++        font-weight: 300;
++        padding: 10px;
++        cursor: pointer;
++
++        &:hover {
++          background-color: #eeeeee;
++          color: #4F97A3;
++        }
++      }
++    }
++
++    .form-group {
++      position: relative;
++      display: flex;
++      flex-direction: row;
++      align-items: center;
++      border-bottom: 1px solid #757575;
++      margin-left: auto;
++      margin-right: auto;
++      max-width: 300px;
++
++      .form-input {
++        font-size: 14px !important;
++        font-weight: 300;
++        position: relative;
++        display: block;
++        width: 100%;
++        border: none;
++        background-color: transparent;
++        margin: 0px auto;
++        padding: 15px 0px 0px 0px;
++        height: 25px;
++        outline: none !important;
++        font-size: 20px;
++        background: -webkit-linear-gradient(bottom, #51BBBE 50%, #51BBBE 50%);
++        background: linear-gradient(to top, #51BBBE 50%, #51BBBE 50%);
++        background-position: left bottom;
++        background-size: 0 1px;
++        background-repeat: no-repeat;
++        transition: all .2s ease-in-out;
++
++        &:valid+.form-label,
++        &:focus+.form-label {
++          height: 20px;
++          line-height: 20px;
++          font-size: 11px;
++          color: black;
++        }
++      }
++
++      .form-label {
++        position: absolute;
++        top: 0;
++        left: 0;
++        text-align: left;
++        display: block;
++        width: 100%;
++        height: 45px;
++        line-height: 55px;
++        font-size: 16px;
++        font-weight: 200;
++        background: transparent;
++        color: #757575;
++        margin: 0px auto;
++        cursor: text;
++        transition: all .15s ease-in-out;
++      }
++
++      .arrow-down {
++        width: 20px;
++        height: 20px;
++        margin-left: -15px;
++        margin-top: 10px;
++        transition: 0.5s;
++      }
++    }
++
++    .module-buttons {
++      display: flex;
++      flex-direction: row-reverse;
++
++      >input {
++        background: white;
++        border: solid 1px $primaryColor;
++        color: inherit;
++        padding: 3px 6px 3px 6px;
++        border-radius: 2px;
++        margin: 0px 2px 10px 3px;
++        box-shadow: 0.3px 0.3px 0px 0px #000000;
++        cursor: pointer;
++        transition: 0.3s;
++        outline: none;
++
++        &.active {
++          background: $primaryColor;
++          color: white;
++        }
++      }
++    }
++
++    .adresno-container {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      position: relative;
++      padding: 0 10px;
++      visibility: hidden;
++      height: 0;
++      opacity: 0;
++      transition: height 0.7s, opacity 0.5s;
++
++      &.show-adresno-container {
++        visibility: visible;
++        height: 200px;
++        opacity: 1;
++      }
++    }
++
++    .binakodu-container {
++      display: flex;
++      flex-direction: column;
++      align-items: flex-start;
++      position: relative;
++      padding: 0 10px;
++      visibility: hidden;
++      height: 0;
++      opacity: 0;
++      transition: height 0.7s, opacity 0.5s;
++
++      &.show-binakodu-container {
++        visibility: visible;
++        height: 200px;
++        opacity: 1;
++      }
++    }
++
++    &.show-form {
++      visibility: visible;
++      height: 60px;
++      opacity: 1;
++
++      &.adresno {
++        visibility: visible;
++        height: 200px;
++        opacity: 1;
++      }
++
++      &.binakodu {
++        visibility: visible;
++        height: 200px;
++        opacity: 1;
++      }
++    }
++  }
++
++  .adres-label {
++
++  }
++}
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.spec.ts b/src/app/search/acikadressorgulama/acikadressorgulama.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..755e14e54c325c646f84cac88fa3d0fad5e18a8c
+--- /dev/null
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { AcikadressorgulamaComponent } from './acikadressorgulama.component';
++
++describe('AcikadressorgulamaComponent', () => {
++  let component: AcikadressorgulamaComponent;
++  let fixture: ComponentFixture<AcikadressorgulamaComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ AcikadressorgulamaComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(AcikadressorgulamaComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/search/acikadressorgulama/acikadressorgulama.component.ts b/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..20f7302c71f1c0dd75789c5b408bbfe0de0ae419
+--- /dev/null
++++ b/src/app/search/acikadressorgulama/acikadressorgulama.component.ts
+@@ -0,0 +1,196 @@
++import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
++import { BagimsizBolumBina, MaksData } from 'src/app/models/MAKSData';
++import { WebDataService } from 'src/app/services/web-data.service';
++import esri = __esri;
++@Component({
++  selector: 'app-acikadressorgulama',
++  templateUrl: './acikadressorgulama.component.html',
++  styleUrls: ['./acikadressorgulama.component.scss']
++})
++export class AcikadressorgulamaComponent implements OnInit, OnDestroy {
++
++  @Output() maksAcikAdresClicked = new EventEmitter();
++
++  _mapView: esri.MapView;
++  acikAdres = '';
++  errorMessage = '';
++  binaArray: Array<BagimsizBolumBina> = [];
++
++  @Input()
++  set mapView(mapView) {
++    this._mapView = mapView;
++  }
++
++  get mapView() {
++    return this._mapView;
++  }
++
++  constructor(public webDataService: WebDataService) { }
++
++  ngOnInit() {
++    this.acikAdres = '';
++    this.errorMessage = '';
++    this.binaArray = [];
++  }
++
++  ngOnDestroy() {
++    this.acikAdres = '';
++    this.errorMessage = '';
++    this.binaArray = [];
++  }
++
++  getAcikAdresFromAdresNo(adresNo) {
++    this.acikAdres = '';
++    this.errorMessage = '';
++    this.binaArray = [];
++
++    this.webDataService.getMaksAcikAdresWithAdresNo(adresNo).subscribe(res => {
++      if (res !== null && res !== undefined) {
++        if (res.error.description === null) {
++          const adres = res.acikAdresWithAdresNo;
++          if (adres !== null && adres !== undefined) {
++            this.acikAdres = adres;
++          }
++        } else {
++          console.log(res.error.description);
++          if (res.error.code === -1) {
++            this.errorMessage = 'Lütfen Düzgün Giriniz.';
++          } else {
++            this.errorMessage = res.error.maksDescription;
++          }
++        }
++      }
++    });
++  }
++
++  getAcikAdresFromBinaKodu(binaKodu: any) {
++    this.acikAdres = '';
++    this.errorMessage = '';
++    this.binaArray = [];
++    // Getir diyince binaalr arayi setlencek
++    this.webDataService.getBinaNoFromBinaKodu(binaKodu).subscribe(binaNo => {
++      if (binaNo !== null && binaNo !== undefined) {
++        this.webDataService.getAdresNoFromKimlikNo(binaNo).subscribe(binaArray => {
++          if (binaArray !== null && binaArray !== undefined) {
++            binaArray.acikAdresWithBinaKoduArray.forEach(data => {
++              let bina = new BagimsizBolumBina();
++              bina = data;
++              this.binaArray.push(bina);
++            });
++          }
++        });
++      }
++    });
++    // binalar setlenince bina diskapinoları alacak olan input gözükecek
++
++  }
++
++  onSelectIcKapiNo(event: Event) {
++
++    // TODO BURDAN GELEN İÇKAPINO BİNAARRAYDA ARATILIP ADRESNO BULUCAK VE MAKS SERVİSİNE VERİCEKSİN
++    const target = event.target as HTMLElement;
++    const value = target.innerText;
++
++    const selectedElement: HTMLElement = <HTMLElement>event.target;
++    const selectContainer: HTMLElement = selectedElement.parentElement;
++    const labelElement = selectContainer.previousElementSibling as HTMLLabelElement;
++    const form: HTMLFormElement = <HTMLFormElement>selectContainer.parentElement;
++    const inputContainer: HTMLElement = <HTMLElement>selectContainer.previousElementSibling;
++    const selectInput: HTMLInputElement = <HTMLInputElement>inputContainer.firstElementChild;
++    selectInput.value = value;
++
++    const foundBina = this.binaArray.find(bina => bina.icKapiNo === value);
++    const adresNoString = foundBina.adresNo.toString();
++
++    this.webDataService.getMaksAcikAdresWithAdresNo(adresNoString).subscribe(res => {
++      if (res !== null && res !== undefined) {
++        if (res.error.description === null) {
++          const adres = res.acikAdresWithAdresNo;
++          if (adres !== null && adres !== undefined) {
++            this.acikAdres = adres;
++          }
++        } else {
++          console.log(res.error.description);
++          if (res.error.code === -1) {
++            this.errorMessage = 'Lütfen Düzgün Giriniz.';
++          } else {
++            this.errorMessage = res.error.maksDescription;
++          }
++        }
++      }
++    });
++  }
++
++  handleChange(event: Event) {
++    this.acikAdres = '';
++    this.errorMessage = '';
++    const targetElement: HTMLInputElement = <HTMLInputElement>event.target;
++    const parentElement: HTMLElement = <HTMLElement>targetElement.parentElement;
++    const formParentElement: HTMLElement = <HTMLElement>parentElement.parentElement;
++
++    const adresNoDivElement = parentElement.nextElementSibling;
++    const binaKoduDivElement = adresNoDivElement.nextElementSibling;
++
++
++    if (targetElement.name === 'adresNo') {
++      binaKoduDivElement.classList.remove('show-binakodu-container');
++
++      if (!formParentElement.classList.contains('adresno')) {
++        formParentElement.classList.toggle('adresno');
++        formParentElement.classList.remove('binakodu');
++      }
++      if (!adresNoDivElement.classList.contains('show-adresno-container')) {
++        adresNoDivElement.classList.toggle('show-adresno-container');
++      } else {
++        adresNoDivElement.classList.remove('show-adresno-container');
++        formParentElement.classList.remove('adresno');
++      }
++    } else {
++      adresNoDivElement.classList.remove('show-adresno-container');
++
++      if (!formParentElement.classList.contains('binakodu')) {
++        formParentElement.classList.toggle('binakodu');
++        formParentElement.classList.remove('adresno');
++      }
++      if (!binaKoduDivElement.classList.contains('show-binakodu-container')) {
++        binaKoduDivElement.classList.toggle('show-binakodu-container');
++      } else {
++        binaKoduDivElement.classList.remove('show-binakodu-container');
++        formParentElement.classList.remove('binakodu');
++      }
++    }
++
++    const buttonContainer = targetElement.parentElement;
++    this.clearActiveStatus(buttonContainer);
++    targetElement.classList.add('active');
++  }
++
++  onToggleDropdown(event: Event) {
++    const inputElement: HTMLInputElement = <HTMLInputElement>event.target;
++    const formGroup = inputElement.parentElement;
++    const dropDownImg = inputElement.parentElement.lastElementChild;
++    const selectContainer: HTMLElement = <HTMLElement>formGroup.nextElementSibling;
++
++    if (dropDownImg.classList.contains('r-90')) {
++      selectContainer.style.display = 'none';
++    } else {
++      selectContainer.style.display = 'flex';
++    }
++
++    dropDownImg.classList.toggle('r-90');
++  }
++
++  dispatchMaksAcikAdresSearchClicked(event: Event) {
++    this.maksAcikAdresClicked.emit(event);
++  }
++
++  clearActiveStatus(buttonContainer: HTMLElement) {
++    let currentElement = buttonContainer.firstElementChild;
++
++    while (currentElement !== null) {
++      currentElement.classList.remove('active');
++      currentElement = currentElement.nextElementSibling;
++    }
++  }
++
++}
+diff --git a/src/app/search/search.component.html b/src/app/search/search.component.html
+index 1cc96f80919526aee770f5c93655ca20e616ef95..69486227c2acd933eda266fb07f161424a7bd283 100644
+--- a/src/app/search/search.component.html
++++ b/src/app/search/search.component.html
+@@ -26,10 +26,15 @@
+ 
+    <div class="tkgm-tapu-search search-form-parent">
+      <app-maks-adresbinakodu [mapView]="mapView" (maksAdresBinaKoduClicked)="openSearchFormEvent($event)" (gotoSelectedObject)="gotoSelectedObjectEvent($event)">
+-
+      </app-maks-adresbinakodu>
+    </div>
+ 
++   <!-- AÇIK ADRES FİLTRELEME, CSS VE TEST İŞLEMLERİ BİTİNCE AÇILACAK -->
++   <!-- <div class="tkgm-tapu-search search-form-parent">
++    <app-acikadressorgulama (maksAcikAdresClicked)="openSearchFormEvent($event)" (gotoSelectedObject)="gotoSelectedObjectEvent($event)">
++    </app-acikadressorgulama>
++  </div> -->
++  
+    <div *ngIf="this.showElement && (guiPermissions[4] === true || guiPermissions[6] ==  true)"
+      class="person-search search-form-parent">
+      <app-person-search (personSearchClicked)="openSearchFormEvent($event)"
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index d468d7a9c2d2c03a71cf1f7bedbeafa6ba9f7f82..47f49cc6eea8c95821721a8539bafba3aec1b84e 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -90,6 +90,21 @@ export class WebDataService {
+ 
+   constructor(private auth: AuthService, private http: HttpClient) {}
+ 
++  getBinaNoFromBinaKodu(binaKodu) {
++    return this.http.get<string>(this.maksURL + 'GetBinaNoFromBinaKodu?binaKodu=' + binaKodu['binaKodu'],
++      { headers: this.auth.createHeader() });
++  }
++
++  getAdresNoFromKimlikNo(kimlikNo) {
++    return this.http.get<MaksData>(this.maksURL + 'GetAdresNoFromKimlikNo?yapiKimlikNo=' + kimlikNo,
++      { headers: this.auth.createHeader() });
++  }
++
++  getMaksAcikAdresWithAdresNo(adresNo) {
++    return this.http.get<MaksData>(this.maksURL + 'GetMaksAcikAdresWithAdresNo?adresNo=' + adresNo,
++      { headers: this.auth.createHeader() });
++  }
++
+   getIlcelerFromMAKS(ilID: number) {
+     const url = this.maksURL + 'GetMaksIleBagliIlceListele?ilKodu=' + ilID;
+     const maksData = this.http.get<Array<MaksData>>(url, { headers: this.auth.createHeader() });
