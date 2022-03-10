@@ -1,0 +1,52 @@
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index 48fbd9eb1679bb8d3206f3aca86d8ba2c865975f..a38e198b87cb8bdf445ac4c664ae167b6f7fec53 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -800,7 +800,7 @@
+       },
+       {
+         "states": [
+-          2, 3, 4, 37
++          2, 3, 4, 9, 37
+         ],
+         "fields": [{
+             "alias": "Giden Tarih",
+@@ -848,7 +848,7 @@
+       },
+       {
+         "states": [
+-          7, 9, 36
++          7, 36
+         ],
+         "fields": [{
+             "alias": "Gelen Tarih",
+@@ -1392,7 +1392,7 @@
+       },
+       {
+         "states": [
+-          4, 9, 37
++          2, 4, 9, 37
+         ],
+         "fields": [{
+             "alias": "Giden Tarih",
+@@ -2135,14 +2135,12 @@
+         "states": [
+           5
+         ],
+-        "fields": [
+-          {
+-            "alias": "Açıklama",
+-            "name": "aciklama",
+-            "type": "text",
+-            "required": true
+-          }
+-        ]
++        "fields": [{
++          "alias": "Açıklama",
++          "name": "aciklama",
++          "type": "text",
++          "required": true
++        }]
+       },
+       {
+         "states": [
