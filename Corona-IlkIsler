@@ -1,0 +1,704 @@
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.ts b/src/app/drawing-tools/create-quad/create-quad.component.ts
+index b6bac323eacd9f823c6362fb6d7c45c87378c133..6f89dde44e452b5ef998fcff6c28a77be062d487 100644
+--- a/src/app/drawing-tools/create-quad/create-quad.component.ts
++++ b/src/app/drawing-tools/create-quad/create-quad.component.ts
+@@ -51,7 +51,10 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+ 
+   onClickCreate(event: Event) {
+     if (this.feature !== undefined) {
+-      return;
++      const drawBoxGraphic = this.mapView.graphics.find(graphic => graphic.get('drawBox') === true);
++      if (drawBoxGraphic) {
++        return;
++      }
+     }
+     const target = <HTMLElement>event.target;
+     const buttonClassElement = target.parentElement as HTMLDivElement;
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 89c30b946a10d2de75abcafd1a0a2a8d753f25df..0815d004f8775f8d9dc1f22f957a1b27420e4925 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -887,14 +887,17 @@ export class EsriMapComponent implements OnInit {
+     this.layerService.getMEBLayers().subscribe(resLayerInfos => {
+       if (this.auth.userPerm !== undefined) {
+         this.layerService.initMEBLayers(resLayerInfos.layers, this.auth.user.nameid, this.auth.userPerm).subscribe(layerDesign => {
+-          const outsideOzelOkulLayers = layerDesign.filter(layer => layer.category !== 'Özel Okullar');
++          const outsideOzelOkulLayers = layerDesign.filter(layer => layer.category !== 'Özel Okullar'
++            && layer.category !== 'Eğitim Bölgeleri');
+           this.addLayersToMap(map, FeatureLayer, outsideOzelOkulLayers);
+         });
+       } else {
+-        this.layerService.initMEBLayers(resLayerInfos.layers, this.auth.user.nameid).subscribe((layerDesign: Array<LayerGroup>) => {
+-          const outsideOzelOkulLayers = layerDesign.filter(layer => layer.category !== 'Özel Okullar');
+-          this.addLayersToMap(map, FeatureLayer, outsideOzelOkulLayers);
+-        });
++        this.layerService.initMEBLayers(resLayerInfos.layers, this.auth.user.nameid).
++          subscribe((layerDesign: Array<LayerGroup>) => {
++            const outsideOzelOkulLayers = layerDesign.filter(layer => layer.category !== 'Özel Okullar'
++              && layer.category !== 'Eğitim Bölgeleri');
++            this.addLayersToMap(map, FeatureLayer, outsideOzelOkulLayers);
++          });
+       }
+ 
+       this.layerService.getOzelOkulLayers().subscribe(resOzelOkulLayerInfos => {
+@@ -914,6 +917,16 @@ export class EsriMapComponent implements OnInit {
+             });
+         }
+       });
++
++      this.layerService.getEgitimBolgeleriLayers().subscribe(resEgitimBolgeleriLayerInfos => {
++        if (this.auth.userPerm !== undefined) {
++          this.layerService.initEgitimBolgeleriLayers(resEgitimBolgeleriLayerInfos.layers, this.auth.user.nameid, this.auth.userPerm)
++            .subscribe((layerDesign: Array<LayerGroup>) => {
++              const justEgitimBolgeleriLayers = layerDesign.filter(layer => layer.category === 'Eğitim Bölgeleri');
++              this.addLayersToMap(map, FeatureLayer, justEgitimBolgeleriLayers);
++            });
++        }
++      });
+     }, (error) => {
+       this.notificationService.open('SİSTEM BAKIMA ALINMIŞTIR. LÜTFEN DAHA SONRA TEKRAR DENEYİNİZ.', 'danger', 100);
+     });
+@@ -922,6 +935,7 @@ export class EsriMapComponent implements OnInit {
+   addLayersToMap(map: esri.Map, FeatureLayer: esri.FeatureLayerConstructor, layerDesign: Array<LayerGroup>) {
+     layerDesign.forEach(category => {
+       const isPrivateSchool = category['private_school'];
++      const isEgitimBolgeleri = category['egitim_bolgeleri'];
+ 
+       category.layers.forEach((layerCategory) => {
+         if (layerCategory['category'] !== undefined) {
+@@ -930,21 +944,21 @@ export class EsriMapComponent implements OnInit {
+ 
+           subLayerCategory.layers.forEach((subLayer: Layer) => {
+             if (subLayer['isActive']) {
+-              this.onCreateLayer(FeatureLayer, subLayer, map, isPrivateSchool);
++              this.onCreateLayer(FeatureLayer, subLayer, map, isPrivateSchool, isEgitimBolgeleri);
+             }
+           });
+         } else {
+           const layer: Layer = <Layer>layerCategory;
+           if (layer['isActive']) {
+             if (layer.id !== undefined) {
+-              this.onCreateLayer(FeatureLayer, layer, map, isPrivateSchool);
++              this.onCreateLayer(FeatureLayer, layer, map, isPrivateSchool, isEgitimBolgeleri);
+             } else {
+               const userPerm = this.auth.userPerm;
+               this.createImageLayer(layer, map, userPerm);
+             }
+           } else {
+             if (layer.id !== undefined) {
+-              this.onCreateLayer(FeatureLayer, layer, map, isPrivateSchool);
++              this.onCreateLayer(FeatureLayer, layer, map, isPrivateSchool, isEgitimBolgeleri);
+             } else {
+               const userPerm = this.auth.userPerm;
+               this.createImageLayer(layer, map, userPerm);
+@@ -998,9 +1012,10 @@ export class EsriMapComponent implements OnInit {
+     });
+   }
+ 
+-  onCreateLayer(FeatureLayer: esri.FeatureLayerConstructor, layer: Layer, map: esri.Map, isPrivateSchool: boolean) {
++  onCreateLayer(FeatureLayer: esri.FeatureLayerConstructor, layer: Layer, map: esri.Map,
++    isPrivateSchool: boolean, isEgitimBolgeleri: boolean) {
+     const userPerm = this.auth.userPerm;
+-    const featureLayer: esri.FeatureLayer = this.createLayer(FeatureLayer, layer, userPerm, map, isPrivateSchool);
++    const featureLayer: esri.FeatureLayer = this.createLayer(FeatureLayer, layer, userPerm, map, isPrivateSchool, isEgitimBolgeleri);
+ 
+     map.add(featureLayer);
+ 
+@@ -1059,11 +1074,14 @@ export class EsriMapComponent implements OnInit {
+     const foundPermissions = userPerm.permLayer.filter(permissionLayer =>
+       (permissionLayer.layer === featureLayer.get('originalTitle') && permissionLayer.permission >= 0));
+ 
+-    if (foundPermissions.length === 1 && foundPermissions[0].field === '*') {
+-      if (foundPermissions[0].permission === 2) {
++    if ((foundPermissions.length === 1 && foundPermissions[0].field === '*') || layer.definitionName === 'iedb.sde.agitim_alan') {
++      if (foundPermissions.length === 0 && layer.definitionName === 'iedb.sde.agitim_alan') {
++        featureLayer.set('gEdit', true);
++      } else if (foundPermissions[0].permission === 2) {
+         featureLayer.set('gEdit', true);
+       }
+ 
++
+       featureLayer.fields.forEach(field => {
+         if (featureLayer.get('disabledFields') !== undefined) {
+           const disabledFields: Array<string> = featureLayer.get('disabledFields');
+@@ -1210,7 +1228,7 @@ export class EsriMapComponent implements OnInit {
+   }
+ 
+   createLayer(FeatureLayer: esri.FeatureLayerConstructor, layer: Layer, permission: UserPermission,
+-    map: esri.Map, isPrivateSchool: boolean): esri.FeatureLayer {
++    map: esri.Map, isPrivateSchool: boolean, isEgitimBolgeleri: boolean): esri.FeatureLayer {
+     let definitionExpression = layer.definitionExpression;
+     let zoneExpression: string;
+     let cityPerm: Array<number> = [];
+@@ -1251,6 +1269,8 @@ export class EsriMapComponent implements OnInit {
+           url = environment.arcgisOzelOkulServiceURL + 'FeatureServer/' + 5;
+           break;
+       }
++    } if (isEgitimBolgeleri) {
++      url = environment.arcgisEgitimBolgeleriServiceURL + 'FeatureServer/0';
+     } else {
+       url = environment.arcgisMEBURL + 'FeatureServer/' + layer.id;
+     }
+@@ -1278,6 +1298,7 @@ export class EsriMapComponent implements OnInit {
+     featureLayerProperties['layerOrder'] = layer.layerOrder;
+     featureLayerProperties['isActiveLayer'] = layer.isActive;
+     featureLayerProperties['isPrivateSchoolLayer'] = layer.isPrivateSchoolLayer;
++    featureLayerProperties['isEgitimBolgeleriLayer'] = layer.isEgitimBolgeleriLayer;
+     if (layer.isActive === false) {
+       featureLayerProperties['ignore'] = true;
+     }
+@@ -1576,8 +1597,9 @@ export class EsriMapComponent implements OnInit {
+       let validStatus = true;
+       for (let i = 0; i < fileList.length; i++) {
+         const file: File = fileList.item(i);
+-        if (!file.name.toLowerCase().includes('geojson')) {
++        if (!file.name.toLowerCase().includes('.geojson')) {
+           validStatus = false;
++          this.notificationService.open('Lütfen Geojson Uzantılı Dosya Sürükleyiniz.', 'danger', 100);
+         }
+       }
+       if (validStatus) {
+diff --git a/src/app/info/diff-info/diff-info.component.ts b/src/app/info/diff-info/diff-info.component.ts
+index 5ac65aa23496d14963106fca155bad69f1544d81..e7906c6cf787ae19e15d0a4582139cb90bcf627f 100644
+--- a/src/app/info/diff-info/diff-info.component.ts
++++ b/src/app/info/diff-info/diff-info.component.ts
+@@ -129,7 +129,11 @@ export class DiffInfoComponent implements OnInit {
+       if (layerTitle !== 'Eğitim Dışı Alan' && layerTitle !== 'Özel Eğitim Alanı' &&
+         layerTitle !== 'Müstakil Hazine Parselleri' && layerTitle !== 'Müşterek Hazine Parselleri' &&
+         layerTitle !== 'Kamu Parselleri' && layerTitle !== 'Şahıs Parselleri' &&
+-        layerTitle !== 'Yüksek Öğretim Alanı') {
++        layerTitle !== 'Yüksek Öğretim Alanı' && layerTitle !== 'Ortaokul' && layerTitle !== 'İmam Hatip Ortaokulu' &&
++        layerTitle !== 'Lise' && layerTitle !== 'İlkokul') {
++        if (layerTitle === 'Anaokul') {
++          layer.title = 'Eğitim Bölgeleri';
++        }
+         this._assignedLayersList.push(layer);
+       }
+     });
+@@ -257,6 +261,7 @@ export class DiffInfoComponent implements OnInit {
+       this._fields = selectedLayer.fields;
+       this._selectedLayer = selectedLayer;
+       this.addFormControlsData(graphic, selectedLayer);
++      this.progressDialog.close();
+     }
+   }
+ 
+@@ -312,7 +317,9 @@ export class DiffInfoComponent implements OnInit {
+         attributeValue = undefined;
+       } else {
+ 
+-        if (attributeName === 'kurum_kodu' && Number(inputOrSelectValue) !== 0) {
++        if (attributeName === 'kurum_kodu' && Number(inputOrSelectValue) !== 0 &&
++          this._selectedLayer['originalTitle'] !== 'iedb.sde.agitim_alan') {
++          // Eğitim Bölgelerindeki kurum_kodu fieldı için buraya girmemeli.
+           this.setInstitutionInfo(Number(inputOrSelectValue), editFeature, false);
+         }
+ 
+@@ -443,7 +450,6 @@ export class DiffInfoComponent implements OnInit {
+                 const FeatureLayerConstructor = <esri.FeatureLayerConstructor>FeatureLayer;
+                 const foundFeatureLayer = <esri.FeatureLayer>map.layers.find(layer => layer.title === 'Kurumlar');
+                 const layerID = foundFeatureLayer.layerId;
+-
+                 const pendingLayer = new FeatureLayerConstructor({
+                   url: environment.arcgisMEBPendingURL + 'FeatureServer/' + layerID
+                 });
+@@ -951,6 +957,7 @@ export class DiffInfoComponent implements OnInit {
+                 this.currentIlce = attr['kodilce'];
+                 editFeature.setAttribute(field.name, this.currentIlce);
+                 formGroup.controls[field.name].setValue(this.currentIlce);
++                this._showFormControl = true;
+               });
+             });
+           } else if (field.name === 'alt_fonksiyonu') {
+diff --git a/src/app/layer/layer.component.ts b/src/app/layer/layer.component.ts
+index 4ef0d35088b3ae4ddacfa12a78692db49d9d1d50..6ed7f974402964c03d6c9694fbb517d4edc0bdc9 100644
+--- a/src/app/layer/layer.component.ts
++++ b/src/app/layer/layer.component.ts
+@@ -133,8 +133,9 @@ export class LayerComponent implements OnInit {
+           category.visible = layer.visible;
+         }
+       } else {
+-        if (this.getAuthorizedLayerCount(category) === category.layers.filter((subLayer) =>
+-          (subLayer.visible === true && subLayer.authorized)).length) {
++        const authorizedLayerCount = this.getAuthorizedLayerCount(category);
++        const filteredLayers = category.layers.filter((subLayer) => (subLayer.visible === true && subLayer.authorized === true));
++        if (authorizedLayerCount === filteredLayers.length) {
+           category.visible = true;
+         } else {
+           category.visible = false;
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index beab645d77d3cce52e02b02ca28d893071fa9485..2e63b2e29fffa543c65c64feadb605f1e0db9cc9 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -595,12 +595,16 @@ export class MainComponent implements OnInit {
+       ]).then(([FeatureLayer]) => {
+         let pendingUrl = '';
+         const isPrivateSchoolLayer = feature.layer['isPrivateSchoolLayer'];
++        const isEgitimBolgeleriLayer = feature.layer['isEgitimBolgeleriLayer']
+         const layerID = (<esri.FeatureLayer>feature.layer).layerId;
+ 
+         if (isPrivateSchoolLayer) {
+           pendingUrl = environment.arcgisOzelOkulPendingURL + 'FeatureServer/' + layerID;
++        } else if (isEgitimBolgeleriLayer) {
++          this.authorizedChange(feature, operation, (<esri.FeatureLayer>feature.layer), dialog);
++          return;
+         } else {
+-          pendingUrl = environment.arcgisMEBPendingURL + 'FeatureServer/' + layerID;
++          pendingUrl = environment.arcgisMEBURL + 'FeatureServer/' + layerID;
+         }
+ 
+         const FeatureLayerConstructor = <esri.FeatureLayerConstructor>FeatureLayer;
+@@ -936,6 +940,8 @@ export class MainComponent implements OnInit {
+ 
+       if (layer['isPrivateSchoolLayer']) {
+         url = environment.arcgisOzelOkulHistoryURL + 'FeatureServer/' + layerID;
++      } else if (layer['isEgitimBolgeleriLayer']) {
++        url = environment.arcgisEgitimBolgeleriHistoryURL + 'FeatureServer/' + layerID;
+       } else {
+         url = environment.arcgisMEBHistoryURL + 'FeatureServer/' + layerID;
+       }
+@@ -1619,10 +1625,12 @@ export class MainComponent implements OnInit {
+             res({ name: file.name, geojson: geoJsonObject });
+ 
+           } catch (error) {
++            this.notify.open('Dosya Geojson Uzantılı Değil.', 'danger', 100);
+             res(null);
+           }
+         };
+         fileReader.onerror = (ev) => {
++          this.notify.open('Dosya Okunamadı.', 'danger', 100);
+           res(null);
+         };
+         fileReader.readAsText(file);
+@@ -1759,6 +1767,7 @@ export class MainComponent implements OnInit {
+           const foundedGraphic = lastGraphicLayer.graphics.find(graph => graph['geometry'] !== undefined);
+           if (foundedGraphic !== undefined) {
+             this.mapService.goToNetcadData(foundedGraphic);
++            this.notify.open('Dosya Yükleme Başarılı', 'success', 100);
+           } else {
+             this.notify.open('Gidilecek uygun geometri bulunamadı!', 'danger', 5);
+ 
+@@ -2255,9 +2264,6 @@ export class MainComponent implements OnInit {
+ 
+   deleteGraphicModeEvent() {
+     this.mapService.clearSelectedGraphics('drawBox', true);
+-    if (this.quadDialogRef !== undefined) {
+-      this.quadDialogRef.close();
+-    }
+     this.drawEditService.closeDrawEditMode();
+     this.drawMode = false;
+   }
+diff --git a/src/app/mapUtils/draw-edit.service.ts b/src/app/mapUtils/draw-edit.service.ts
+index dfe7e11d206a25d1d81db3dd11e11dd2674e178d..df3e07c7d8f0a9963ab670afec30c9e960385856 100644
+--- a/src/app/mapUtils/draw-edit.service.ts
++++ b/src/app/mapUtils/draw-edit.service.ts
+@@ -485,8 +485,12 @@ export class DrawEditService {
+   }
+ 
+   closeDrawEditMode() {
+-    this.drawModule.complete();
+-    this.removeGraphics(this.mapView);
+-    this.removeEvents();
++    if (this.drawModule === undefined) {
++      return;
++    } else {
++      this.drawModule.complete();
++      this.removeGraphics(this.mapView);
++      this.removeEvents();
++    }
+   }
+ }
+diff --git a/src/app/mapUtils/layer-utils.service.ts b/src/app/mapUtils/layer-utils.service.ts
+index d3aaaa586f60847187636b958b5e46197ce638e1..838ede5185494fb3bc70b0be460d2ef775751dd5 100644
+--- a/src/app/mapUtils/layer-utils.service.ts
++++ b/src/app/mapUtils/layer-utils.service.ts
+@@ -30,6 +30,11 @@ export class LayerUtilsService {
+     return this.http.get<ServiceInfo>(serviceURL);
+   }
+ 
++  getEgitimBolgeleriLayers() {
++    const serviceURL: string = environment.arcgisEgitimBolgeleriServiceURL + 'FeatureServer?f=pjson' + '&token=' + this.mebToken;
++    return this.http.get<ServiceInfo>(serviceURL);
++  }
++
+   getAnalysisLayers() {
+     const serviceURL: string = environment.arcgisMEBAnalysisURL + '?f=pjson' + '&token=' + this.mebToken;
+     return this.http.get<ServiceInfo>(serviceURL);
+@@ -44,6 +49,15 @@ export class LayerUtilsService {
+     return forkJoin(requestArray);
+   }
+ 
++  getEgitimBolgeleriLayersWithForkJoin(layerList: Array<LayerInfo>) {
++    const requestArray: Array<Observable<ServiceLayerInfo>> = [];
++    layerList.forEach(layerInfo => {
++      requestArray.push(this.getEgitimBolgeleriLayer(layerInfo.id));
++    });
++
++    return forkJoin(requestArray);
++  }
++
+   getOzelOkulLayersWithForkJoin(layerList: Array<LayerInfo>) {
+     const requestArray: Array<Observable<ServiceLayerInfo>> = [];
+     layerList.forEach((layerInfo) => {
+@@ -63,6 +77,11 @@ export class LayerUtilsService {
+     return this.http.get<ServiceLayerInfo>(serviceURL);
+   }
+ 
++  getEgitimBolgeleriLayer(id) {
++    const serviceURL: string = environment.arcgisEgitimBolgeleriServiceURL + 'FeatureServer/' + id + '?f=pjson' + '&token=' + this.mebToken;
++    return this.http.get<ServiceLayerInfo>(serviceURL);
++  }
++
+   initMEBLayers(layerInfos: Array<LayerInfo>, userId: number, userPermission?: UserPermission) {
+     return this.getLayersWithForkJoin(layerInfos).pipe(
+       map(resLayerServiceInfo => {
+@@ -78,6 +97,21 @@ export class LayerUtilsService {
+       }));
+   }
+ 
++  initEgitimBolgeleriLayers(layerInfos: Array<LayerInfo>, userId: number, userPermission?: UserPermission) {
++    return this.getEgitimBolgeleriLayersWithForkJoin(layerInfos).pipe(
++      map(resLayerServiceInfo => {
++        if (this.isEgitimBolgeleriServiceSync(resLayerServiceInfo)) {
++          if (userId === 1) {
++            return this.syncLayers(layerInfos, resLayerServiceInfo);
++          } else {
++            return this.syncLayers(layerInfos, resLayerServiceInfo, userPermission);
++          }
++        } else {
++          console.error('Katman ile servis senkronize değil');
++        }
++      }));
++  }
++
+   initOzelOkulLayers(layerInfos: Array<LayerInfo>, userId: number, userPermission?: UserPermission) {
+     return this.getOzelOkulLayersWithForkJoin(layerInfos).pipe(
+       map(resLayerServiceInfo => {
+@@ -178,8 +212,10 @@ export class LayerUtilsService {
+       const permission = layerPermissions.find(layerPermission =>
+         (layerPermission.layer === foundLayer.definitionName && layerPermission.permission >= 0));
+       if (permission === undefined || permission.field === '') {
+-        foundLayer.authorized = false;
+-        foundLayer.visible = false;
++        if (foundLayer.definitionName !== 'iedb.sde.agitim_alan') {
++          foundLayer.authorized = false;
++          foundLayer.visible = false;
++        }
+       }
+     }
+   }
+@@ -187,7 +223,7 @@ export class LayerUtilsService {
+   isLayerServiceSync(layerServiceInfos: Array<ServiceLayerInfo>): boolean {
+     let errorStatus = true;
+     this._layerDesign.map(layerGroup => {
+-      if (layerGroup['category'] !== 'Özel Okullar') {
++      if (layerGroup['category'] !== 'Özel Okullar' && layerGroup['category'] !== 'Eğitim Bölgeleri') {
+         layerGroup.layers.map(layer => {
+           if (layer['category'] === undefined) {
+             if (layer['definitionName'] !== '') {
+@@ -213,6 +249,35 @@ export class LayerUtilsService {
+     return errorStatus;
+   }
+ 
++  isEgitimBolgeleriServiceSync(layerServiceInfos: Array<ServiceLayerInfo>): boolean {
++    let errorStatus = true;
++    this._layerDesign.map(layerGroup => {
++      if (layerGroup['category'] === 'Eğitim Bölgeleri') {
++        layerGroup.layers.map(layer => {
++          if (layer['category'] === undefined) {
++            if (layer['definitionName'] !== '') {
++              // const foundLayer = layerServiceInfos.find(layerInfo => layerInfo.name === layer['definitionName']);
++              const foundLayer = layerServiceInfos[0]['types'].find(layerInfo => layerInfo.id === layer['id']);
++              if (foundLayer === undefined) {
++                errorStatus = false;
++              }
++            }
++          } else {
++            const subLayerGroup = layer;
++            subLayerGroup['layers'].map(subLayer => {
++              if (subLayer.definitionName !== '') {
++                const foundLayer = layerServiceInfos.find(layerInfo => layerInfo.name === subLayer['definitionName']);
++                if (foundLayer === undefined) {
++                  errorStatus = false;
++                }
++              }
++            });
++          }
++        });
++      }
++    });
++    return errorStatus;
++  }
+   isOzelOkulLayerServiceSync(layerServiceInfos: Array<ServiceLayerInfo>): boolean {
+     let errorStatus = true;
+     this._layerDesign.map(layerGroup => {
+@@ -984,6 +1049,139 @@ export class LayerUtilsService {
+           },
+         ]
+       },
++      {
++        category: 'Eğitim Bölgeleri',
++        visible: false,
++        authorized: true,
++        egitim_bolgeleri: true,
++        layers: [
++          {
++            layerName: 'Anaokul',
++            definitionName: 'iedb.sde.agitim_alan',
++            definitionExpression: 'bolge_tipi=Anaokul',
++            layerOrder: 1,
++            visible: false,
++            authorized: true,
++            isActive: true,
++            isEgitimBolgeleriLayer: true,
++            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            closedFields: ['objectid', 'globalid'],
++            id: 1,
++            renderer: {
++              type: 'simple',
++              symbol: {
++                type: 'simple-fill',
++                color: [0, 0, 0, 0],
++                outline: {
++                  width: 2,
++                  color: [255, 0, 197, 255],
++                  style: 'solid'
++                }
++              }
++            },
++          },
++          {
++            layerName: 'İlkokul',
++            definitionName: 'iedb.sde.agitim_alan',
++            definitionExpression: 'bolge_tipi=İlkokul', // Bunun İlkokul Olarak Düzeltilmesi Gerek
++            layerOrder: 2,
++            visible: false,
++            authorized: true,
++            isActive: true,
++            isEgitimBolgeleriLayer: true,
++            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            closedFields: ['objectid', 'globalid'],
++            id: 2,
++            renderer: {
++              type: 'simple',
++              symbol: {
++                type: 'simple-fill',
++                color: [0, 0, 0, 0],
++                outline: {
++                  width: 2,
++                  color: [115, 255, 223, 255],
++                  style: 'solid'
++                }
++              }
++            },
++          },
++          {
++            layerName: 'Ortaokul',
++            definitionName: 'iedb.sde.agitim_alan',
++            definitionExpression: 'bolge_tipi=Ortaokul',
++            layerOrder: 3,
++            visible: false,
++            authorized: true,
++            isActive: true,
++            isEgitimBolgeleriLayer: true,
++            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            closedFields: ['objectid', 'globalid'],
++            id: 3,
++            renderer: {
++              type: 'simple',
++              symbol: {
++                type: 'simple-fill',
++                color: [0, 0, 0, 0],
++                outline: {
++                  width: 2,
++                  color: [0, 112, 255, 255],
++                  style: 'solid'
++                }
++              }
++            },
++          },
++          {
++            layerName: 'İmam Hatip Ortaokulu',
++            definitionName: 'iedb.sde.agitim_alan',
++            definitionExpression: 'bolge_tipi=İmam Hatip Ortaokulu',
++            layerOrder: 4,
++            visible: false,
++            authorized: true,
++            isActive: true,
++            isEgitimBolgeleriLayer: true,
++            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            closedFields: ['objectid', 'globalid'],
++            id: 4,
++            renderer: {
++              type: 'simple',
++              symbol: {
++                type: 'simple-fill',
++                color: [0, 0, 0, 0],
++                outline: {
++                  width: 2,
++                  color: [115, 178, 255, 255],
++                  style: 'solid'
++                }
++              }
++            },
++          },
++          {
++            layerName: 'Lise',
++            definitionName: 'iedb.sde.agitim_alan',
++            definitionExpression: 'bolge_tipi=Lise',
++            layerOrder: 5,
++            visible: false,
++            authorized: true,
++            isActive: true,
++            isEgitimBolgeleriLayer: true,
++            requiredFields: ['il', 'ilce', 'kurum_kodu', 'kurum_adi', 'kapasite', 'maks_ogrenci_sayisi', 'kurum_ogrenci_sayisi'],
++            closedFields: ['objectid', 'globalid'],
++            id: 5,
++            renderer: {
++              type: 'simple',
++              symbol: {
++                type: 'simple-fill',
++                color: [0, 0, 0, 0],
++                outline: {
++                  width: 2,
++                  color: [230, 230, 0, 255],
++                  style: 'solid'
++                }
++              }
++            },
++          },
++        ]
++      }
+     ];
+ 
+     this._layerDesign = _layerDesign;
+diff --git a/src/app/mapUtils/map.service.ts b/src/app/mapUtils/map.service.ts
+index 14e38392185e59e03d357b7ac96332bf28e804ec..a3146452e683d598805b6eb0fd3f73c39336fe7c 100644
+--- a/src/app/mapUtils/map.service.ts
++++ b/src/app/mapUtils/map.service.ts
+@@ -111,7 +111,7 @@ export class MapService {
+   }
+ 
+   clearSelectedGraphics(propertyName: string, value: any) {
+-    const selectedGraphic = this.mapView.graphics.filter(graphic => graphic.get(propertyName) === value && !graphic.get('drawBox'));
++    const selectedGraphic = this.mapView.graphics.filter(graphic => graphic.get(propertyName) === value);
+     if (selectedGraphic.length > 0) {
+       this.mapView.graphics.removeMany(selectedGraphic);
+     }
+@@ -337,6 +337,7 @@ export class MapService {
+     let drawBoxStatus = false;
+     let drawBoxGraphic: esri.Graphic;
+     hitTestResults.forEach(hitTestResult => {
++      const egitimBolgeleriLayerTitles = ['Anaokul', 'İlkokul', 'Ortaokul', 'İmam Hatip Ortaokulu', 'Lise'];
+       const graphic = hitTestResult.graphic;
+       const layer = graphic.layer;
+       const layerTitle = layer.title;
+@@ -380,6 +381,10 @@ export class MapService {
+             layer.set('infoTitle', 'tasimaMerkez');
+             tempHitTestResult.push(hitTestResult);
+           }
++        } else if (egitimBolgeleriLayerTitles.includes(layerTitle)) {
++          hitTestResult['title'] = 'Eğitim Bölgeleri';
++          layer.set('infoTitle', 'Eğitim Bölgeleri');
++          tempHitTestResult.push(hitTestResult);
+         } else if (layerTitle !== 'Mahalle') {
+           hitTestResult['title'] = layerTitle;
+           layer.set('infoTitle', layerTitle);
+diff --git a/src/app/mapUtils/measure.service.ts b/src/app/mapUtils/measure.service.ts
+index dd36cf25194d8fe8d1ad61cf48ead42e714e64fc..aeac48adc8e38a25f234b464e87b24fd23dfe88f 100644
+--- a/src/app/mapUtils/measure.service.ts
++++ b/src/app/mapUtils/measure.service.ts
+@@ -1,3 +1,4 @@
++import { MapService } from 'src/app/mapUtils/map.service';
+ import { Injectable } from '@angular/core';
+ import { loadModules } from 'esri-loader';
+ import esri = __esri;
+@@ -21,7 +22,7 @@ export class MeasureService {
+   areaCalcResult = 0;
+   drawMode: string;
+ 
+-  constructor() { }
++  constructor(private mapService: MapService) { }
+ 
+   async initMeasureService(mapView: esri.MapView, drawMode: string) {
+     try {
+@@ -252,8 +253,12 @@ export class MeasureService {
+   }
+ 
+   completeDrawMode() {
++    if (this.drawModule === undefined) {
++      this.mapService.clearSelectedGraphics('drawBox', true);
++    } else {
+     this.drawModule.complete();
+     this.drawAction.destroy();
++    }
+   }
+ 
+   findCentroidOfLines(event: any): Array<esri.Point> {
+diff --git a/src/app/models/ArcgisService/layer-design.ts b/src/app/models/ArcgisService/layer-design.ts
+index 40ec2a6ff73812fd9cc64f8d9e53c0aa2011baba..db2f1ef7c54bf43baa9c46f8655975cae37c254e 100644
+--- a/src/app/models/ArcgisService/layer-design.ts
++++ b/src/app/models/ArcgisService/layer-design.ts
+@@ -5,6 +5,7 @@ export interface LayerGroup {
+     visible: boolean;
+     authorized: boolean;
+     private_school?: boolean;
++    egitim_bolgeleri?: boolean;
+ }
+ export interface Layer {
+     id?: number;
+@@ -23,4 +24,5 @@ export interface Layer {
+     requiredFields?: Array<string>;
+     isActive?: boolean;
+     isPrivateSchoolLayer?: boolean;
++    isEgitimBolgeleriLayer?: boolean;
+ }
+diff --git a/src/app/models/ArcgisService/layer-info-design.ts b/src/app/models/ArcgisService/layer-info-design.ts
+index cc284cb66065f1d8a1ac6b6993e94b1e9132f95b..bad421c38b4df229c4b86cc037eb827d2a2ec632 100644
+--- a/src/app/models/ArcgisService/layer-info-design.ts
++++ b/src/app/models/ArcgisService/layer-info-design.ts
+@@ -28,6 +28,7 @@ export class OpenLayerInfoDesign {
+     'Özel Okul Yapılar': LayerInfoDesign;
+     'Özel Okul Sosyal Alanlar': LayerInfoDesign;
+     'Özel Okul Eğitim Alanı': LayerInfoDesign;
++    'Eğitim Bölgeleri': LayerInfoDesign;
+     constructor() {
+         this['İl'] = new LayerInfoDesign();
+         this['İl'].tabs = ['Okullar'];
+@@ -87,6 +88,10 @@ export class OpenLayerInfoDesign {
+ 
+         this['Özel Okul Eğitim Alanı'] = new LayerInfoDesign();
+         this['Özel Okul Eğitim Alanı'].header = 'Özel Okul Eğitim Alanı Bilgileri';
++
++        this['Eğitim Bölgeleri'] = new LayerInfoDesign();
++        this['Eğitim Bölgeleri'].header = 'Eğitim Bölgeleri Bilgileri';
++
+     }
+ }
+ 
+diff --git a/src/environments/environment.prod.ts b/src/environments/environment.prod.ts
+index c62b274b47f8e65000079fa699d2dd45f857dc91..a1d06b1fb24d9fdca65abad7e32222f045738dae 100644
+--- a/src/environments/environment.prod.ts
++++ b/src/environments/environment.prod.ts
+@@ -20,6 +20,8 @@ export const environment = {
+   arcgisOzelOkulPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_pending/',
+   arcgisOzelOkulHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_histry/',
+   arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
++  arcgisEgitimBolgeleriHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/egitim_bolgeleri_hstry/',
++  arcgisEgitimBolgeleriServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/egitim_bolgeleri/',
+   mapIstPlan1000Tadilat: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
+   mapIstPlan1000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
+   mapIstPlan5000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer'
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index f087b6543749f02234e9cdbbf3ef50e12bb8e5a7..fb1fceaa982c71eb1f20d3b363b8ae12c5828055 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -20,6 +20,8 @@ export const environment = {
+   arcgisOzelOkulPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_pending/',
+   arcgisOzelOkulHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul_histry/',
+   arcgisOzelOkulServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/ozel_okul/',
++  arcgisEgitimBolgeleriHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/egitim_bolgeleri_hstry/',
++  arcgisEgitimBolgeleriServiceURL: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/egitim_bolgeleri/',
+   mapIstPlan1000Tadilat: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
+   mapIstPlan1000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
+   mapIstPlan5000Sayisal: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer',
