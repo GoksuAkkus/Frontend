@@ -1,0 +1,113 @@
+diff --git a/src/app/data-table/data-table.component.html b/src/app/data-table/data-table.component.html
+index f3603a627d6ddef75986c52272215088cab1abd9..5e512a5e96545a94ce85447fde8c3518304622bc 100644
+--- a/src/app/data-table/data-table.component.html
++++ b/src/app/data-table/data-table.component.html
+@@ -1,6 +1,7 @@
+ <div class="modal-content">
+   <div *ngIf="bufferAnalysisState === true" style="display: flex;justify-content: flex-end;">
+     <input class="btn-feyz list-btn" type="button" value="Maks Analizi" (click)="onToggleMaksAnalysis()">
++    <input class="btn-feyz list-btn" type="button" value="Dinamik Sorgu" (click)="onToggleDynamicSearch()">
+   </div>
+   <div class="layer-container">
+     <div class="layer-dropdown-container" [ngClass]="{'hidden': maksAnalysisState === true}">
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 06562db8535cfcada6657a5b464d1bffc5fdf7ea..15a1c81851352923282299fa0f07589a36b6c7a9 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -18,6 +18,8 @@ import { ModelData } from '../yapi-info';
+ import { YerlesimYeriInfo, Inhabitant, TotalBuildingInfo } from '../models/NVI/maksAnalysis';
+ import { MapService } from '../mapUtils/map.service';
+ import esri = __esri;
++import { DynamicDataTableComponent } from '../dynamic-data-table/dynamic-data-table.component';
++import { AuthService } from '../services/auth.service';
+ 
+ @Component({
+   selector: 'app-data-table',
+@@ -47,8 +49,11 @@ export class DataTableComponent implements OnInit, OnDestroy {
+   isSelectAllClicked = false;
+   dirtyRows = [];
+ 
++  dataTableDialogRef: DialogRef;
++
+   infoData: ModelData;
+-  constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService,
++
++  constructor(public dialogConfig: DialogConfig, public auth: AuthService, public dialogRef: DialogRef, private dialog: DialogService,
+     private http: HttpClient, private mapService: MapService) { }
+ 
+   ngOnInit() {
+@@ -355,6 +360,28 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     this.filterData(event);
+   }
+ 
++  onToggleDynamicSearch() {
++
++    this.dataTableDialogRef = this.dialog.open(DynamicDataTableComponent, 'Buffer Dinamik Veri Tablosu', true, {
++      data: {
++        mapView: this.mapView,
++        userPerm: this.auth.userPerm,
++        infoData: this.infoData,
++        bufferGraphic: this.bufferGraphic,
++        fromBufferAnalysis: true
++      }
++    }, undefined, 'red-to-light');
++
++    this.dataTableDialogRef.emitEvent.subscribe(event => {
++
++      if (this.infoData !== undefined) {
++        this.infoData = undefined;
++      }
++      const featureSet = <esri.FeatureSet>event;
++      // this.convertAndOpenInfoWithFeatureSet(featureSet);
++    });
++  }
++
+   onToggleMaksAnalysis() {
+     // Maks Analysis
+     this.maksAnalysisState = !this.maksAnalysisState;
+diff --git a/src/app/dynamic-data-table/dynamic-data-table.component.ts b/src/app/dynamic-data-table/dynamic-data-table.component.ts
+index 54c951ac0662de49e3187b8e95abce40613487d8..f1cd0593593c06f32deb1360aac093b47218886d 100644
+--- a/src/app/dynamic-data-table/dynamic-data-table.component.ts
++++ b/src/app/dynamic-data-table/dynamic-data-table.component.ts
+@@ -45,10 +45,22 @@ export class DynamicDataTableComponent implements OnInit {
+   symbologyBuilderDialog: DialogRef;
+   queryBuilderDialog: DialogRef;
+ 
++  fromBufferAnalysis = false;
++  bufferGraphic: esri.Graphic;
++  queryProp: esri.QueryProperties;
++
+   constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService, private http: HttpClient) { }
+ 
+   ngOnInit(): void {
++    this.fromBufferAnalysis = false;
+     const data = this.dialogConfig.data;
++    const fromBufferAnalysis = data['fromBufferAnalysis'];
++    const bufferGraphic = data['bufferGraphic'];
++
++    if (fromBufferAnalysis !== undefined) {
++      this.fromBufferAnalysis = true;
++      this.bufferGraphic = bufferGraphic;
++    }
+ 
+     const mapView: esri.MapView = data.mapView;
+     this.mapView = mapView;
+@@ -165,7 +177,6 @@ export class DynamicDataTableComponent implements OnInit {
+         });
+       });
+     }
+-
+   }
+ 
+   exportDataAsExcel() {
+@@ -335,6 +346,10 @@ export class DynamicDataTableComponent implements OnInit {
+ 
+     const joinTableLayer = this.joinTableLayer;
+ 
++    if (this.fromBufferAnalysis) {
++      queryProperties.geometry = this.bufferGraphic.geometry;
++    }
++
+     const dataSource: IDatasource = {
+       getRows: (params) => {
+         const queryParams = this.checkSortParameter(params, queryProperties);
