@@ -1,0 +1,25 @@
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+index eed06ea11b851e9dfb9e4b11fd2efd73998a1ca6..df791fcf754768a89edfb077b36ea67580fe8be3 100644
+--- a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+@@ -332,12 +332,14 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     if (event) {
+       this.resetOtherTabs();
+       const foundIslem = this.getIslemTalepValue(event);
+-      this.lastFoundIslem = foundIslem;
+-      const code = foundIslem[1]['code'];
+-      if (this.tabState === 'plan_personel') {
+-        this.createPlanPersonelTable(foundIslem, code);
+-      } else if (this.tabState === 'plan_il') {
+-        this.createPlanIlTable(foundIslem, code);
++      if (foundIslem !== undefined) {
++        this.lastFoundIslem = foundIslem;
++        const code = foundIslem[1]['code'];
++        if (this.tabState === 'plan_personel') {
++          this.createPlanPersonelTable(foundIslem, code);
++        } else if (this.tabState === 'plan_il') {
++          this.createPlanIlTable(foundIslem, code);
++        }
+       }
+     } else {
+       if (this.tabState === 'plan_il') {
