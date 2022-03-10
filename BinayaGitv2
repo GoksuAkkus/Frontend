@@ -1,0 +1,518 @@
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.ts b/src/app/drawing-tools/create-quad/create-quad.component.ts
+index 7efe2a99606d302f86358d0d91753f657dafd855..2d3b047f4e96b4c8e5a7836c60f4275f08448d23 100644
+--- a/src/app/drawing-tools/create-quad/create-quad.component.ts
++++ b/src/app/drawing-tools/create-quad/create-quad.component.ts
+@@ -112,7 +112,6 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+ 
+       const zone = this.createHull(totalFeatures);
+       this.postZoneGeometry(zoneLayer, zone).then(zoneRes => {
+-        console.log(zoneRes);
+         this.createBolge(features, featureLayer, zoneLayer, index + 1);
+       });
+     });
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index fa12fdec9777f94213c07e1aa23c4c4d147b76e1..a805f401400117f014e007054823b0001069309e 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -549,7 +549,6 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+ 
+                 if (parcelFeatures.length > 0) {
+                   parcelFeatures.forEach((parcel, parcelIndex) => {
+-                    console.log(parcelIndex);
+                     this.getSpecificParcelModules(parcel).subscribe(moduleResult => {
+                       const moduleFeatures = moduleResult.features;
+                       // Eger islem varsa islemin turu kontrol edilir,
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 86aa47ce5b5e957dda53933b0684c6f6c3a88e34..2c5f43429beb59cde141b07d48d9b3810f9feb1a 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -2282,10 +2282,8 @@ export class MainComponent implements OnInit {
+     this.convertAndOpenInfoWithFeatureSet(searchResult);
+   }
+ 
+-  searchMAKSAdresBinaKoduInfoEvent () {
++  searchMAKSAdresBinaKoduInfoEvent() {}
+ 
+-  }
+-  
+   convertAndOpenInfoWithFeatureSet(featureSet: esri.FeatureSet, openModules?: boolean) {
+     const hitTestResultModel: esri.HitTestResult = { results: [] };
+ 
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+index 0951052c45f5132d9e528ae409c32fad91027a5d..4dcf45cf2836cea268ecfe80a523e210d73a55f3 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -73,16 +73,17 @@
+         <span class="option" id="{{i}}" *ngFor="let diskapino of filterArray[0].binalar; let i=index"
+           (mousedown)="onSelect($event)">{{diskapino.disKapiNo}}</span>
+       </div>
+-      <div class="binakodu-info-container">
+-        <div class="info-container" >
+-          <label class="info" >Bina Kodu: </label>
+-          <label class="info"
+-            *ngIf="selectedDiskapiNoIndex != '' && filterArray[0].binalar[selectedDiskapiNoIndex].kod !== undefined ">{{filterArray[0].binalar[selectedDiskapiNoIndex].kod}}</label>
++      <div class="notification-container">
++        <div class="binakodu-info-container">
++          <div class="info-container" >
++            <label class="info" >Bina Kodu: </label>
++            <label class="info"
++              *ngIf="selectedDiskapiNoIndex != '' && filterArray[0].binalar[selectedDiskapiNoIndex].kod !== undefined ">{{filterArray[0].binalar[selectedDiskapiNoIndex].kod}}</label>
++          </div>
++          <button class="btn" (click)="onClickBinayaGit(filterArray[0].binalar)" type="button">Binaya Git</button>
+         </div>
+-        <button class="btn" (click)="onClickBinayaGit(filterArray[0].binalar)" type="button">Binaya
+-          Git</button>
+-      </div>
+-
++        <label class= "notification" *ngIf="this.notificationMessage !== ''">{{notificationMessage}}</label>
++      </div>    
+     </form>
+   </div>
+ </div>
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
+index dd15dedc311bc0d1dffee5a2540239294a78f594..dfbc28565d05ebd4c8aee2395e8a7bbda60c75fe 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
+@@ -39,53 +39,74 @@
+       width: 100%;
+     }
+ 
+-    .binakodu-info-container {
+-      display: flex;
+-      justify-content: space-evenly;
+-      border-radius: .25rem;
+-      margin: 10px;
+-      align-items: center;
+-
+-      .info-container {
+-        background-color: #17a2b8;
+-        border-radius: .25rem;
+-        padding: 5px;
++    .notification-container {
++      display: block;
++      text-align: center;
++      margin-top: 7px;
++
++      >.binakodu-info-container {
+         display: flex;
++        justify-content: space-evenly;
++        border-radius: .25rem;
+         align-items: center;
+-        width: 164px;
+-        justify-content: space-between;
+-        padding-right: 10px;
+-        padding-left: 10px;
+-        margin-left: -10px;
++        margin-top: 6px;
++        margin-bottom: 2px;
++
++        >.info-container {
++          background-color: #D1000F;
++          border-radius: .25rem;
++          display: flex;
++          align-items: center;
++          width: 164px;
++          justify-content: space-between;
++          padding-right: 10px;
++          padding-left: 10px;
++          margin-left: -10px;
++
++          >.info {
++            background-color: #D1000F;
++            color: white;
++            border: 1px solid transparent;
++            font-size: 15px;
++            line-height: 1.5;
++            font-weight: bold;
++          }
++        }
++
++        >.btn {
++          font-size: 15px;
++          font-weight: bold;
++          margin-right: -11px;
++          border: none;
++          border-radius: .25rem;
++          background-color: #D1000F;
++          color: white;
++          border: 1px solid transparent;
++          line-height: 1.5;
++          cursor: pointer;
++          padding-right: 10px;
++          padding-left: 10px;
++
++          &:hover {
++            background-color: lighten($primaryColor, 8);
++          }
++        }
+       }
+-    }
+ 
+-    .btn {
+-      font-size: 15px;
+-      font-weight: bold;
+-      padding: 5px;
+-      margin-right: -11px;
+-      border: none;
+-      border-radius: .25rem;
+-      background-color: #17a2b8;
+-      color: white;
+-      border: 1px solid transparent;
+-      line-height: 1.5;
+-      cursor: pointer;
+-
+-      &:hover {
+-        background-color: #688e94;
++      >.notification {
++        background-color: red;
++        color: white;
++        border: 1px solid transparent;
++        font-size: 11px;
++        font-weight: bold;
++        word-spacing: 1px;
++        letter-spacing: 2px;
++        border-radius: 0.25rem;
++        padding: 1px;
++        padding-left: 10px;
++        padding-right: 10px;
+       }
+     }
+-
+-    .info {
+-      background-color: #17a2b8;
+-      color: white;
+-      border: 1px solid transparent;
+-      font-size: 15px;
+-      line-height: 1.5;
+-      font-weight: bold;
+-    }
+   }
+ }
+ 
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index eede0ca6482739bd317412a6319163192da8f722..860165b719dafd526f0e606b413fca116a371d0c 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -1,15 +1,12 @@
+ import { EventEmitter, Input, Output } from '@angular/core';
+-import { Component, OnInit } from '@angular/core';
++import { Component, OnInit, OnDestroy } from '@angular/core';
+ import { loadModules } from 'esri-loader';
+-import { bindCallback, Observable, Subscription } from 'rxjs';
+-import { DialogRef } from 'src/app/dialog/dialog-ref';
+ import { DialogService } from 'src/app/dialog/dialog.service';
+ import { MapService } from 'src/app/mapUtils/map.service';
+ import { DistrictPermTKGM, UserPermission } from 'src/app/models/Login/user-permission';
+-import { MaksData, Il, Csbm, Ilce, UavtIlIlce, IlClass, Bina } from 'src/app/models/MAKSData';
+-import { SearchFilterObject, TKGMGeometryObject, TKGMParcelRequest } from 'src/app/models/TKGM/tkgm-search-data';
++import { MaksData, Ilce, UavtIlIlce, IlClass, Bina } from 'src/app/models/MAKSData';
++import { SearchFilterObject } from 'src/app/models/TKGM/tkgm-search-data';
+ import { NotificationService } from 'src/app/notification/notification.service';
+-import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
+ import { AuthService } from 'src/app/services/auth.service';
+ import { WebDataService } from 'src/app/services/web-data.service';
+ import esri = __esri;
+@@ -18,10 +15,9 @@ import esri = __esri;
+   templateUrl: './maks-adresbinakodu.component.html',
+   styleUrls: ['./maks-adresbinakodu.component.scss']
+ })
+-export class MaksAdresbinakoduComponent implements OnInit {
++export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+ 
+   @Output() maksAdresBinaKoduClicked = new EventEmitter();
+-  @Output() gotoSelectedObject = new EventEmitter<TKGMGeometryObject>();
+ 
+   @Input()
+   set mapView(mapView) {
+@@ -32,14 +28,11 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     return this._mapView;
+   }
+ 
+-  subscription: Subscription;
+   filterArray: Array<MaksData> = [new MaksData()];
+   dataArray: Array<MaksData> = [new MaksData()];
+   selectedDiskapiNoIndex = '';
+-  progressInfoDialogRef: DialogRef;
+   _mapView: esri.MapView;
+   ilArray: Array<IlClass> = [];
+-  ilceArray: Array<Ilce> = [];
+   permittedCities: Array<string> = [];
+   permittedDistricts: Array<Array<string>> = [];
+   addedDistricts: Array<number> = [];
+@@ -48,6 +41,7 @@ export class MaksAdresbinakoduComponent implements OnInit {
+   districtPerm: Array<DistrictPermTKGM> = [];
+   pointModule: esri.PointConstructor;
+   graphicModule: esri.GraphicConstructor;
++  notificationMessage = '';
+ 
+   constructor(private webdataservice: WebDataService, private dialogService: DialogService, private notify: NotificationService,
+     private auth: AuthService, private mapService: MapService) {
+@@ -57,6 +51,10 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     });
+   }
+ 
++  ngOnDestroy() {
++    this.mapService.clearSelectedGraphics('type', 'BinaKoduSorgula');
++  }
++
+   ngOnInit() {
+ 
+     this.userPerm = this.auth.userPerm;
+@@ -185,9 +183,24 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     this.filterArray[0][index] = this.filterSearchData(searchFilterObject, index);
+   }
+ 
+-  // TODO: SADECE İLÇE YETKİLİ OLAN İL 2. KEZ TIKLANINCA İLÇELER GELİYOR PROBLEMİ ÇÖZÜLECEK
++  async getUavtIlceCodes(cityCodeObject, ilceLayer, ilceLayerQuery) {
++    return ilceLayer.queryFeatures(ilceLayerQuery).then(ilceRes => {
++      const features = ilceRes.features;
++      for (let i = 0; i < features.length; i++) {
++        const kodilce = Number(features[i].attributes['kodilce']);
++        if (kodilce === cityCodeObject.kodilce) {
++          cityCodeObject.uavtilce = features[i].attributes['uavtilce'];
++
++          this.cityCodesOfPermittedDistricts.push(cityCodeObject);
++        }
++      }
++    });
++  }
++  // SADECE İLÇE YETKİLİ OLAN İL 2. KEZ TIKLANINCA İLÇELER GELİYOR PROBLEMİ ÇÖZÜLECEK PROMISE ALL İLE ÇÖZÜLDÜ.
+   onSelect(event: Event) {
++    this.mapService.clearSelectedGraphics('type', 'BinaKoduSorgula');
+     this.selectedDiskapiNoIndex = '';
++    this.notificationMessage = '';
+     const selectedElement: HTMLElement = <HTMLElement>event.target;
+     const selectContainer: HTMLElement = selectedElement.parentElement;
+     const form: HTMLFormElement = <HTMLFormElement>selectContainer.parentElement;
+@@ -195,7 +208,7 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     const inputContainer: HTMLElement = <HTMLElement>selectContainer.previousElementSibling;
+     const selectInput: HTMLInputElement = <HTMLInputElement>inputContainer.firstElementChild;
+ 
+-    // this.resetFormData(form, inputContainer);
++    this.resetFormData(form, inputContainer);
+ 
+     selectInput.value = '';
+     selectInput.blur();
+@@ -213,12 +226,13 @@ export class MaksAdresbinakoduComponent implements OnInit {
+ 
+     switch (selectName) {
+       case 'iller': {
++        this.cityCodesOfPermittedDistricts = [];
+         inputArray[0] = kod;
+         const kodNumber = Number(kod);
+-        const where = '';
+         dataService.getIlcelerFromMAKS(inputArray[0]).subscribe(res => {
+ 
+           let ilceler: Array<Ilce> = res['ilceler'];
++          const promises = [] as Array<any>;
+ 
+           if (this.addedDistricts.includes(kodNumber)) {
+             if (this.permittedDistricts.length > 0) {
+@@ -230,39 +244,27 @@ export class MaksAdresbinakoduComponent implements OnInit {
+ 
+                   const ilceLayer: esri.FeatureLayer = <esri.FeatureLayer>this._mapView.map.allLayers.find(layer => layer.title === 'İlçe');
+                   const ilceLayerQuery: esri.QueryProperties = {
+-                    where: where,
++                    where: `uavtil=${cityCodeObject.uavtil}`,
+                     outFields: ['kodilce,uavtil,uavtilce'],
+                     returnGeometry: false,
+                   };
+-
+-                  ilceLayer.queryFeatures(ilceLayerQuery).then(ilceRes => {
+-                    const features = ilceRes.features;
+-                    for (let i = 0; i < features.length; i++) {
+-                      const kodilce = Number(features[i].attributes['kodilce']);
+-                      if (kodilce === cityCodeObject.kodilce) {
+-                        cityCodeObject.uavtilce = features[i].attributes['uavtilce'];
+-
+-                        this.cityCodesOfPermittedDistricts.push(cityCodeObject);
+-                      }
+-                    }
+-                  });
++                  const ilcePromises = this.getUavtIlceCodes(cityCodeObject, ilceLayer, ilceLayerQuery);
++                  promises.push(ilcePromises);
+                 });
+               });
+             }
+-            ilceler = ilceler.filter(ilce => this.cityCodesOfPermittedDistricts.find(district => district.uavtilce === ilce.kod));
++            Promise.all(promises).then(x => {
++              ilceler = ilceler.filter(ilce => this.cityCodesOfPermittedDistricts.find(district => district.uavtilce === ilce.kod));
++              this.dataArray[0].ilceler = ilceler;
++              this.filterArray[0].ilceler = ilceler;
++              this.emptyArrays(selectName);
++            });
++          } else {
++            this.dataArray[0].ilceler = ilceler;
++            this.filterArray[0].ilceler = ilceler;
++            this.emptyArrays(selectName);
+           }
+-          // userpermden gelen ilcekodları ilçe layerdaki kodilce fieldına tekabül ediyor. Ancak maks kod olarak uavtilce yi kullanıyor.
+-          // o yüzden ilcekodlarının uavtilce kodlarına çevrilmesi lazım.
+-
+-          this.dataArray[0].ilceler = ilceler;
+-          this.filterArray[0].ilceler = ilceler;
+         });
+-        this.dataArray[0].mahalleler = [];
+-        this.filterArray[0].mahalleler = [];
+-        this.dataArray[0].csbmler = [];
+-        this.filterArray[0].csbmler = [];
+-        this.dataArray[0].binalar = [];
+-        this.filterArray[0].binalar = [];
+         break;
+       }
+       case 'ilceler': {
+@@ -270,12 +272,8 @@ export class MaksAdresbinakoduComponent implements OnInit {
+         dataService.getMahallelerFromMAKS(inputArray[1]).subscribe(res => {
+           this.dataArray[0].mahalleler = res['mahalleler'];
+           this.filterArray[0].mahalleler = res['mahalleler'];
+-          console.log(res.mahalleler);
+         });
+-        this.dataArray[0].csbmler = [];
+-        this.filterArray[0].csbmler = [];
+-        this.dataArray[0].binalar = [];
+-        this.filterArray[0].binalar = [];
++        this.emptyArrays(selectName);
+         break;
+       }
+       case 'mahalleler': {
+@@ -284,8 +282,7 @@ export class MaksAdresbinakoduComponent implements OnInit {
+           this.dataArray[0].csbmler = res['csbmler'];
+           this.filterArray[0].csbmler = res['csbmler'];
+         });
+-        this.dataArray[0].binalar = [];
+-        this.filterArray[0].binalar = [];
++        this.emptyArrays(selectName);
+         break;
+       }
+       case 'csbmler': {
+@@ -305,20 +302,22 @@ export class MaksAdresbinakoduComponent implements OnInit {
+         break;
+       }
+     }
+-
+-    if (this.subscription !== undefined) {
+-      this.subscription.unsubscribe();
+-    }
+   }
+ 
+   async onClickBinayaGit(binalar: Bina[]) {
++    this.mapService.clearSelectedGraphics('type', 'BinaKoduSorgula');
++
+     if (this.selectedDiskapiNoIndex !== '') {
+       const binaNo = binalar[this.selectedDiskapiNoIndex]['binaNo'];
+ 
+-      this.webdataservice.deneme(binaNo).subscribe(res => {
+-        console.log(res);
+-        // this.mapService.goToLocation(res);
++      this.webdataservice.GetMaksNumaratajGeometry(binaNo).subscribe(res => {
+ 
++        if (res === null) {
++          this.notificationMessage = 'Maks Geometrisi Bulunamadı.';
++          return;
++        } else {
++          this.notificationMessage = '';
++        }
+         const pointProp: esri.PointProperties = {
+           x: res[0][0][0],
+           y: res[0][0][1],
+@@ -343,10 +342,11 @@ export class MaksAdresbinakoduComponent implements OnInit {
+         };
+ 
+         const graphic: esri.Graphic = new this.graphicModule(graphicProperties);
++        graphic.set('type', 'BinaKoduSorgula');
+ 
+         const goToTarget: esri.MapViewBaseGoToTarget = {
+           target: graphic,
+-          zoom: 22
++          zoom: 18
+         };
+ 
+         const goToOptions: esri.MapViewBaseGoToOptions = {
+@@ -359,7 +359,6 @@ export class MaksAdresbinakoduComponent implements OnInit {
+         this.mapView.goTo(goToTarget, goToOptions);
+       });
+     }
+-    // TODO: EKLENEN POİNTİN SİLİNMESİ GEREKEN DURUMLAR YAPILACAK
+   }
+ 
+   filterSearchData(searchFilterObject: SearchFilterObject, index: string) {
+@@ -400,10 +399,29 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     }
+   }
+ 
+-  closeProgressDialog() {
+-    if (this.progressInfoDialogRef !== undefined) {
+-      this.progressInfoDialogRef.close();
+-      this.progressInfoDialogRef = undefined;
++  emptyArrays(typeName: string) {
++    switch (typeName) {
++      case 'iller': {
++        this.dataArray[0].mahalleler = [];
++        this.filterArray[0].mahalleler = [];
++        this.dataArray[0].csbmler = [];
++        this.filterArray[0].csbmler = [];
++        this.dataArray[0].binalar = [];
++        this.filterArray[0].binalar = [];
++        break;
++      }
++      case 'ilceler': {
++        this.dataArray[0].csbmler = [];
++        this.filterArray[0].csbmler = [];
++        this.dataArray[0].binalar = [];
++        this.filterArray[0].binalar = [];
++        break;
++      }
++      case 'mahalleler': {
++        this.dataArray[0].binalar = [];
++        this.filterArray[0].binalar = [];
++        break;
++      }
+     }
+   }
+ }
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 4d0d080c1aad06a51b7501a3eb84e2dabb810303..2a6e4fa7b7a0f59a432ccb4676b043b21cd0e676 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -70,16 +70,6 @@ export class WebDataService {
+ 
+   constructor(private auth: AuthService, private http: HttpClient) { }
+ 
+-  getIllerFromArcgis() {
+-    // tslint:disable-next-line:max-line-length
+-    const url = 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/mebcbs2023/FeatureServer/12/query?where=1%3D1&outFields=ad%2C+uavtil&returnGeometry=false&orderByFields=ad+asc&groupByFieldsForStatistics=ad%2C+uavtil&f=pjson';
+-
+-    const deneme =  this.http.get<Array<Il>>(url , { headers: this.auth.createHeader() }).subscribe(res => {
+-      res = res['features']['attributes'];
+-    });
+-
+-    return deneme;
+-  }
+   getIlcelerFromMAKS(ilID: number) {
+     const url = this.maksURL + 'GetMaksIleBagliIlceListele?ilKodu=' + ilID;
+     const maksData = this.http.get<Array<MaksData>>(url , { headers: this.auth.createHeader() });
+@@ -102,22 +92,11 @@ export class WebDataService {
+       { headers: this.auth.createHeader() });
+   }
+ 
+-  deneme(binaNo: number) {
+-    return this.http.get<Array<Array<number[]>>>(this.maksURL + 'deneme?kimlikNo=' + binaNo,
++  GetMaksNumaratajGeometry(binaNo: number) {
++    return this.http.get<Array<Array<number[]>>>(this.maksURL + 'GetMaksNumaratajGeometry?kimlikNo=' + binaNo,
+       { headers: this.auth.createHeader() });
+   }
+ 
+-  getIleBagliUavtIlceKodlari(uavtil: number) {
+-    const url = 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/mebcbs2023/FeatureServer/11/query?where=uavtil' + uavtil +
+-    '&outFields=kodilce&returnGeometry=false&f=pjson';
+-
+-    const deneme =  this.http.get(url , { headers: this.auth.createHeader() }).subscribe(res => {
+-      res = res['features']['attributes'];
+-    });
+-
+-    return deneme;
+-  }
+-
+   getIllerFromTKGM() {
+     return this.http.get<Array<TKGMData>>(this.tkgmURL + 'getIL', { headers: this.auth.createHeader() });
+   }
