@@ -1,0 +1,178 @@
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 29a0facdfe266854ccfe6b08177d4acd13dcf013..0f13492bd72a0bc6a61c152b35c3ae6b669fee31 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -589,8 +589,16 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       this.infoData = undefined;
+     }
+ 
+-    const selectedLayer = this.selectedLayer;
++    let selectedLayer = this.selectedLayer;
+     const selectedLayerTitle = selectedLayer.title;
++    if( selectedLayerTitle === 'Yapısal Durum' || selectedLayerTitle === 'Yapısal Bilgi' || selectedLayerTitle === 'Yapı Enerji' ) {
++      selectedLayer = <esri.FeatureLayer>this.mapView.map.layers.find( layer => layer.title === 'Yapılar');
++      const yapiAuthorizedFields = selectedLayer.fields.filter(field => field.get('rAuthorized') === true);
++      const yapiUniqueFieldName = 'refid';
++      const yapiUniqueID = event.data['bina_sira_no'];
++      this.queryFeatureData(yapiAuthorizedFields, yapiUniqueFieldName, yapiUniqueID, selectedLayer);
++      return;
++    }
+ 
+     const uniqueField = selectedLayer.fields.find(field => field.type === 'oid');
+     const authorizedFields = selectedLayer.fields.filter(field => field.get('rAuthorized') === true);
+@@ -636,15 +644,10 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       outFields: outFields,
+       returnGeometry: true,
+     };
+-    console.log('selectedLayer:', selectedLayer);
+-    console.log('queryParams:', queryParams);
+ 
+     const layerQuery = selectedLayer.queryFeatures(queryParams).then(responseObject => {
+       this.dialogRef.emit(responseObject);
+-      console.log('responseObject:', responseObject);
+     });
+-    console.log('layerQuery: ', layerQuery);
+-
+   }
+ 
+   addFilterParameters(filterModel: FilterModel, queryParams: esri.QueryProperties) {
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index b4c98034f02acc58849eb1fd4789849f0048c9f6..9a84ffb58285b3caa1413a7287091223ed642a40 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -408,7 +408,7 @@ export class EsriMapComponent implements OnInit {
+     };
+     const yapiEnerjiLayer = new FeatureLayer(yapiEnerjiLayerProperties);
+     yapiEnerjiLayer.set('authorized', true);
+-    const yapisEnerjiWatchHandle = yapiEnerjiLayer.watch('fields', (fields: Array<esri.Field>) => {
++    const yapiEnerjiWatchHandle = yapiEnerjiLayer.watch('fields', (fields: Array<esri.Field>) => {
+       const disabledFields = ['objectid', 'objectid_1'];
+       fields.forEach( field => {
+         if (disabledFields.includes (field.name)) {
+@@ -417,7 +417,7 @@ export class EsriMapComponent implements OnInit {
+ 
+         field.set('rAuthorized', true);
+       });
+-      yapisEnerjiWatchHandle.remove();
++      yapiEnerjiWatchHandle.remove();
+     });
+ 
+     const moduleLayerProperties = <esri.FeatureLayerProperties>{
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index 42f822871e39bcbdcb198052a2dc29e5f0a8b253..ad0ed64d0034e533b6dba666ecfaffcc45bde34d 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -64,7 +64,6 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   @Input()
+   set tabData(tabData) {
+     this._tabData = tabData;
+-    console.log('tabData: ',this._tabData);
+     if (tabData !== undefined) {
+       this._isEditable = false;
+       this.changeDomainValues();
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 3baae5a4817fe2f8f6ebf809c5f7f3635a52c05b..4bd4967fd124004b8d6b01b62a15039173052f51 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -449,7 +449,7 @@ export class MainComponent implements OnInit {
+           }
+         } else {
+           this.hitTestResult = [];
+-        }console.log('res:', res);
++        }
+       });
+     });
+     
+@@ -1559,10 +1559,7 @@ export class MainComponent implements OnInit {
+   }
+ 
+   bufferAnalysisCompletedEvent() {
+-    console.log('map:', this.mapView.map);
+-    console.log('Bufferdan Önce: ', this.mapView.map.layers);
+     const tempBufferGraphic: esri.Graphic = Object.assign({}, this.mapService.bufferGraphic.toJSON());
+-    console.log('tempBufferGraphic: ', tempBufferGraphic);
+     this.bufferAnalysisDialogRef = this.dialogService.open(DataTableComponent, 'Buffer Analizi', true, {
+       data: {
+         bufferAnalysisState: true,
+@@ -1594,7 +1591,6 @@ export class MainComponent implements OnInit {
+       }
+ 
+     });
+-    console.log('Bufferdan Sonra: ', this.mapView.map.layers);
+   }
+ 
+   gotoTKGMGeometryEvent(tkgmGeometryObject: TKGMGeometryObject) {
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
+index 9723f12549b8302cbdae3d297b309335c092d468..13d339bcaded3f4b2822fd53c32347b764beba3b 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
+@@ -40,7 +40,6 @@ export class YapiBilgileriGenericinfoComponent implements OnInit {
+     
+       const layer: esri.FeatureLayer = <esri.FeatureLayer>feature.layer;
+       const fields: Array<esri.Field> = this._tabData.graphic.layer['fields'];
+-      console.log('generic: ', feature.attributes )
+       fields.forEach(field => {
+         const fieldName: string = field.name;
+         const fieldValue: any = feature.getAttribute(fieldName);
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
+index 35058611e9698a7e39b36a3d2785f551e7797881..99abc108736e9499ed10d61d18ab17d97d378ebd 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
+@@ -20,9 +20,7 @@
+ 
+     <div class="layer-info-content">
+       <div #tabBar class="tab-bar">
+-        <div  class="tab" *ngFor="let tab of tabs">
+-          <p (click)="tabChange($event)"> {{tab}}</p>
+-          </div>
++        <div (click)="tabChange($event)" class="tab" *ngFor="let tab of tabs">{{tab}}</div>
+         <div style="display: none;" class="tab-ink"></div>
+       </div>
+       <app-yapi-bilgileri-genericinfo [tabData]="_tabData"></app-yapi-bilgileri-genericinfo>
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
+index 47c99b4da31e1190ee0a61fb8bc8aed050f25838..4acb04030b5375a68f254b7cb266e093ee5ad3c6 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
+@@ -66,7 +66,7 @@
+                 height: 100%;
+                 box-sizing: border-box;
+                 transition: 0.5s;
+-                font-size: 18px;
++                font-size: 16px;
+                 background-color: #edeef8;
+                 color: #b6b6bf;
+                 cursor: pointer;
+@@ -117,9 +117,6 @@
+                   background-color: #d1000f;
+                   color: #f3f3f3;
+                 }
+-                > p {
+-                  font-size: 16px;
+-                }
+               }
+   
+               .tab-ink {
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index 2cb4385d06a1cddab1698721ce43ddf770e1043f..830279f939a1a98a5afac7f6fd7cbce78a63ccf3 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -6,13 +6,13 @@ export const environment = {
+   production: false,
+   ws: 'http://localhost:52824/api/',
+   geotifURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/geotiff/MapServer',
+-  arcgisMEBURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebcbs/',
+-  arcgisSQL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/sql/',
+-  arcgisMEBPendingURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebpending/',
+-  arcgisMEBHistoryURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebhistory/',
+-  arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer',
++  arcgisMEBURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/mebcbs2023/',
++  arcgisSQL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/sql/',
++  arcgisMEBPendingURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/pending/',
++  arcgisMEBHistoryURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/history/',
++  arcgisMEBAnalysisURL: 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/analiz/MapServer',
+   yapiURL: 'http://localhost:443/',
+-  yapiServerUrl: 'http://88.99.85.125:6080/arcgis/rest/services/MEB_IEDB/YAPI/'
++  yapiServerUrl: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer'
+ };
+ 
+ /*
