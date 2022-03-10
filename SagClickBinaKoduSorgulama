@@ -1,0 +1,229 @@
+diff --git a/src/app/dialog-info/dialog-info.component.html b/src/app/dialog-info/dialog-info.component.html
+index 4f8794a07eff635721a126f79e6f7afd104e8be0..54c39e862213354d23750d4adeb28d215db729e3 100644
+--- a/src/app/dialog-info/dialog-info.component.html
++++ b/src/app/dialog-info/dialog-info.component.html
+@@ -1,3 +1,23 @@
+ <div class="modal-content">
+-    <p>{{config.data.message}}</p>
++    <p>{{dialogConfig.data.message}}</p>
++    <div *ngIf="this.maksBinaKoduSorgulaState">
++        <table>
++            <thead>
++                <tr>
++                    <th>Dış Kapı No</th>
++                    <th>Kimlik No</th>
++                    <th>Bina Kodu</th>
++                </tr>
++            </thead>
++            <tbody>
++                <tr *ngFor="let item of binaList">
++                    <td>{{item.kapiNo}}</td>
++                    <td>{{item.kimlikNo}}</td>
++                    <td>{{item.binaKodu}}</td>
++                </tr>
++            </tbody>
++        </table>
++    </div>
++
++    <div *ngIf="notificationMessage !== ''"> {{notificationMessage}} </div>
+ </div>
+diff --git a/src/app/dialog-info/dialog-info.component.ts b/src/app/dialog-info/dialog-info.component.ts
+index 9213a78fa925588885802d26dbad15292f94d9fd..a6f6e348c2babd7346a0a140391a7af2c4820893 100644
+--- a/src/app/dialog-info/dialog-info.component.ts
++++ b/src/app/dialog-info/dialog-info.component.ts
+@@ -1,7 +1,13 @@
+ import { Component, OnInit } from '@angular/core';
++import { loadModules } from 'esri-loader';
+ import { DialogConfig } from '../dialog/dialog-config';
+ import { DialogRef } from '../dialog/dialog-ref';
+ import { DialogService } from '../dialog/dialog.service';
++import { UserPermission } from '../models/Login/user-permission';
++import { MaksBinaKodu } from '../models/MaksBinaKodu';
++import { AuthService } from '../services/auth.service';
++import { WebDataService } from '../services/web-data.service';
++import esri = __esri;
+ 
+ @Component({
+   selector: 'app-dialog-info',
+@@ -10,8 +16,97 @@ import { DialogService } from '../dialog/dialog.service';
+ })
+ export class DialogInfoComponent implements OnInit {
+ 
+-  constructor(public config: DialogConfig, public dialog: DialogRef, private dialogService: DialogService) { }
++  mapView: esri.MapView;
++  maksBinaKoduSorgulaState = false;
++  lat = '';
++  lon = '';
++  binaList: Array<MaksBinaKodu> = [];
++  notificationMessage = '';
++  userPerm: UserPermission;
++  ilceLayer: esri.FeatureLayer;
++  permittedCities: Array<string> = [];
++  permittedDistricts: Array<Array<string>> = [];
++  pointModule: esri.PointConstructor;
++  graphicModule: esri.GraphicConstructor;
++
++  constructor(public dialogConfig: DialogConfig, public dialog: DialogRef, private dialogService: DialogService,
++    private webDataService: WebDataService, private auth: AuthService) {
++      loadModules(['esri/Graphic', 'esri/geometry/Point']).then(([Graphic, Point]) => {
++        this.pointModule = Point;
++        this.graphicModule = Graphic;
++      });
++  }
+ 
+   ngOnInit() {
++    this.userPerm = this.auth.userPerm;
++    const data = this.dialogConfig.data;
++    this.mapView = data.mapView;
++    this.maksBinaKoduSorgulaState = data['maksBinaKoduSorgulaState'];
++    this.lat = data['coordinateData']['lat'];
++    this.lon = data['coordinateData']['lon'];
++    this.ilceLayer = data['ilceLayer'];
++    console.log(this.ilceLayer);
++    this.setPermZones();
++    this.getLocation().then();
++    this.getAllNumaratajFromBina(this.lat, this.lon);
++  }
++
++  async getLocation() {
++
++    const pointProp: esri.PointProperties = {
++      x: Number(this.lat),
++      y: Number(this.lon),
++      spatialReference: { wkid: 4326 }
++    };
++
++    // TODO: POINTMODULE IS NOT A CONSTRUCTOR HATASI ÇÖZÜLECEK
++    const point = new this.pointModule(pointProp);
++
++    const properties: esri.QueryProperties = {
++      where: '1=1',
++      geometry: point,
++      spatialRelationship: 'Intersects',
++      outFields: ['*'],
++      returnGeometry: false
++    };
++    // BURADA HANGİ İLÇEDE OLDUĞUNU BULUP YETKİSİ OLUP OLMADIĞINA BAKILACAK
++    this.ilceLayer.queryFeatures(properties).then(res => {
++      console.log(res);
++    });
++  }
++
++  isPermitted() {
++    const uavtil = this.ilceLayer['attributes']['uavtil'];
++    const ilceKodu = this.ilceLayer['attributes']['ilce'];
++  }
++
++  setPermZones() {
++    const permZones = this.userPerm.permZone;
++
++    permZones.forEach(permZone => {
++      const zone = permZone.zone;
++      if (zone.includes(',')) { // , içerenler izin verilen 1 ilin ilçe listesi demek
++        this.permittedDistricts.push(zone.split(','));
++      } else {
++        this.permittedCities.push(zone);
++      }
++    });
+   }
++
++  getAllNumaratajFromBina(lat: string, lon: string) {
++    this.webDataService.getAllNumaratajFromBina(lat, lon).subscribe(res => {
++      if (res !== null || res !== undefined) {
++        this.binaList = res;
++      } else {
++        this.maksBinaKoduSorgulaState = false;
++        this.notificationMessage = 'Maks:Yapi ve Maks:DigerYapida Veri Bulunamadı.';
++        // TODO: res NUll dönüyorsa maks:yapi ve maks:digeryapida veri bulamamış demek info dialog ile bulunamadı uyarısı versin
++      }
++    });
++  }
++
++  // TODO: SORGULAMA YAPILIRKEN PROGRESSINFO COMPONENTİ EKLENECEK
++  // TODO: İL İLÇE FİLTRELEMESİNE GÖRE ÇALIŞMASI SAĞLANACAK.
++  // TODO: TABLO HTML CSS DÜZENLENECEK
++
+ }
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 856b3cd3389ff5382d3ebbdfd22bb21507c18ff1..cd33163ef7754690624ec13f2eb6c3ce9dc53d54 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -441,13 +441,25 @@ export class MainComponent implements OnInit {
+     }
+   }
+ 
+-  getMaksBinaKoduAtLocationEvent() {
++  getMaksBinaKoduAtLocationEvent(event: Event) {
+     const mouseEvent = this.rightClickEvent;
++    const coordinates = { lat: mouseEvent.mapPoint.longitude, lon: mouseEvent.mapPoint.latitude};
++
+     setTimeout(() => {
+-      const mapViewHitTestResult = this.mapView.hitTest(mouseEvent).then(res => {
+-        console.log(res);
++      const mapviewHitTestResult = this.mapView.hitTest(mouseEvent).then(res => {
++        const result = res.results;
++        const ilceLayer = this.mapView.map.layers.filter(layer => layer.title === 'İlçe');
++
++        this.dialogService.open(DialogInfoComponent, 'Bina Kodu Sorgula', false, {data: {
++          maksBinaKoduSorgulaState: true,
++          mapView: this.mapView,
++          coordinateData: coordinates,
++          ilceLayer: ilceLayer
++        }}, true, 'red-to-light');
+       });
+-    });
++    }, 1000);
++
++   
+   }
+ 
+   mapLeftClickEvent(event: esri.MapViewClickEvent) {
+diff --git a/src/app/models/MaksBinaKodu.ts b/src/app/models/MaksBinaKodu.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8c91c3e0d3555d22f657df99819234e7d4a23f92
+--- /dev/null
++++ b/src/app/models/MaksBinaKodu.ts
+@@ -0,0 +1,5 @@
++export class MaksBinaKodu {
++    kapiNo: string;
++    kimlikNo: number;
++    binaKodu: string;
++}
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 2a6e4fa7b7a0f59a432ccb4676b043b21cd0e676..8941028bc287c4685f52819994abd70b880a6675 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -49,7 +49,8 @@ import { NVIObject } from '../models/NVI/nviobject';
+ import { ModelData } from '../yapi-info';
+ import { Observable } from 'rxjs/internal/Observable';
+ import esri = __esri;
+-import { MaksData , Il} from '../models/MAKSData';
++import { MaksData, Il } from '../models/MAKSData';
++import { MaksBinaKodu } from '../models/MaksBinaKodu';
+ 
+ 
+ @Injectable({
+@@ -72,9 +73,9 @@ export class WebDataService {
+ 
+   getIlcelerFromMAKS(ilID: number) {
+     const url = this.maksURL + 'GetMaksIleBagliIlceListele?ilKodu=' + ilID;
+-    const maksData = this.http.get<Array<MaksData>>(url , { headers: this.auth.createHeader() });
++    const maksData = this.http.get<Array<MaksData>>(url, { headers: this.auth.createHeader() });
+ 
+-      return maksData;
++    return maksData;
+   }
+ 
+   getMahallelerFromMAKS(ilceID: number) {
+@@ -97,6 +98,11 @@ export class WebDataService {
+       { headers: this.auth.createHeader() });
+   }
+ 
++  getAllNumaratajFromBina(lat: string, lon: string) {
++    return this.http.get<Array<MaksBinaKodu>>(this.maksURL + 'getAllNumaratajFromBina?lat=' + lat + '&lon=' + lon,
++      { headers: this.auth.createHeader() });
++  }
++
+   getIllerFromTKGM() {
+     return this.http.get<Array<TKGMData>>(this.tkgmURL + 'getIL', { headers: this.auth.createHeader() });
+   }
