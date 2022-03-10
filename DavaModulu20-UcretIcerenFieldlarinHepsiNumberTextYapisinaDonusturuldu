@@ -1,0 +1,1369 @@
+diff --git a/src/app/models/Modules/module-form-data.ts b/src/app/models/Modules/module-form-data.ts
+index 6f60a2e8ba1e85f975f3fbd5c2b9f7ec132b51a8..530a4f038c008fb8d764857dbf137da76a4fca9e 100644
+--- a/src/app/models/Modules/module-form-data.ts
++++ b/src/app/models/Modules/module-form-data.ts
+@@ -11,7 +11,7 @@ export interface ModuleFormData {
+ export interface FormData {
+     alias: string;
+     name: string;
+-    type: 'date' | 'text' | 'domain' | 'localDomain' | 'malik' | 'number' | 'file';
++    type: 'date' | 'text' | 'domain' | 'localDomain' | 'malik' | 'number' | 'file' | 'numberText';
+     required: boolean;
+     chosen_values: Array<ChosenValue>;
+     domain_values: Array<DomainValue>;
+diff --git a/src/app/modules/create-module/create-module.component.html b/src/app/modules/create-module/create-module.component.html
+index ed82a2fc6612a85b0fc51b99f5950b330067cacb..042446db4b6e98dc88af7704776b8d1f7012b6ba 100644
+--- a/src/app/modules/create-module/create-module.component.html
++++ b/src/app/modules/create-module/create-module.component.html
+@@ -27,7 +27,7 @@
+         <div class="file-formdata">
+           <label >{{formData.alias}}<ng-container *ngIf="formData.required">*
+             </ng-container></label>
+-          <input [name]="formData.name" [type]="formData.type"
++          <input [name]="formData.name" [type]="formData.type" [formControl]="formGroup.controls['attachment']"
+             [formControlName]="formData.name" (input)="onChangeFormControl($event)" multiple="multiple">
+         </div>
+         <!-- <div class="file-process">
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 92d7d51a0b80d606a2fc2631a612c454fe140e0b..de70a53bbec9dfa91de808a64d835e90a58f98c7 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -105,6 +105,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   selectedNodes: Array<RowNode> = [];
+   progressDialog: DialogRef;
+ 
++  numberTextFields = ['alan', 'ucret', 'birim_ucret', 'icra_bedeli', 'depo_bedeli'];
++
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder, private dialogService: DialogService,
+     private notify: NotificationService) {
+@@ -368,35 +370,48 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       const formValue = formElement.value;
+ 
+-      let newFormValue = formValue.replace(/\./g, '');
+-      newFormValue = newFormValue.replace(/\,/g, '.');
++      if (!formValue.endsWith(',')) {
++        if (formValue === '0,') {
++          this.formGroup.controls[formElement.name].setValue(formElement.value);
++        } else {
++          let newFormValue = formValue.replace(/\./g, '');
++          newFormValue = newFormValue.replace(/\,/g, '.');
+ 
+-      if (newFormValue.endsWith('.')) {
+-        endingDotStatus = true;
+-      } else if (newFormValue.endsWith('.0')) {
+-        zeroAddStatus = true;
+-      }
++          if (newFormValue.endsWith('.')) {
++            endingDotStatus = true;
++          } else if (newFormValue.endsWith('.0')) {
++            zeroAddStatus = true;
++          }
+ 
+-      if (newFormValue.endsWith('.00')) {
+-        doubleZeroStatus = true;
+-        zeroAddStatus = false;
+-      }
++          if (newFormValue.endsWith('.00')) {
++            doubleZeroStatus = true;
++            zeroAddStatus = false;
++          }
+ 
+-      let numberValue = Number(newFormValue);
+-      if (isNaN(numberValue)) {
+-        numberValue = 0;
+-      }
+-      newFormValue = numberValue.toLocaleString('tr-TR');
++          let numberValue = Number(newFormValue);
++          if (isNaN(numberValue)) {
++            numberValue = 0;
++          }
++          newFormValue = numberValue.toLocaleString('tr-TR');
++
++          if (endingDotStatus) {
++            newFormValue = `${newFormValue},`;
++          } else if (zeroAddStatus) {
++            newFormValue += ',0';
++          } else if (doubleZeroStatus) {
++            newFormValue += ',00';
++          }
+ 
+-      if (endingDotStatus) {
+-        newFormValue = `${newFormValue},`;
+-      } else if (zeroAddStatus) {
+-        newFormValue += ',0';
+-      } else if (doubleZeroStatus) {
+-        newFormValue += ',00';
+-      }
++          this.formGroup.controls[formElement.name].patchValue(newFormValue);
++        }
+ 
+-      this.formGroup.controls[formElement.name].patchValue(newFormValue);
++      }
++      else {
++        this.formGroup.controls[formElement.name].patchValue(formElement.value);
++      }
++    }
++    else {
++      this.formGroup.controls[formElement.name].setValue(formElement.value);
+     }
+ 
+     if (this.moduleData.value === 10 && formElement.name === 'alan') {
+@@ -717,9 +732,19 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             if (formControl.value === '') {
+               formControl.setValue('0');
+             }
+-            if(formControl.value.charAt(0) === '0') {
+-              const temp = Number(formControl.value);
+-              formControl.setValue(temp.toString());
++            if (formControl.value.charAt(0) === '0') {
++              if (formControl.value.endsWith(',')) {
++                temp = 0;
++              } else {
++                const temp = Number(formControl.value);
++                let temp2;
++                if (isNaN(temp)) {
++                  temp2 = formControl.value.replaceAll('.', '');
++                  temp2 = temp2.replaceAll(',', '.');
++                } else {
++                  formControl.setValue(temp.toLocaleString('tr-TR'));
++                }
++              }
+             }
+ 
+             if (index === 0) {
+@@ -752,7 +777,9 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         if (formControl !== undefined) {
+           if (formControl.dirty !== undefined) {
+             if (formControl.dirty !== true) {
+-              formControl.patchValue(calculateResult.toFixed(2));
++              formControl.patchValue(calculateResult.toLocaleString('tr-TR'));
++            } else {
++              formControl.patchValue(calculateResult.toLocaleString('tr-TR'));
+             }
+           }
+         } else {
+@@ -1047,6 +1074,16 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   onSubmit() {
++    // this.numberTextFields.forEach(numberTextField => {
++    //   const formControl = this.formGroup.controls[numberTextField];
++    //   if (formControl !== undefined) {
++    //     const numberTextValue = formControl.value;
++    //     let temp = numberTextValue.replaceAll('.', '');
++    //     temp = temp.replaceAll(',', '.');
++    //     formControl.setValue(temp); 
++    //   }
++    // });
++
+     if (!this.mirasciState) {
+       if (this.isMulti) {
+         this.onMultiSubmit();
+@@ -1197,9 +1234,11 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+                     this.updateAttachments(formValues, dialog, results);
+                     this.notify.open(notifyMessage, 'success', 10);
++                    dialog.close();
+                   } else {
+                     this.addAttachment(formValues, dialog, results);
+                     this.notify.open(notifyMessage, 'success', 10);
++                    dialog.close();
+                   }
+                 } else {
+                   if (this.processState !== -1) {
+@@ -1255,7 +1294,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         if (attachments.length === 0) {
+           this.addAttachment(formValues, dialog, results);
+         } else {
+-          const newAttachmentCount = this.formGroup.value['attachment'].length;
++          const newAttachmentCount = this.attachmentDataArray.length;
+           const previousAttachmentCount = attachments.length;
+ 
+           if (previousAttachmentCount > newAttachmentCount) {
+@@ -1293,7 +1332,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+                 } else {
+                   const updateObservables = [];
+                   for (let j = 0; j < newAttachmentCount; j++) {
+-                    updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, this.formGroup.value['attachment'][j], attachments[j].id));
++                    updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, this.attachmentDataArray[j], attachments[j].id));
+                   }
+                   forkJoin(updateObservables).subscribe(updateAttachmentRes => {
+                     let status = true;
+@@ -1325,7 +1364,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             });
+           } else if (previousAttachmentCount < newAttachmentCount) {
+             const attachmentToBeAddedCount = newAttachmentCount - previousAttachmentCount;
+-            const newAttachmentFiles = this.formGroup.value['attachment'];
++            const newAttachmentFiles = this.attachmentDataArray;
+             const addObservables = [];
+             // burada da bu count kadar ekleme yapılacak diğerleri update edilecek
+             for (let i = 0; i < attachmentToBeAddedCount; i++) {
+@@ -1391,7 +1430,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           } else { // eşitse zaten direkt olarak kaç taneyse o kadarı tek tek update edilecek
+             const updateObservables = [];
+             for (let j = 0; j < newAttachmentCount; j++) {
+-              updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, this.formGroup.value['attachment'][j], attachments[j].id));
++              updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, this.attachmentDataArray[j], attachments[j].id));
+             }
+             forkJoin(updateObservables).subscribe(updateAttachmentRes => {
+               let status = true;
+@@ -1821,22 +1860,31 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       if (recentFormValues !== undefined) {
+         value = recentFormValues[formControlName];
+-        if (formControlName === 'alan') {
+-          value = Number(value).toLocaleString('tr-TR');
+-          // value = this.dotMethod(value.toString());
+-        }
+-        if (formControl.domain_values.length > 0) {
+-          formControlValue = formControl.domain_values.find(domain => {
+-            if (isNaN(value)) {
+-              if (domain.value === value) {
++
++        if (value !== null && value !== undefined) {
++          if (formControl.type === 'numberText') {
++            if (this.processState === -1) {
++              let temp = value.replaceAll('.', '');
++
++              value = Number(temp).toLocaleString('tr-TR');
++            } else if (this.processState === 0) {
++              value = Number(value).toLocaleString('tr-TR');
++            }
++          }
++
++          if (formControl.domain_values.length > 0) {
++            formControlValue = formControl.domain_values.find(domain => {
++              if (isNaN(value)) {
++                if (domain.value === value) {
++                  return true;
++                }
++              } else if (domain.value === Number(value)) {
+                 return true;
+               }
+-            } else if (domain.value === Number(value)) {
+-              return true;
++            });
++            if (formControlValue === undefined) {
++              value = -1;
+             }
+-          });
+-          if (formControlValue === undefined) {
+-            value = -1;
+           }
+         }
+       } else {
+@@ -2212,15 +2260,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       // const toplamMaliyetString = this.dotMethod(toplamMaliyetStringData);
+ 
+       formData['sayi'] = toplamMaliyetStringData;
+-    } else if (ucretFieldProcessArray.includes(this.moduleData.value)) {
+-      // GAGA UCRET FIELD ARTIK NUMBER OLDUĞU ICIN BUNA GEREK KALMAYACAK
+-      // if (formData['ucret']) {
+-      //   let ucretField = <string>formData['ucret'];
+-      //   ucretField = ucretField.replace(/\./g, '');
+-      //   ucretField = ucretField.replace(/,/g, '.');
+-      //   formData['ucret'] = ucretField;
+-      // }
+     }
++
++    this.numberTextFields.forEach(numberTextField => {
++      const formControl = this.formGroup.controls[numberTextField];
++      if (formControl !== undefined) {
++        const numberTextValue = formControl.value;
++        let temp = numberTextValue.replaceAll('.', '');
++        formControl.setValue(temp);
++      }
++    });
++
+     let feature = <esri.Graphic>{
+       attributes: formData,
+     };
+@@ -2755,13 +2805,13 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   rowSelected(event: RowClickedEvent) {
+-    if(this.headerCheckboxSelectionState) {
+-      if(this.progressDialog === undefined) {
+-          this.progressDialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'Lütfen Bekleyiniz', false, {}, false, 'light');
+-          setTimeout(() => {
+-            this.progressDialog.close();
+-            this.progressDialog = undefined;
+-          }, 5000);
++    if (this.headerCheckboxSelectionState) {
++      if (this.progressDialog === undefined) {
++        this.progressDialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'Lütfen Bekleyiniz', false, {}, false, 'light');
++        setTimeout(() => {
++          this.progressDialog.close();
++          this.progressDialog = undefined;
++        }, 5000);
+       }
+     }
+ 
+diff --git a/src/app/movements/movement-create/movement-create.component.html b/src/app/movements/movement-create/movement-create.component.html
+index 6b860aa520ee7685e3f18699b4efe8c326b543c1..60dab4f28a796fe7371cf90379ec1210e01fa517 100644
+--- a/src/app/movements/movement-create/movement-create.component.html
++++ b/src/app/movements/movement-create/movement-create.component.html
+@@ -9,20 +9,22 @@
+     </div>
+     <div class="form-group" *ngFor="let formData of movementFormData;let i = index">
+       <label *ngIf="formData.type !== 'file'">{{formData.alias}}<ng-container *ngIf="formData.required">*</ng-container></label>
++      <input *ngIf="formData.type === 'numberText'" [name]="formData.name" type="text"
++      [formControlName]="formData.name" [attr.realType]="formData.type" (input)="onChangeFormControl($event)">
+       <input
+-        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name !== 'aciklama' && readMode)"
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file' || formData.type === 'numberText') && formData.name !== 'aciklama' && readMode)"
+         [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
+         (input)="onChangeFormControl($event)" [disabled]="formData.disabled">
+       <textarea
+-        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name === 'aciklama' && readMode )"
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file' || formData.type === 'numberText') && formData.name === 'aciklama' && readMode )"
+         [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
+         [disabled]="formData.disabled"></textarea>
+       <input
+-        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name !== 'aciklama' && !readMode)"
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file' || formData.type === 'numberText') && formData.name !== 'aciklama' && !readMode)"
+         [name]="formData.name" [type]="formData.type" [formControlName]="formData.name"
+         (input)="onChangeFormControl($event)" [disabled]="formData.disabled">
+       <textarea
+-        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file') && formData.name === 'aciklama' && !readMode )"
++        *ngIf="(!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'file' || formData.type === 'numberText') && formData.name === 'aciklama' && !readMode )"
+         [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"
+         [disabled]="formData.disabled"></textarea>
+       <select *ngIf="formData.type === 'domain' || formData.type === 'localDomain'" [name]="formData.name"
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 27b00c2a65cfb7d587e100de4f6d074c508f7651..4ced5b15216ac5501f546a7aae59d3957a23373b 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -16,6 +16,7 @@ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AcceptDialogComponent } from 'src/app/accept-dialog/accept-dialog.component';
+ import { CreateModuleComponent } from 'src/app/modules/create-module/create-module.component';
+ import { FieldValues, MovementRel, MovementValues, ProcessMovementRel } from 'src/app/models/ProcessMovementRel';
++import { DomElementSchemaRegistry } from '@angular/compiler';
+ 
+ interface DeleteResults {
+   deleteResults: {
+@@ -78,6 +79,9 @@ export class MovementCreateComponent implements OnInit {
+   updatedParselIDList = [];
+   notUpdatedParselIDList = [];
+ 
++  numberTextFields = ['alan', 'ucret', 'birim_ucret', 'tenkis_tutar', 'odenecek_tutar', 'gonderilen_tutar', 'tamamlanan_m2_fiyati'];
++  onClickUpdateMode = false;
++
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder,
+     private dialogService: DialogService, private notify: NotificationService) { }
+@@ -102,6 +106,9 @@ export class MovementCreateComponent implements OnInit {
+     let foundModuleForm: ModuleFormData = data['foundModuleForm'];
+     this.foundModuleForm = foundModuleForm;
+ 
++    let onClickUpdateMode = data['onClickUpdateMode'];
++    this.onClickUpdateMode = onClickUpdateMode;
++
+     const movementData = <MovementData>data.movementData;
+     this.defaultDomainValues = movementData.field.domain_values;
+ 
+@@ -498,6 +505,7 @@ export class MovementCreateComponent implements OnInit {
+   }
+ 
+   onChangeFormControl(event: Event) {
++    this.onClickUpdateMode = false;
+     this.attachmentDataArray = [];
+     const formObject = this.formGroup.value;
+     this.durumu = formObject['durumu'];
+@@ -537,6 +545,60 @@ export class MovementCreateComponent implements OnInit {
+       if (formValue.indexOf('.') !== -1) {
+         this.formGroup.controls[formElement.name].patchValue(Number(formValue));
+       }
++    } else if (formElement.getAttribute('realType') === 'numberText') {
++
++      // GAGA TODO
++      // TODO ONSUBMİTTE ARCGİSE BU STRİNG VERİ DOUBLE FİELDA ATILACAK
++      // O YÜZDEN DE NOKTALARI SİLİP VİRGÜLÜ NOKTAYA ÇEVİRİP ATCAN
++      let endingDotStatus = false;
++      let zeroAddStatus = false;
++      let doubleZeroStatus = false;
++
++      const formValue = formElement.value;
++
++      if (!formValue.endsWith(',')) {
++        if (formValue === '0,') {
++          this.formGroup.controls[formElement.name].setValue(formElement.value);
++          formObject[formElement.name] = formElement.value;
++        } else {
++          let newFormValue = formValue.replace(/\./g, '');
++          newFormValue = newFormValue.replace(/\,/g, '.');
++
++          if (newFormValue.endsWith('.')) {
++            endingDotStatus = true;
++          } else if (newFormValue.endsWith('.0')) {
++            zeroAddStatus = true;
++          }
++
++          if (newFormValue.endsWith('.00')) {
++            doubleZeroStatus = true;
++            zeroAddStatus = false;
++          }
++
++          let numberValue = Number(newFormValue);
++          if (isNaN(numberValue)) {
++            numberValue = 0;
++          }
++          newFormValue = numberValue.toLocaleString('tr-TR');
++
++          if (endingDotStatus) {
++            newFormValue = `${newFormValue},`;
++          } else if (zeroAddStatus) {
++            newFormValue += ',0';
++          } else if (doubleZeroStatus) {
++            newFormValue += ',00';
++          }
++
++          this.formGroup.controls[formElement.name].patchValue(newFormValue);
++          formObject[formElement.name] = newFormValue;
++        }
++      } else {
++        this.formGroup.controls[formElement.name].patchValue(formElement.value);
++        formObject[formElement.name] = formElement.value;
++      }
++    }
++    else {
++      this.formGroup.controls[formElement.name].patchValue(formElement.value);
+     }
+     // tslint:disable-next-line:triple-equals
+     if (this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] == 26) {
+@@ -683,6 +745,14 @@ export class MovementCreateComponent implements OnInit {
+             } else if (field.type === 'domain') {
+               this.bindFieldDomainValues(<FormData>field);
+             }
++            if (field.type === 'numberText' && !(formDataValue === undefined || formDataValue === null)) {
++              if (this.readMode) {
++                const stringFormDataValue = formDataValue.toString();
++                formDataValue = Number(stringFormDataValue).toLocaleString('tr-TR');
++              } else if (this.onClickUpdateMode) {
++                formDataValue = Number(formDataValue).toLocaleString();
++              }
++            }
+             if (field.type === 'file' && this.readMode) {
+               const featureAttributes = this.features;
+               const objectid = featureAttributes['objectid'];
+@@ -711,6 +781,14 @@ export class MovementCreateComponent implements OnInit {
+           } else if (field.type === 'domain') {
+             this.bindFieldDomainValues(<FormData>field);
+           }
++          if (field.type === 'numberText' && !(formDataValue === undefined || formDataValue === null)) {
++            if (this.readMode) {
++              const stringFormDataValue = formDataValue.toString();
++              formDataValue = Number(stringFormDataValue).toLocaleString('tr-TR');
++            } else if (this.onClickUpdateMode) {
++              formDataValue = Number(formDataValue).toLocaleString();
++            }
++          }
+           if (field.type === 'file' && this.readMode) {
+             const featureAttributes = this.features;
+             const objectid = featureAttributes['objectid'];
+@@ -736,6 +814,7 @@ export class MovementCreateComponent implements OnInit {
+             this.formGroup.controls['proje_no'].disable();
+           }
+         }
++
+       });
+     }
+   }
+@@ -856,6 +935,7 @@ export class MovementCreateComponent implements OnInit {
+     let message = '';
+     let header = '';
+     const islem_turu = this.moduleData['islem_turu'];
++
+     if (this.acceptanceDialog === undefined) {
+       if (this.createMode === true) {
+         // GAGA BURASI AÇILACAK
+@@ -1069,6 +1149,14 @@ export class MovementCreateComponent implements OnInit {
+ 
+   addMovementData(header: string, message: string, url: string, formValues: any) {
+ 
++    this.numberTextFields.forEach(numberTextField => {
++      const formControl = this.formGroup.controls[numberTextField];
++      if (formControl !== undefined) {
++        const numberTextValue = formControl.value;
++        let temp = numberTextValue.replaceAll('.', '');
++        formControl.setValue(temp);
++      }
++    });
+     // Durumu icra (39) ise yeni işlem penceresi açıcak o işlemi kaydettiğinde icra hareketini ilk işlemin dosya ve esasno'sunu
+     // alarak kaydedecek
+     if (this.yeniIslemPenceresiAcilacakDomainList.includes(this.durumu)) {
+@@ -1440,7 +1528,6 @@ export class MovementCreateComponent implements OnInit {
+ 
+   onMultiUpdateMovement(movementData: any, updateFeatureUrl: string) {
+     this.getMovementsOfMultiSelectDatas().subscribe(movements => {
+-
+       const durumu = movementData['durumu'];
+       const touch_date = movementData['touch_date'];
+       const touch_by = movementData['touch_by'];
+@@ -1452,6 +1539,7 @@ export class MovementCreateComponent implements OnInit {
+ 
+       const newFormData = new FormData();
+       const features: Array<esri.Graphic> = [];
++      const formValues = this.formGroup.value;
+       // @ts-ignore
+       const feature: esri.Graphic = {
+         attributes: this.formGroup.value
+@@ -1481,15 +1569,96 @@ export class MovementCreateComponent implements OnInit {
+           Promise.all(promises).then((responses) => {
+             let isAllOk = true;
+             responses.forEach(response => {
+-              if (response['updateResults'][0].success) {
+-                isAllOk = true;
+-              } else {
++              if (!response['updateResults'][0].success) {
+                 isAllOk = false;
+               }
+             });
+-
+             if (isAllOk) {
+               this.notify.open('Çoklu Hareket Güncelleme Başarılı', 'success', 5);
++              objectIDs.forEach(objectID => {
++                if (formValues.attachment !== undefined) {
++                  const deleteAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectID}/deleteAttachments`;
++                  const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectID}/attachments?f=pjson` +
++                    `&token=${sessionStorage.getItem('CBSArcToken')}`;;
++
++                  const observables = [];
++                  observables.push(this.http.get(attachmentInfosURL));
++                  forkJoin(observables).subscribe(attachments => {
++                    if (attachments !== undefined) {
++                      const attachmentInfos = attachments[0]['attachmentInfos'];
++                      const attachmentForm = new FormData();
++                      let attachmentIDs = ''
++                      if (attachmentInfos.length > 0) {
++                        attachments[0]['attachmentInfos'].forEach(attachment => {
++                          attachmentIDs += attachment['id'].toString();
++                          attachmentIDs += ','
++                        });
++                        attachmentIDs = attachmentIDs.slice(0, attachmentIDs.length - 1);
++                      }
++
++                      attachmentForm.append('attachmentIds', attachmentIDs);
++                      attachmentForm.append('rollbackOnFailure', 'true');
++                      attachmentForm.append('f', 'json');
++                      attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++                      this.http.post(deleteAttachmentURL, attachmentForm).subscribe(deleteResponse => {
++                        if (attachmentInfos.length === 0) {
++                          deleteResponse = { deleteAttachmentResults: [{ success: true }] };
++                          isAllOk = true;
++                        } else {
++                          deleteResponse['deleteAttachmentResults'].forEach(deleteAttachmentResult => {
++                            let isAllOk = true;
++                            if(!deleteAttachmentResult['success']) {
++                              isAllOk = false;
++                            }
++                          });
++                        }
++                        
++                        if(isAllOk) {
++                          const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectID}/addAttachment`;
++                          const newAttachments = this.attachmentDataArray;
++                          const addObservables = [];
++
++                          for (let i = 0; i < newAttachments.length; i++) {
++                            const attachmentFormData = new FormData();
++
++                            attachmentFormData.append('attachment', newAttachments[i]);
++                            attachmentFormData.append('f', 'json');
++                            attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++                            addObservables.push(this.http.post(addAttachmentURL, attachmentFormData));
++                          }
++                          forkJoin(addObservables).subscribe(attachmentAddResults => {
++
++                            const addAttachmentData = <any>attachmentAddResults;
++                            let status = true;
++                            addAttachmentData.find(data => {
++                              const success = data['addAttachmentResult'].success;
++                              if (!success) {
++                                status = false;
++                              }
++                            });
++
++                            if (addAttachmentData !== undefined) {
++                              if (status !== true) {
++                                console.error('Attachment Can Not Be Added.');
++                                this.notify.open('Dosyalar Güncellenirken Bir Hata Oluştu', 'warning', 3);
++                              } else {
++                                this.notify.open('Dosyalar Başarıyla Güncellendi', 'success', 3);
++                              }
++                              this.dialog.close(true);
++                            } else {
++                              this.notify.open('Dosyalar Güncellenirken Bir Hata Oluştu', 'warning', 3);
++                              this.dialog.close(true);
++                            }
++                          });
++                        } else {
++                          this.notify.open('Çoklu Hareket Güncellerken Hata Oluştu', 'danger', 5);
++                        }
++                      });
++                    }
++                  });
++                }
++              });
+             } else {
+               this.notify.open('Çoklu Hareket Güncellerken Hata Oluştu', 'danger', 5);
+             }
+@@ -1502,6 +1671,74 @@ export class MovementCreateComponent implements OnInit {
+     });
+   }
+ 
++  deleteMovement(movementData: any, deleteFeatureUrl: string) {
++    const deleteFormData = new FormData();
++    deleteFormData.append('objectIds', movementData.objectid);
++    deleteFormData.append('rollbackOnFailure', 'true');
++    deleteFormData.append('f', 'json');
++    deleteFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++    const message = 'Hareketi Silmek İstediğinizden Emin Misiniz';
++    const header = 'Silme';
++    const acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, { data: { message } }, false, 'light');
++
++    const deleteAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${movementData.objectid}/deleteAttachments`;
++    const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${movementData.objectid}/attachments?f=pjson` +
++      `&token=${sessionStorage.getItem('CBSArcToken')}`;;
++    // GAGAs
++    acceptanceDialog.afterClosed.subscribe((isOk) => {
++      this.acceptanceDialog = undefined;
++      if (!isOk) {
++        return;
++      }
++      const progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'Hareket Siliniyor..', false,
++        { data: {} }, false, 'light');
++      this.http.post(deleteFeatureUrl, deleteFormData).subscribe((response: DeleteResults) => {
++        progress.close();
++        this.dialog.close(true);
++        if (response.deleteResults) {
++          response[0].forEach(deleteResult => {
++            if (deleteResult.success) {
++              this.notify.open('Hareket Silme Başarılı', 'success', 3);
++              if (this.formGroup.value['attachment'] !== undefined) {
++                this.getAttachments(attachmentInfosURL).subscribe(attachments => {
++                  if (attachments !== undefined && attachments[0]['attachmentInfos'].length > 0) {
++                    const attachmentForm = new FormData();
++                    let attachmentIDs = ''
++                    attachments.forEach(attachment => {
++                      attachmentIDs += attachment.id.toString();
++                      attachmentIDs += ','
++                    });
++                    attachmentIDs = attachmentIDs.slice(0, attachmentIDs.length - 1);
++
++                    attachmentForm.append('attachmentIds', attachmentIDs);
++                    attachmentForm.append('rollbackOnFailure', 'true');
++                    attachmentForm.append('f', 'json');
++                    attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++                    this.http.post(deleteAttachmentURL, attachmentForm).subscribe(deleteResponse => {
++                      if (deleteResponse[0].success) {
++                        console.log(deleteResponse)
++                      }
++                    });
++                  }
++                });
++              }
++            } else {
++              console.error(response);
++              this.notify.open('Hareket Silerken Hata Oluştu', 'danger', 3);
++            }
++          });
++        }
++      }, (err) => {
++        console.error(err);
++        this.dialog.close(true);
++        progress.close();
++      });
++    });
++
++    this.acceptanceDialog = acceptanceDialog;
++  }
++
+   onMultiDeleteMovement(movementData: any, deleteFeatureUrl: string) {
+     this.getMovementsOfMultiSelectDatas().subscribe(movements => {
+       const durumu = movementData['durumu'];
+@@ -1532,6 +1769,47 @@ export class MovementCreateComponent implements OnInit {
+           this.dialog.close(true);
+           if (response.deleteResults && response.deleteResults[0].success) {
+             this.notify.open('Çoklu Hareket Silme Başarılı', 'success', 5);
++            if (this.formGroup.value['attachment'] !== undefined) {
++              objectIDs.forEach(objectID => {
++                const deleteAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectID}/deleteAttachments`;
++                const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${objectID}/attachments?f=pjson` +
++                  `&token=${sessionStorage.getItem('CBSArcToken')}`;
++
++                const observables = [];
++                observables.push(this.getAttachments(attachmentInfosURL));
++
++                forkJoin(observables).subscribe(attachments => {
++                  if (attachments !== undefined) {
++                    const attachmentInfos = attachments[0]['attachmentInfos'];
++                    const attachmentForm = new FormData();
++                    let attachmentIDs = ''
++
++                    if (attachmentInfos.length > 0) {
++                      attachmentInfos.forEach(attachment => {
++                        attachmentIDs += attachment['id'].toString();
++                        attachmentIDs += ','
++                      });
++                      attachmentIDs = attachmentIDs.slice(0, attachmentIDs.length - 1);
++                    }
++
++                    attachmentForm.append('attachmentIds', attachmentIDs);
++                    attachmentForm.append('rollbackOnFailure', 'true');
++                    attachmentForm.append('f', 'json');
++                    attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++                    this.http.post(deleteAttachmentURL, attachmentForm).subscribe(deleteResponse => {
++                      if (attachmentInfos.length === 0) {
++                        deleteResponse = { 0: { success: true } };
++                      }
++                      if (deleteResponse[0].success) {
++                        this.notify.open('Dosyalar Başarıyla Silindi.', 'success', 3);
++                      } else {
++                        this.notify.open('Dosyalar Silinirken Bir Hata Oluştu.', 'warning', 3);
++                      }
++                    });
++                  }
++                });
++              });
++            }
+           } else {
+             console.error(response);
+             this.notify.open('Çoklu Hareket Silerken Hata Oluştu', 'danger', 5);
+@@ -1548,6 +1826,7 @@ export class MovementCreateComponent implements OnInit {
+   updateMovement(movementData: any, updateFeatureUrl: string) {
+     const updateFormData = new FormData();
+     const features: Array<esri.Graphic> = [];
++    const formValues = this.formGroup.value;
+     // @ts-ignore
+     const feature: esri.Graphic = {
+       attributes: this.formGroup.value
+@@ -1575,48 +1854,20 @@ export class MovementCreateComponent implements OnInit {
+       this.http.post(updateFeatureUrl, updateFormData).subscribe((response) => {
+         progress.close();
+         this.dialog.close(true);
++        const results = response['updateResults'];
+         if (response['updateResults'] && response['updateResults'][0].success) {
+-          this.notify.open('Hareket Güncelleme Başarılı', 'success', 5);
+-        } else {
+-          console.error(response);
+-          this.notify.open('Hareket Güncellerken Hata Oluştu', 'danger', 5);
+-        }
+-      }, (err) => {
+-        console.error(err);
+-        this.dialog.close(true);
+-        progress.close();
+-      });
+-    });
+-
+-    this.acceptanceDialog = acceptanceDialog;
+-  }
+-
+-  deleteMovement(movementData: any, deleteFeatureUrl: string) {
+-    const deleteFormData = new FormData();
+-    deleteFormData.append('objectIds', movementData.objectid);
+-    deleteFormData.append('rollbackOnFailure', 'true');
+-    deleteFormData.append('f', 'json');
+-    deleteFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+-
+-    const message = 'Hareketi Silmek İstediğinizden Emin Misiniz';
+-    const header = 'Silme';
+-    const acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, { data: { message } }, false, 'light');
+-
+-    acceptanceDialog.afterClosed.subscribe((isOk) => {
+-      this.acceptanceDialog = undefined;
+-      if (!isOk) {
+-        return;
+-      }
+-      const progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'Hareket Siliniyor..', false,
+-        { data: {} }, false, 'light');
+-      this.http.post(deleteFeatureUrl, deleteFormData).subscribe((response: DeleteResults) => {
+-        progress.close();
+-        this.dialog.close(true);
+-        if (response.deleteResults && response.deleteResults[0].success) {
+-          this.notify.open('Hareket Silme Başarılı', 'success', 5);
++          this.notify.open('Hareket Güncelleme Başarılı', 'success', 3);
++          if (formValues.attachment !== undefined) {
++            if (this.updateMode) {
++              this.updateAttachments(formValues, progress, results);
++            }
++            if (this.createMode) {
++              this.addAttachment(formValues, progress, results);
++            }
++          }
+         } else {
+           console.error(response);
+-          this.notify.open('Hareket Silerken Hata Oluştu', 'danger', 5);
++          this.notify.open('Hareket Güncellenirken Bir Hata Oluştu', 'danger', 3);
+         }
+       }, (err) => {
+         console.error(err);
+@@ -1840,23 +2091,33 @@ export class MovementCreateComponent implements OnInit {
+       attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+ 
+       addObservables.push(this.http.post(addAttachmentURL, attachmentFormData));
+-      forkJoin(addObservables).subscribe(attachmentAddResult => {
+-        const addedAttachmentData = <any>attachmentAddResult['addAttachmentResult'];
++    }
++    forkJoin(addObservables).subscribe(attachmentAddResults => {
++
++      const addAttachmentData = <any>attachmentAddResults;
++      let status = true;
++      addAttachmentData.find(data => {
++        const success = data['addAttachmentResult'].success;
++        if (!success) {
++          status = false;
++        }
++      });
+ 
+-        if (addedAttachmentData !== undefined) {
+-          const status = addedAttachmentData.success;
+-          if (status !== true) {
+-            console.error('Attachment Could Not Be Added, /* Movement Create AddAttachment Error */');
+-            // TODO: Notify Error
+-          }
+-          dialog.close();
+-          this.dialog.close(true);
++      if (addAttachmentData !== undefined) {
++        if (status !== true) {
++          console.error('Attachment Can Not Be Added.');
++          this.notify.open('Dosyalar Eklenirken Bir Hata Oluştu', 'warning', 3);
+         } else {
+-          dialog.close();
+-          this.dialog.close(true);
++          this.notify.open('Dosyalar Başarıyla Eklendi', 'success', 3);
+         }
+-      });
+-    }
++        dialog.close();
++        this.dialog.close(true);
++      } else {
++        this.notify.open('Dosyalar Eklenirken Bir Hata Oluştu', 'warning', 3);
++        dialog.close();
++        this.dialog.close(true);
++      }
++    });
+   }
+ 
+   postAddAttachment(url: string, attachment: any) {
+@@ -1885,7 +2146,7 @@ export class MovementCreateComponent implements OnInit {
+     const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/addAttachment`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+-      if (attachments !== undefined && attachments.length === 0) {
++      if (attachments !== undefined  && attachments.length === 0) {
+         this.addAttachment(formValues, dialog, results);
+       } else {
+         const deleteObservables = [];
+@@ -1914,7 +2175,7 @@ export class MovementCreateComponent implements OnInit {
+           if (deleteAttachmentData !== undefined) {
+             if (status !== true) {
+               console.error('Old Attachment Could Not Be Deleted, /*Movement Create UpdateAttachments Error*/');
+-              // TODO: Notify Error
++              this.notify.open('Dosyalar Güncellenirken Bir Hata Oluştu', 'warning', 3);
+             } else {
+               const addObservables = [];
+               for (let j = 0; j < newAttachments.length; j++) {
+@@ -1932,6 +2193,9 @@ export class MovementCreateComponent implements OnInit {
+                 if (uaddAttachmentData !== undefined) {
+                   if (addStatus !== true) {
+                     console.error('New Attachment Could Not Be Added, /*Movement Create UpdateAttachments Error*/');
++                    this.notify.open('Dosyalar Güncellenirken Bir Hata Oluştu', 'warning', 3);
++                  } else {
++                    this.notify.open('Dosyalar Başarıyla Güncellendi.', 'warning', 3);
+                   }
+                   this.dialog.close();
+                   this.dialog.close(true);
+@@ -1948,33 +2212,6 @@ export class MovementCreateComponent implements OnInit {
+             this.dialog.close(true);
+           }
+         });
+-        // const attachment = attachments[0];
+-        // tslint:disable-next-line:max-line-length
+-        // const editAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/${featureAttributes.objectid}/updateAttachment`;
+-        // const attachmentId = attachment.id;
+-
+-        // const attachmentForm = new FormData();
+-
+-        // attachmentForm.append('attachmentId', attachmentId.toString());
+-        // attachmentForm.append('attachment', formValues.attachment);
+-        // attachmentForm.append('f', 'json');
+-        // attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
+-
+-        // this.http.post(editAttachmentURL, attachmentForm).subscribe(updateAttachmentRes => {
+-        //   const updatedAttachmentData = <any>updateAttachmentRes['updateAttachmentResult'];
+-
+-        //   if (updatedAttachmentData !== undefined) {
+-        //     const status = updatedAttachmentData.success;
+-        //     if (status !== true) {
+-        //       console.error('Attachment did not updated');
+-        //     }
+-        //     dialog.close();
+-        //     this.dialog.close(true);
+-        //   } else {
+-        //     dialog.close();
+-        //     this.dialog.close(true);
+-        //   }
+-        // });
+       }
+     });
+   }
+diff --git a/src/app/movements/movement-list/movement-list.component.ts b/src/app/movements/movement-list/movement-list.component.ts
+index ffdf12e8dcf9eecf6546303afa383bca1e0399b4..760dd78351f88129af42ebbf7745e45b89ee5db6 100644
+--- a/src/app/movements/movement-list/movement-list.component.ts
++++ b/src/app/movements/movement-list/movement-list.component.ts
+@@ -478,6 +478,7 @@ export class MovementListComponent implements OnInit, OnDestroy {
+ 
+         this.movementCreateDialogRef = this.dialogService.open(MovementCreateComponent, 'Hareket Düzenle', false, {
+           data: {
++            onClickUpdateMode: true,
+             fields: this.fields,
+             features: data,
+             featureData: this.featureData,
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index aec58c8bccc64a75bbc3f21daced152455d4f514..341dcacf9747bb6dadea1fbdde8d4231ff858dff 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -281,7 +281,7 @@
+           {
+             "alias": "İrtifak Bedeli",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -459,7 +459,7 @@
+           {
+             "alias": "Kiraya Alma Bedeli(aylık)",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -643,7 +643,7 @@
+           {
+             "alias": "Kiraya Verme Bedeli(aylık)",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -1457,7 +1457,7 @@
+           {
+             "alias": "Onaylanan Ödenek Tutarı",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -1487,7 +1487,7 @@
+           {
+             "alias": "Ödenecek Tutar",
+             "name": "odenecek_tutar",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -1517,7 +1517,7 @@
+           {
+             "alias": "Gönderilen Tutar",
+             "name": "gonderilen_tutar",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -1541,7 +1541,7 @@
+         "fields": [{
+             "alias": "Tenkis Tutarı",
+             "name": "tenkis_tutar",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -1565,13 +1565,13 @@
+         "fields": [{
+             "alias": "Tamamlanan Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+             "alias": "Tamamlanan m² Fiyat(TL)",
+             "name": "tamamlanan_m2_fiyati",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -1643,7 +1643,7 @@
+           {
+             "alias": "Kullanılan Ödenek Tutarı",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": false
+           }
+         ]
+@@ -2020,19 +2020,19 @@
+           {
+             "alias": "Dava Bedeli",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+             "alias": "Davalık Yüz Ölçüm",
+             "name": "alan",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+             "alias": "M2 Birim Fiyatı",
+             "name": "birim_ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2123,7 +2123,7 @@
+           {
+             "alias": "Talep Edilen Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2213,7 +2213,7 @@
+           {
+             "alias": "Ödenecek Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2243,7 +2243,7 @@
+           {
+             "alias": "Gönderilen Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2286,7 +2286,7 @@
+         "fields": [{
+             "alias": "Tenkis Tutarı",
+             "name": "tenkis_tutar",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2322,13 +2322,13 @@
+         "fields": [{
+             "alias": "Tamamlanan Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+             "alias": "Tamamlanan m² Fiyat(TL)",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2399,7 +2399,7 @@
+           {
+             "alias": "Gönderilen Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "numberText",
+             "required": true
+           },
+           {
+@@ -2460,6 +2460,10 @@
+       {
+         "state": 24,
+         "values": [7, 21, 22, 23, 24]
++      },
++      {
++        "state": 7,
++        "values": [7, 21, 22, 23, 24]
+       }
+     ],
+     "formData": [{
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 9312da2ac614d8b6d9cee5e3765bcbfe739bcc4a..613a17a8fc0312c74c0633c038aaa01e946ada3c 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -3446,7 +3446,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3556,7 +3556,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3564,7 +3564,7 @@
+         {
+           "alias": "m² Fiyat",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+@@ -3715,7 +3715,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3723,7 +3723,7 @@
+         {
+           "alias": "m² Fiyat",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+@@ -3784,7 +3784,7 @@
+         {
+           "alias": "Muhdesat Fiyatı",
+           "name": "icra_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3792,7 +3792,7 @@
+         {
+           "alias": "Toplam Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+@@ -3911,7 +3911,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3919,7 +3919,7 @@
+         {
+           "alias": "m² Fiyat",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+@@ -4327,7 +4327,7 @@
+         {
+           "alias": "İzbedel",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4415,7 +4415,7 @@
+         {
+           "alias": "Depo Bedeli",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4697,7 +4697,7 @@
+         {
+           "alias": "Dava Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4721,7 +4721,7 @@
+         {
+           "alias": "Metrekare Birim Fiyatı",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+@@ -5066,7 +5066,7 @@
+         {
+           "alias": "İcra Bedeli",
+           "name": "icra_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5156,7 +5156,7 @@
+         {
+           "alias": "Talep Edilen Bedel",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5291,7 +5291,7 @@
+         {
+           "alias": "Edinim Oranı",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5299,7 +5299,7 @@
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5416,7 +5416,7 @@
+         {
+           "alias": "Edinim Oranı",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5424,7 +5424,7 @@
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5541,7 +5541,7 @@
+         {
+           "alias": "Edinim Oranı",
+           "name": "birim_ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5549,7 +5549,7 @@
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "depo_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5629,7 +5629,7 @@
+         {
+           "alias": "Muhdesat Fiyatı",
+           "name": "icra_bedeli",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5637,7 +5637,7 @@
+         {
+           "alias": "Toplam Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": [],
+@@ -5755,7 +5755,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5858,7 +5858,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5969,7 +5969,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -6080,7 +6080,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -6140,7 +6140,7 @@
+           "alias": "Tahmini Maaliyet(₺)",
+           "name": "ucret",
+           "required": "true",
+-          "type": "number",
++          "type": "numberText",
+           "domain_values": [],
+           "chosen_values": []
+         },
