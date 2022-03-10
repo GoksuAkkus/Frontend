@@ -1,0 +1,2440 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 48ec4698f75fafe91882afa874d3bcf75b3e5c45..aec1f37fe19fb211610fa46d702ff19a1b763599 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -13,9 +13,12 @@ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.compo
+ import { NotificationService } from 'src/app/notification/notification.service';
+ import { AcceptDialogComponent } from 'src/app/accept-dialog/accept-dialog.component';
+ import { AgGridNg2 } from 'ag-grid-angular';
+-import { ColDef } from 'ag-grid-community';
++import { ColDef, RowClickedEvent } from 'ag-grid-community';
+ import esri = __esri;
+ import { KeyValue } from '../interfaces/keyvalue.modules';
++import { MalikDosyaNo } from 'src/app/models/MalikDosyaNo';
++import { RendererComponent } from '../module-list/rendererClass/renderer.component';
++import { MirasciComponent } from 'src/app/mirasci/mirasci.component';
+ 
+ interface AddFeatureResult {
+   addResults: {
+@@ -51,10 +54,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   openDefault = true;
+   sameUser = false;
+   acceptanceDialog: DialogRef;
++  multiSelectAcceptanceDialog: DialogRef;
+ 
+   defaultColDef;
+   localeText;
+   rowSelection = 'multiple';
++  suppressRowClickSelection = false;
+   selectionData: { count: number, other_area: number, maliye_area: number } = { count: 0, maliye_area: 0, other_area: 0 };
+   attachmentData: Array<esri.AttachmentInfo> = [];
+ 
+@@ -69,6 +74,35 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   allMalikArray: Array<any> = [];
+   selectedMalikArray: Array<any> = [];
+   binaSiraNo: any;
++  formValues: any;
++  islemObjectId: any;
++  createFromHareket = false;
++  yeniIslemPenceresiAcilacakDomainList = [39, 40];
++  // 15(Diğer Davalar), 13(El Atma Davaları) yani şimdilik sadece Bedel Tespit Tescil Davaları(14) için Malik Seçimi Kısıtlaması Olmayacak
++  kamulastirmaDavalariIslemiMalikSecimKisitlamasiUygulanacakTalepTuruDomainList = [13, 15];
++  kamulastirmaDavalariIslemiMalikSecimKisitlamasiUygulanacakTalepTuruState = false;
++  malikChangeState = false;
++  mapView: esri.MapView;
++  clickedCheckboxMalikData;
++  malikHasAlreadyAddedState = false;
++  malikListAlreadyHasProcess = [];
++  malikListWithDosyaNo: Array<MalikDosyaNo> = [];
++  mirasciState = false;
++  mirasciDetailDialogRef: DialogRef;
++  rowPreviousSelectedState = false;
++  addAnotherFileState = false;
++  currentLead = 0;
++  previousLead = 0;
++  attachmentDataArray = [];
++  hasMalikFieldOnModuleFormDataState = false;
++  isSelectedAllParcelIDsSameOnMultiSelectState = true;
++  multiSelectSuitabilityState = true;
++
++  lockRowSelectedEvent = false;
++  headerCheckboxSelectionState = true;
++
++  multiSelectMovementCreateDialogRef: DialogRef;
++
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef,
+     private http: HttpClient, private formBuilder: FormBuilder, private dialogService: DialogService,
+     private notify: NotificationService) {
+@@ -80,12 +114,31 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     if (this.isMulti) {
+       this.featureDatas = this.dialogConfig.data.featureDatas;
+     }
++
++    const mapView = dialogData.mapView;
++    this.mapView = mapView;
++
+     const isInfo = dialogData.isInfo;
+     this.processState = isInfo;
+ 
+     const infoFeature = dialogData.moduleData;
+     this.infoAttributes = infoFeature;
+ 
++    const formValues = dialogData.formValues;
++    this.formValues = formValues;
++
++    const islemObjectId = dialogData['objectId'];
++    this.islemObjectId = islemObjectId;
++
++    const createFromHareket = dialogData['createFromHareket'];
++    if (createFromHareket !== undefined) {
++      this.createFromHareket = createFromHareket;
++    } else {
++      this.createFromHareket = false;
++    }
++
++    const yeniIslemPenceresiAcilacakDomainList = this.yeniIslemPenceresiAcilacakDomainList;
++
+     this.refField = dialogData.refField;
+     this.moduleRefField = dialogData.moduleRefField;
+     this.type = dialogData.type;
+@@ -93,27 +146,60 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     this.openDefault = dialogData.specialState;
+ 
++    if (this.processState !== -1) {
++      this.getAllMovements().subscribe(movementsRes => {
++        // Malikli işlemlerde henüz hiç hareket eklenmemiş işlemlerde malikler düzenlenebilir.
++        // Ancak işlem üzerine hareket eklenmişse işlemdeki malikler düzenlenemez hiç bir şekilde
++
++        if (infoFeature['islem_turu'] === 10 && movementsRes.length === 0) {
++          this.malikChangeState = true;
++        } else {
++          this.malikChangeState = false;
++        }
++      });
++    } else {
++      this.malikChangeState = true;
++    }
++
+     this.createInitializedForm();
+     this.initalizeAGGrid();
+ 
+-    this.getLayerFields().subscribe(fields => {
++    this.getTestLayerFields().subscribe(fields => {
+       this.fields = fields;
+ 
+       this.getType().subscribe(moduleFormData => {
+         const moduleForm = moduleFormData.find(modules => modules.type === this.type);
+         if (moduleForm !== undefined) {
++          let lead = 0;
++          if (formValues !== undefined) {
++            const foundHareketDomain = yeniIslemPenceresiAcilacakDomainList.find(x => x === formValues['durumu']);
++            if (infoFeature['islem_turu'] === 10 && foundHareketDomain) {
++              if (foundHareketDomain === 39) {
++                lead = 7;
++              } else {
++                lead = 0;
++              }
++            }
++          }
+           if (isInfo === -1) {
+             this.moduleData = moduleForm;
+-            this.moduleFormData = moduleForm.formData[0];
+-
+-            this.initalizeWithFormData(moduleForm.formData[0]);
++            this.moduleFormData = moduleForm.formData[lead];
++            this.setMaliksAlreadyInProcessList();
++
++            // GAGA
++            // lead burada default olarak 0 seçilmeli. O yüzden yukarıda first value olarak 0 seçildi.
++            // Kamulaştırma davaları icra hareketi durumunda yeni işlem açılacağı için isInfo -1 olacak.
++            // Bu durumda açılacak olan bu icra hareketi işlem fieldları da typedatada leadi 7 olan
++            // formData ya tekabül ettiğinden burası dinamikleştirildi.
++            this.initalizeWithFormData(moduleForm.formData[lead]);
+           } else {
+             this.moduleData = moduleForm;
+             this.moduleFormData = moduleForm.formData[0];
+ 
+-            const lead = this.recursiveFormObject(this.moduleFormData, 0, infoFeature);
++            lead = this.recursiveFormObject(this.moduleFormData, 0, infoFeature);
+ 
+             this.moduleFormData = moduleForm.formData[lead];
++            this.setMaliksAlreadyInProcessList();
+             this.initalizeWithFormData(this.moduleFormData, infoFeature);
+ 
+             const username = this.getUserName();
+@@ -154,8 +240,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   dotMethod(value: string) {
+     let splitDotArray = [];
+     let valueWithoutDot = '';
+-    if (value.includes('.')) {
+-      splitDotArray = value.split('.');
++    if (value.includes(',')) {
++      splitDotArray = value.split(',');
+       for (let i = 0; i < splitDotArray.length; i++) {
+         valueWithoutDot += splitDotArray[i];
+       }
+@@ -164,7 +250,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     const length = 3;
+ 
+-    const splitComma = value.split(',');
++    const splitComma = value.split('.');
+     const dotValue = splitComma[0];
+     const commaValue = splitComma[1];
+ 
+@@ -215,6 +301,19 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   onChangeFormControl(event: Event) {
++    if (this.isMulti) {
++      const hasMalikSecimField = this.hasMalikFieldOnModuleFormDataForMultiSelect(event);
++      if (hasMalikSecimField) {
++        const isSelectedAllParcelIDsSame = this.isSelectedAllParcelIDsSameOnMultiSelect();
++        if (!isSelectedAllParcelIDsSame) {
++          this.multiSelectSuitabilityState = false;
++          this.dialog.close();
++          this.notify.open('Çoklu Seçim İçin Uygun Bir Operasyon Değildir.', 'danger', 5);
++          return;
++        }
++      }
++    }
++
+     const moduleData = this.moduleData;
+     const formObject = this.formGroup.value;
+     const formGroup = this.formGroup;
+@@ -228,26 +327,87 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }
+ 
+     if (formElement.type === 'file') {
+-      this.formAttachmentData = (<HTMLInputElement>formElement).files.item(0);
+-      this.formGroup.value.attachment = (<HTMLInputElement>formElement).files.item(0);
++      // this.formAttachmentData = (<HTMLInputElement>formElement).files.item(0);
++      // this.attachmentDataArray.push(this.formAttachmentData);
++      // this.formGroup.value.attachment = (<HTMLInputElement>formElement).files.item(0);
++      this.attachmentDataArray = [];
++      const filesArray = (<HTMLInputElement>formElement).files;
++      for (let i = 0; i < filesArray.length; i++) {
++        this.attachmentDataArray.push(filesArray[i]);
++      }
++      this.formGroup.value.attachment = (<HTMLInputElement>formElement).files;
++
+     } else if (formElement.type === 'number') {
+ 
+       if (formElement.name === 'bina_sayi') {
+         const count = Number(formElement.value);
+-        this.addOrRemoveDynamicFields(count, formObject);
++        this.addOrremoveDynamicFieldsForBinaSayiForBinaSayi(count, formObject);
+       }
+ 
+       const formValue = formElement.value;
++
+       if (formValue && formValue.indexOf('.') !== -1) {
+         this.formGroup.controls[formElement.name].patchValue(Number(formValue));
+       }
++    } else if (formElement.getAttribute('realType') === 'numberText') {
++
++      // GAGA TODO
++      // TODO ONSUBMİTTE ARCGİSE BU STRİNG VERİ DOUBLE FİELDA ATILACAK
++      // O YÜZDEN DE NOKTALARI SİLİP VİRGÜLÜ NOKTAYA ÇEVİRİP ATCAN
++      let endingDotStatus = false;
++      let zeroAddStatus = false;
++      let doubleZeroStatus = false;
++
++      const formValue = formElement.value;
++
++      let newFormValue = formValue.replace(/\./g, '');
++      newFormValue = newFormValue.replace(/\,/g, '.');
++
++      if (newFormValue.endsWith('.')) {
++        endingDotStatus = true;
++      } else if (newFormValue.endsWith('.0')) {
++        zeroAddStatus = true;
++      }
++
++      if (newFormValue.endsWith('.00')) {
++        doubleZeroStatus = true;
++        zeroAddStatus = false;
++      }
++
++      let numberValue = Number(newFormValue);
++      if (isNaN(numberValue)) {
++        numberValue = 0;
++      }
++      newFormValue = numberValue.toLocaleString('tr-TR');
++
++      if (endingDotStatus) {
++        newFormValue = `${newFormValue},`;
++      } else if (zeroAddStatus) {
++        newFormValue += ',0';
++      } else if (doubleZeroStatus) {
++        newFormValue += ',00';
++      }
++
++      this.formGroup.controls[formElement.name].patchValue(newFormValue);
+     }
+ 
++    if (this.moduleData.value === 10 && formElement.name === 'alan') {
++      const formValue = formElement.value;
++      let newFormValue = formValue.replace(/\./g, '');
++      newFormValue = newFormValue.replace(/\,/g, '.');
++
++      if (Number(newFormValue) > this.selectionData.other_area) {
++        this.notify.open('Seçili Maliklerin Toplam Yüzölçümlerinden Büyük Değer Girilemez.', 'danger', 5);
++        this.formGroup.controls['alan'].setValue(this.selectionData.other_area.toLocaleString('tr-TR'));
++      }
++    }
++
++
+     const formControlName = formElement.name;
+ 
+     const formData = this.findFormData(formControlName);
+ 
+-    if (this.moduleData.value === 14 || formData.name === 'ucret') {
++    if (this.moduleData.value === 14 && formData.name === 'ucret') {
+       // Kamulaştırma Teklifdeki kamulaştırma bedeli için de dotmethod eklenecek
+       if (formElement.name === 'talep_eden_kurum') {
+         formObject['detay'] = -1;
+@@ -255,7 +415,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+       if (formElement.name === 'esas_no' || formElement.name === 'karar_no' || formElement.name === 'ucret') {
+         formElement = this.onInput(event);
+-        formElement.value = this.dotMethod(formElement.value);
++        // formElement.value = this.dotMethod(formElement.value);
+         this.formGroup.controls[formElement.name].setValue(formElement.value);
+       }
+     }
+@@ -296,6 +456,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+     }
+ 
++    if (this.moduleData.value === 10 && formElement.name === 'talep_turu') {
++      if (this.kamulastirmaDavalariIslemiMalikSecimKisitlamasiUygulanacakTalepTuruDomainList.includes(Number(formElement.value))) {
++        this.kamulastirmaDavalariIslemiMalikSecimKisitlamasiUygulanacakTalepTuruState = true;
++      }
++    }
++
+     const formGroupControl = formGroup.controls[formControlName];
+     if (formGroupControl && formGroupControl.valid === true) {
+       formElement.classList.remove('error');
+@@ -323,7 +489,88 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     this.checkAndUpdateCalculateFuntions(moduleData, formGroup);
+   }
+ 
+-  addOrRemoveDynamicFields(count: number, recentFormValues?: Object) {
++  addDynamicFileField(currentFileFields: Array<FormData>) {
++    let attachmentName = 'attachment';
++    const splittedAliasArray = currentFileFields[currentFileFields.length - 1].alias.split('_');
++    let fileCount = 0;
++    if (splittedAliasArray.length > 1) {
++      fileCount = Number(splittedAliasArray[1].charAt(0));
++    }
++
++    const fileFormData = <FormData>{
++      alias: `Belge_${fileCount + 1}`,
++      name: `attachment_${fileCount + 1}`,
++      type: 'file',
++      required: true,
++      domain_values: [],
++      chosen_values: []
++    };
++
++    const createdControl = this.createFormControl(fileFormData.name, fileFormData.type, fileFormData.required);
++    this.formGroup.addControl(fileFormData.name, createdControl);
++    this.moduleFormData.push(fileFormData);
++  }
++
++  // addDynamicFileField_2() {
++  //   const fileCount = this.fileAddCount;
++  //   let foundIndexOfLastFileField;
++  //   let foundIndexOfLastFileFieldName;
++  //   let attachmentName = 'attachment';
++  //   const oldFormGroup = this.formGroup;
++
++  //   this.createInitializedForm();
++
++  //   if (fileCount > 1) {
++  //     attachmentName += `_${fileCount - 1}`;
++  //   }
++  //   const fileFormData = <FormData>{
++  //     alias: `Dosya Seç`,
++  //     name: `attachment_${fileCount}`,
++  //     type: 'file',
++  //     domain_values: [],
++  //     chosen_values: []
++  //   };
++
++  //   const formControl = this.createFormControl(fileFormData.name, fileFormData.type, fileFormData.required);
++  //   const abstractFormControl = formControl as AbstractControl;
++
++  //   const abstractControlArr: Array<AbstractControl> = [];
++  //   const keyIndexArr: Array<{ key, index }> = [];
++
++  //   Object.keys(oldFormGroup.controls).forEach((key, index) => {
++  //     const abstractControl = oldFormGroup.controls[key] as AbstractControl;
++  //     const newKeyIndex = { key: key, index: index };
++  //     keyIndexArr.push(newKeyIndex);
++
++  //     if (key === attachmentName) {
++  //       foundIndexOfLastFileField = index;
++  //       foundIndexOfLastFileFieldName = key;
++  //     }
++
++  //     abstractControlArr.push(abstractControl);
++  //   });
++
++  //   const firstPart = abstractControlArr.slice(0, foundIndexOfLastFileField);
++  //   const arr = new FormArray(firstPart);
++  //   arr.insert(arr.length - 1, abstractFormControl);
++  //   const secondPart = abstractControlArr.slice(foundIndexOfLastFileField);
++  //   secondPart.forEach(part => {
++  //     arr.insert(arr.length - 1, part);
++  //   });
++
++
++  //   arr.controls.forEach((control, i) => {
++  //     const key = keyIndexArr[i].key;
++  //     const formGroup = oldFormGroup;
++  //     const createdControl = this.createFormControl(key, formGroup.controls[key]['type'], formGroup.controls[key]['required']);
++  //     this.formGroup.addControl(key, createdControl);
++  //     this.formGroup.controls[key].setValue(oldFormGroup.controls[key].value);
++  //   });
++
++
++  // }
++
++  addOrremoveDynamicFieldsForBinaSayiForBinaSayi(count: number, recentFormValues?: Object) {
+     const karakteristikFieldName = 'karakteristik';
+     const kapasiteFieldName = 'kapasite';
+ 
+@@ -341,7 +588,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       return;
+     } else if (dynamicFieldLength > count) {
+       const deleteIndex = count + 1;
+-      this.removeDynamicFields(deleteIndex, dynamicFieldLength);
++      this.removeDynamicFieldsForBinaSayi(deleteIndex, dynamicFieldLength);
+       startIndex = dynamicFieldLength;
+     } else if (dynamicFieldLength < count) {
+       startIndex = count - (count - dynamicFieldLength) + 1;
+@@ -391,6 +638,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       const karakteristikFormControl = this.createFormControl(karakteristikFormControlName, karakteristikFormControlType
+         , required, karakteristikValue);
+ 
++
+       this.formGroup.addControl(karakteristikFormControlName, karakteristikFormControl);
+ 
+       const kapasiteFormControl = this.createFormControl(kapasiteFormControlName, kapasiteFormControlType, required, kapasiteValue);
+@@ -406,7 +654,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
+-  removeDynamicFields(startingIndex: number, dynamicFieldLength: number) {
++  removeDynamicFieldsForBinaSayi(startingIndex: number, dynamicFieldLength: number) {
+     const karakteristikFieldName = 'karakteristik';
+     const kapasiteFieldName = 'kapasite';
+ 
+@@ -454,21 +702,20 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           }
+ 
+           if (index === 0) {
+-            if (calculateControl === 'ucret') {
+-              if (formControl.value !== null) {
+-                let valWithoutDot = formControl.value.replaceAll('.', '');
+-                if (valWithoutDot.includes(',')) {
+-                  const stringValWithoutDot: string = valWithoutDot.toString();
+-                  const valWithoutComma = stringValWithoutDot.split(',');
+-                  // ucret fieldındaki , checkandcalculate i patlatıyor o yüzden
+-                  // , den sonraki kısmı atarak hesaplama yapmalı.
+-                  valWithoutDot = valWithoutComma[0];
+-                }
+-                operand1 = Number(valWithoutDot);
+-              }
+-            } else {
+-              operand1 = Number(formControl.value);
+-            }
++            // if (calculateControl === 'ucret') {
++            //   if (formControl.value !== null) {
++            //     let valWithoutDot = formControl.value.replaceAll('.', '');
++            //     if (valWithoutDot.includes(',')) {
++            //       const stringValWithoutDot: string = valWithoutDot.toString();
++            //       const valWithoutComma = stringValWithoutDot.split(',');
++            //       // ucret fieldındaki , checkandcalculate i patlatıyor o yüzden
++            //       // , den sonraki kısmı atarak hesaplama yapmalı.
++            //       valWithoutDot = valWithoutComma[0];
++            //     }
++            //     operand1 = Number(valWithoutDot);
++            //   }
++            // }
++            operand1 = Number(formControl.value);
+           } else {
+             operand2 = Number(formControl.value);
+           }
+@@ -480,15 +727,16 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       if (!(calculateResult === Infinity || isNaN(calculateResult))) {
+ 
+         const formControl = formGroup.controls[calculateFormObject.name];
+-        if (formControl.dirty !== undefined) {
+-          if (formControl.dirty !== true) {
+-            formControl.patchValue(calculateResult.toFixed(2));
++        if (formControl !== undefined) {
++          if (formControl.dirty !== undefined) {
++            if (formControl.dirty !== true) {
++              formControl.patchValue(calculateResult.toFixed(2));
++            }
++          }
++        } else {
++          if (formControl && formControl.dirty !== true) {
++            formControl.patchValue(0);
+           }
+-        }
+-      } else {
+-        const formControl = formGroup.controls[calculateFormObject.name];
+-        if (formControl && formControl.dirty !== true) {
+-          formControl.patchValue(0);
+         }
+       }
+     });
+@@ -514,6 +762,34 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     return operandValue;
+   }
+ 
++  getAllMovements(): any {
++    if (this.processState !== -1) {
++      const queryProperties = <esri.QueryProperties>{
++        where: `islem_refid = ${this.infoAttributes['objectid']}`,
++        orderByFields: ['create_date desc'],
++        outFields: ['*']
++      };
++      // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++      const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
++
++      return this.getFeatures(url, queryProperties).pipe(map(response => response.features));
++    } else {
++      return [];
++    }
++  }
++
++  getFeatures(url: string, queryProperties: esri.QueryProperties) {
++    const formData = this.createFormData(queryProperties);
++
++    formData.append('f', 'json');
++
++    return this.http.post<esri.FeatureSet>(url, formData, {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken'),
++      }
++    });
++  }
++
+   onOpenUpdate() {
+     this.processState = 1;
+ 
+@@ -532,9 +808,11 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const controls = this.formGroup.controls;
+     for (const controlName in controls) {
+       if (controls[controlName] !== undefined) {
+-        const formControl = controls[controlName];
++        if (controlName !== 'dosya_no') {
++          const formControl = controls[controlName];
+ 
+-        formControl.enable();
++          formControl.enable();
++        }
+       }
+     }
+     if (this.moduleData.value === 14) {
+@@ -545,11 +823,32 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
++  // TODO GAGA MALİK EKLEME SİLME GÖSTERME
++
++  updateMultiSelectID(formValues: any) {
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/updateFeatures';
++
++    const formData = new FormData();
++    const features: Array<esri.Graphic> = [];
++    // @ts-ignore
++    const feature: esri.Graphic = {
++      attributes: formValues
++    };
++    features.push(feature);
++
++    formData.append('f', 'json');
++    formData.append('rollbackOnFailure', 'true');
++    formData.append('features', JSON.stringify(features));
++
++    return this.http.post(url, formData, { params: { token: sessionStorage.getItem('CBSArcToken') } });
++  }
++
+   onMultiSubmit() {
+     const header = 'Kayıt';
+     const message = 'İşlem kaydı yapmak istediğinize emin misiniz ?';
+     const notifyMessage = 'İşlem Ekleme Başarılı';
+     const dialogData = { data: { message } };
++    const attachmentDataArray = this.attachmentDataArray;
+     const acceptanceDialog = this.dialogService.open(AcceptDialogComponent, header, false, dialogData, false, 'light');
+     acceptanceDialog.afterClosed.subscribe(isOk => {
+       if (!isOk) {
+@@ -557,6 +856,28 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+       const formValues = this.formGroup.value;
+       const islem_turu = this.moduleData.value;
++      if (formValues['bina_sayi'] !== undefined) {
++        const binaCount = Number(formValues['bina_sayi']);
++
++        let kapasiteFieldValue = '';
++        let karakteristikFieldValue = '';
++        for (let i = 1; i <= binaCount; i++) {
++          const karakteristikField = 'karakteristik' + i;
++          const kapasiteField = 'kapasite' + i;
++
++          const karakteristikValue = formValues[karakteristikField];
++          const kapasiteValue = formValues[kapasiteField];
++
++          karakteristikFieldValue += karakteristikValue + ',';
++          kapasiteFieldValue += kapasiteValue + ',';
++        }
++
++        kapasiteFieldValue = kapasiteFieldValue.slice(0, -1);
++        karakteristikFieldValue = karakteristikFieldValue.slice(0, -1);
++
++        formValues['karakteristik'] = karakteristikFieldValue;
++        formValues['kapasite'] = kapasiteFieldValue;
++      }
+       const layers = this.featureDatas.map(layer => {
+         const idArray = layer.selectedGraphics.map(a => a.graphic.attributes.objectid);
+         const query: esri.QueryProperties = {
+@@ -597,7 +918,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         const progressDialog = this.dialogService.
+           openUnClosable(ProgressInfoComponent, 'Kayıtlar ekleniyor', false, {}, false, 'light');
+ 
+-        this.http.post(environment.arcgisMEBURL + 'FeatureServer/14/addFeatures', insertFormData)
++        // this.http.post(environment.arcgisMEBURL + 'FeatureServer/14/addFeatures', insertFormData)
++        this.http.post('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/addFeatures', insertFormData)
+           .subscribe((insertResponse: AddFeatureResult) => {
+             progressDialog.close();
+             this.dialog.close(true);
+@@ -608,88 +930,144 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             } else {
+               this.notify.open('Kayıtlar Eklendi', 'success', 5);
+             }
+-            if (!this.formAttachmentData) {
+-              return;
+-            }
+-            const attachmentFormData = new FormData();
+-            attachmentFormData.append('attachment', this.formAttachmentData);
+-            attachmentFormData.append('f', 'json');
+-            attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+-            const urlList = insertResponse.addResults
+-              .filter(insert => insert.success)
+-              .map((insert) => {
+-                return `${environment.arcgisMEBURL}FeatureServer/14/${insert.objectId}/addAttachment`;
++
++            const date = new Date();
++            const multiSelectID = date.getHours();
++
++            insertResponse.addResults.forEach(addResult => {
++              const objectID = addResult.objectId;
++              const globalID = addResult.globalId;
++
++              // TODO ESASNO DEĞİŞTİRİLECEK TEST İÇİN YAZILDI
++              const formValues = { objectid: objectID, e_yatirim_proje_no: multiSelectID };
++              const updateIslemIDPromise = this.updateIslemID(objectID).toPromise();
++              const updateMultiSelectIDPromise = this.updateMultiSelectID(formValues).toPromise();
++
++              Promise.all([updateIslemIDPromise, updateMultiSelectIDPromise]).then(x => {
++                if (this.moduleData.value === 10) {
++                  if (this.processState === -1 && !this.createFromHareket) {
++                    const formValues = this.formGroup.value;
++                    // objectid setlemezsen updatedosyano da updatefeatures yapamaz. updtfeatures objectid ister
++                    formValues['objectid'] = objectID;
++                    formValues['dosya_no'] = objectID;
++                    this.updateDosyaNo(formValues);
++                  } else if (this.processState !== -1 && !this.createFromHareket) {
++                    const formValues = this.formGroup.value;
++                    // objectid setlemezsen updatedosyano da updatefeatures yapamaz. updtfeatures objectid ister
++                    formValues['objectid'] = objectID;
++                    formValues['dosya_no'] = this.formGroup.controls['dosya_no'].value;
++                    this.updateDosyaNo(formValues);
++                  }
++                }
++
++                if (this.agGrid !== undefined) {
++                  const rows = this.agGrid.api.getSelectedRows();
++
++                  const malikData = rows.map(row => {
++                    return { attributes: { malik_id: row['globalid'], islem_id: globalID } };
++                  });
++                  this.addMalikData(malikData).subscribe(malikAddRes => {
++                    // TODO: Control Result
++                    if (this.processState === -1) {
++                      this.notify.open(notifyMessage, 'success', 10);
++                    } else {
++                      this.notify.open(notifyMessage, 'success', 10);
++                    }
++                    this.dialog.close(true);
++                  });
++                }
++
++                if (this.formGroup.value.attachment !== undefined && this.formGroup.value.attachment !== null) {
++                  const requestList = [];
++                  let attachmentProgressDialog;
++
++                  attachmentDataArray.forEach(attachment => {
++                    const attachmentFormData = new FormData();
++                    attachmentFormData.append('attachment', attachment);
++                    attachmentFormData.append('f', 'json');
++                    attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++                    // tslint:disable-next-line:max-line-length
++                    const urlList = [`https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${objectID}/addAttachment`];
++
++                    requestList.push(...urlList.map(url => this.http.post(url, attachmentFormData)));
++                  });
++
++                  attachmentProgressDialog = this.dialogService.
++                    openUnClosable(ProgressInfoComponent, 'Dosyalar yükleniyor', false, {}, false, 'light');
++
++                  forkJoin(requestList).subscribe((attachmentResponse: AddAttachmentResult[]) => {
++                    attachmentProgressDialog.close();
++                    const hasFail = attachmentResponse.find(a => !a.addAttachmentResult.success);
++                    if (hasFail) {
++                      console.error('attachmentResponse hasFail', attachmentResponse);
++                      this.notify.open('Dosya Yüklemeleri Başarısız Oldu', 'danger', 5);
++                    } else {
++                      this.notify.open('Dosya Yüklemeleri Başarılı', 'success', 5);
++                    }
++                  }, (err) => {
++                    attachmentProgressDialog.close();
++                    console.error('err', err);
++                    this.notify.open('Dosya Yüklemeleri Başarısız Oldu', 'danger', 5);
++                  });
++                } else {
++                  return;
++                }
+               });
+-            const attachmentProgressDialog = this.dialogService.
+-              openUnClosable(ProgressInfoComponent, 'Dosyalar yükleniyor', false, {}, false, 'light');
+-
+-            const requestList = urlList.map(url => this.http.post(url, attachmentFormData));
+-            forkJoin(requestList).subscribe((attachmentResponse: AddAttachmentResult[]) => {
+-              attachmentProgressDialog.close();
+-              const hasFail = attachmentResponse.find(a => !a.addAttachmentResult.success);
+-              if (hasFail) {
+-                console.error('attachmentResponse hasFail', attachmentResponse);
+-                this.notify.open('Dosya Yüklemeleri Başarısız Oldu', 'danger', 5);
+-              } else {
+-                this.notify.open('Dosya Yüklemeleri Başarılı', 'success', 5);
+-              }
+-            }, (err) => {
+-              attachmentProgressDialog.close();
+-              console.error('err', err);
+-              this.notify.open('Dosya Yüklemeleri Başarısız Oldu', 'danger', 5);
+             });
+-
+           }, (err) => {
+             console.error('insertResponse error', err);
+             progressDialog.close();
+             this.dialog.close(true);
+           });
+       });
+-
+     });
+   }
+ 
+   onSubmit() {
+-    if (this.isMulti) {
+-      this.onMultiSubmit();
+-      return;
+-    }
+-    if (this.acceptanceDialog === undefined) {
+-      let message = '';
+-      let header = '';
+-      let notifyMessage = '';
+-      if (this.processState === -1) {
+-        header = 'Kayıt';
+-        message = 'İşlem kaydı yapmak istediğinize emin misiniz ?';
+-        notifyMessage = 'İşlem Ekleme Başarılı';
+-      } else {
+-        header = 'Düzenleme';
+-        message = 'İşlem kaydını düzenlemek istediğinize emin misiniz ?';
+-        notifyMessage = 'İşlem Düzenleme Başarılı';
++    if (!this.mirasciState) {
++      if (this.isMulti) {
++        this.onMultiSubmit();
++        return;
+       }
++      if (this.acceptanceDialog === undefined) {
++        let message = '';
++        let header = '';
++        let notifyMessage = '';
++        if (this.processState === -1) {
++          header = 'Kayıt';
++          message = 'İşlem kaydı yapmak istediğinize emin misiniz ?';
++          notifyMessage = 'İşlem Ekleme Başarılı';
++        } else {
++          header = 'Düzenleme';
++          message = 'İşlem kaydını düzenlemek istediğinize emin misiniz ?';
++          notifyMessage = 'İşlem Düzenleme Başarılı';
++        }
+ 
+-      if (this.moduleData.value === 14 && this.processState === -1) {
+-        const binaSiraNo = this.feature.attributes['refid'];
+-        this.binaSiraNo = binaSiraNo;
++        if (this.moduleData.value === 14 && this.processState === -1) {
++          const binaSiraNo = this.feature.attributes['refid'];
++          this.binaSiraNo = binaSiraNo;
+ 
+-        this.http.get(environment.arcgisMEBURL + 'FeatureServer/14/query',
+-          {
+-            params: {
+-              where: `bina_id = ${binaSiraNo} and yatirim_ad = '${this.formGroup.value['yatirim_ad']}' `,
+-              token: sessionStorage.getItem('CBSArcToken'), f: 'json', returnCountOnly: 'true'
+-            }
+-          })
+-          .subscribe(countObject => {
+-            const count = countObject['count'];
+-            if (count > 0) {
+-              this.notify.open(
+-                `BU BİNAYA '${this.formGroup.value['yatirim_ad']}' TÜRÜ ZATEN EKLENMİŞ.LÜTFEN BAŞKA ATÖLYE TÜRÜ SEÇİNİZ.`, 'danger', 10);
+-            } else {
+-              this.onAcceptDialogSubmit(header, message, notifyMessage);
+-            }
+-          });
+-      } else {
+-        this.onAcceptDialogSubmit(header, message, notifyMessage);
++          // this.http.get(environment.arcgisMEBURL + 'FeatureServer/14/query',
++          this.http.get('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query',
++            {
++              params: {
++                where: `bina_id = ${binaSiraNo} and yatirim_ad = '${this.formGroup.value['yatirim_ad']}' `,
++                token: sessionStorage.getItem('CBSArcToken'), f: 'json', returnCountOnly: 'true'
++              }
++            })
++            .subscribe(countObject => {
++              const count = countObject['count'];
++              if (count > 0) {
++                this.notify.open(
++                  `BU BİNAYA '${this.formGroup.value['yatirim_ad']}' TÜRÜ ZATEN EKLENMİŞ.LÜTFEN BAŞKA ATÖLYE TÜRÜ SEÇİNİZ.`, 'danger', 10);
++              } else {
++                this.onAcceptDialogSubmit(header, message, notifyMessage);
++              }
++            });
++        } else {
++          this.onAcceptDialogSubmit(header, message, notifyMessage);
++        }
+       }
+     }
+   }
+@@ -718,18 +1096,65 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             results = <Array<{ success: boolean, objectId: number }>>res['updateResults'];
+           }
+ 
+-          if (results !== undefined && results.length > 0) {
+-            if (this.agGrid !== undefined) {
+-              const rows = this.agGrid.api.getSelectedRows();
++          // NOT
++          // VERİTABANININ SİLİNMESİ YA DA DEĞİŞTİRİLMESİ DURUMLARINDA GLOBALID DEĞİŞTİĞİNDEN
++          // GLOBALİD İLE YAPILAN TÜM İŞLEMLER UPDATE EDİLECEK
++          // BUNA İŞLEM MALİK TABLOSUNDA TUTULAN ISLEM_ID DE DAHİL. ŞUAN BURADA O İŞLEMİN GLOBALID Sİ TUTULUYOR
++          // ANCAK ARTIK İŞLEM TABLOSUNUN BİR İD FİELDI OLACAK VE BU FİELD O İŞLEMİN OBJECTID SİNİ TUTACAK
++          // İŞLEM MALİK TABLOSUNDA TUTULAN İŞLEM_ID DE BU İD İLE EŞLEŞECEK ARTIK.
++          const updateIslemIDPromise = this.updateIslemID(results[0].objectId).toPromise();
+ 
+-              if (this.processState === 1) {
+-                const malikData = rows.map(row => {
+-                  return { attributes: { malik_id: row['globalid'], islem_id: res['updateResults'][0]['globalId'] } };
+-                });
++          Promise.all([updateIslemIDPromise]).then(x => {
++            if (results !== undefined && results.length > 0) {
++              if (this.agGrid !== undefined) {
++                const rows = this.agGrid.api.getSelectedRows();
+ 
+-                const deleteMalikWhere = `islem_id='${this.infoAttributes.globalid}'`;
+-                this.deleteMalikData(deleteMalikWhere).subscribe(malikDeleteRes => {
+-                  // TODO: Control Result
++                if (this.moduleData.value === 10) {
++                  if (this.processState === -1) {
++                    if (this.createFromHareket) {
++                    } else {
++                      const formValues = this.formGroup.value;
++                      const objectid = results[0].objectId;
++                      // objectid setlemezsen updatedosyano da updatefeatures yapamaz. updtfeatures objectid ister
++                      formValues['objectid'] = objectid;
++                      formValues['dosya_no'] = objectid;
++                      this.updateDosyaNo(formValues);
++                    }
++                  } else {
++                    if (this.createFromHareket) {
++                    } else {
++                      const formValues = this.formGroup.value;
++                      const objectid = results[0].objectId;
++                      // objectid setlemezsen updatedosyano da updatefeatures yapamaz. updtfeatures objectid ister
++                      formValues['objectid'] = objectid;
++                      formValues['dosya_no'] = this.formGroup.controls['dosya_no'].value;
++                      this.updateDosyaNo(formValues);
++                    }
++                  }
++                }
++                if (this.processState === 1) {
++                  const malikData = rows.map(row => {
++                    return { attributes: { malik_id: row['globalid'], islem_id: res['updateResults'][0]['globalId'] } };
++                  });
++
++                  const deleteMalikWhere = `islem_id='${this.infoAttributes.globalid}'`;
++                  this.deleteMalikData(deleteMalikWhere).subscribe(malikDeleteRes => {
++                    // TODO: Control Result
++                    this.addMalikData(malikData).subscribe(malikAddRes => {
++                      // TODO: Control Result
++                      if (this.processState === -1) {
++                        this.notify.open(notifyMessage, 'success', 10);
++                      } else {
++                        this.notify.open(notifyMessage, 'success', 10);
++                      }
++                      dialog.close();
++                      this.dialog.close(true);
++                    });
++                  });
++                } else {
++                  const malikData = rows.map(row => {
++                    return { attributes: { malik_id: row['globalid'], islem_id: res['addResults'][0]['globalId'] } };
++                  });
+                   this.addMalikData(malikData).subscribe(malikAddRes => {
+                     // TODO: Control Result
+                     if (this.processState === -1) {
+@@ -740,52 +1165,38 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+                     dialog.close();
+                     this.dialog.close(true);
+                   });
+-                });
++                }
+               } else {
+-                const malikData = rows.map(row => {
+-                  return { attributes: { malik_id: row['globalid'], islem_id: res['addResults'][0]['globalId'] } };
+-                });
+-                this.addMalikData(malikData).subscribe(malikAddRes => {
+-                  // TODO: Control Result
+-                  if (this.processState === -1) {
++                const formValues = this.formGroup.value;
++
++                if (this.formGroup.value.attachment !== undefined) {
++                  if (this.processState !== -1) {
++                    results = res['updateResults'];
++
++                    this.updateAttachments(formValues, dialog, results);
+                     this.notify.open(notifyMessage, 'success', 10);
+                   } else {
++                    this.addAttachment(formValues, dialog, results);
+                     this.notify.open(notifyMessage, 'success', 10);
+                   }
+-                  dialog.close();
+-                  this.dialog.close(true);
+-                });
+-              }
+-            } else {
+-              const formValues = this.formGroup.value;
+-
+-              if (this.formGroup.value.attachment !== undefined) {
+-                if (this.processState !== -1) {
+-                  results = res['updateResults'];
+-
+-                  this.updateAttachments(formValues, dialog, results);
+-                  this.notify.open(notifyMessage, 'success', 10);
+                 } else {
+-                  this.addAttachment(formValues, dialog, results);
+-                  this.notify.open(notifyMessage, 'success', 10);
+-                }
+-              } else {
+-                if (this.processState !== -1) {
+-                  this.removeIfHasAttachment(dialog);
+-                  this.notify.open(notifyMessage, 'success', 10);
+-                  dialog.close();
+-                  this.dialog.close(true);
+-                } else {
+-                  this.notify.open(notifyMessage, 'success', 10);
+-                  dialog.close();
+-                  this.dialog.close(true);
++                  if (this.processState !== -1) {
++                    this.removeIfHasAttachment(dialog);
++                    this.notify.open(notifyMessage, 'success', 10);
++                    dialog.close();
++                    this.dialog.close(true);
++                  } else {
++                    this.notify.open(notifyMessage, 'success', 10);
++                    dialog.close();
++                    this.dialog.close(true);
++                  }
+                 }
+               }
++            } else {
++              this.notify.open('İşlem Eklerken Hata Oluştu Lütfen Kontrol Ediniz', 'danger', 10);
++              dialog.close();
+             }
+-          } else {
+-            this.notify.open('İşlem Eklerken Hata Oluştu Lütfen Kontrol Ediniz', 'danger', 10);
+-            dialog.close();
+-          }
++          });
+         }, error => {
+           this.notify.open('İşlem Eklerken Hata Oluştu Lütfen Kontrol Ediniz', 'danger', 10);
+           dialog.close();
+@@ -796,59 +1207,209 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
++  postUpdateAttachment(editAttachmentURL: string, attachment: any, id: any) {
++
++    const attachmentForm = new FormData();
++
++    attachmentForm.append('attachmentId', id.toString());
++    attachmentForm.append('attachment', attachment);
++    attachmentForm.append('f', 'json');
++    attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++
++    return this.http.post(editAttachmentURL, attachmentForm);
++  }
++
+   updateAttachments(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+     const featureAttributes = <any>this.infoAttributes;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
++    // const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
++    //   `&token=${sessionStorage.getItem('CBSArcToken')}`;
++    const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${featureAttributes.objectid}/attachments?f=pjson` +
+       `&token=${sessionStorage.getItem('CBSArcToken')}`;
++    const deleteAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${featureAttributes.objectid}/deleteAttachments`;
++    const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${featureAttributes.objectid}/addAttachment`;
++    const updateAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${featureAttributes.objectid}/updateAttachment`;
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined) {
+         if (attachments.length === 0) {
+           this.addAttachment(formValues, dialog, results);
+         } else {
+-          const attachment = attachments[0];
+-          const editAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/updateAttachment`;
+-          const attachmentId = attachment.id;
+-
+-          const attachmentForm = new FormData();
++          const newAttachmentCount = this.formGroup.value['attachment'].length;
++          const previousAttachmentCount = attachments.length;
++
++          if (previousAttachmentCount > newAttachmentCount) {
++            const attachmentToBeDeletedCount = previousAttachmentCount - newAttachmentCount;
++            const deleteObservables = [];
++            // bu kadar eleman sondan silinecek arcgiste
++            // newattcount kadar da foreach dönerek update yapılacak.
++            for (let i = 0; i < attachmentToBeDeletedCount; i++) {
++              const count = i + 1;
++              const attachmentForm = new FormData();
++              const lastAttachment = attachments[attachments.length - count];
++              const lastAttachmentIndex = attachments.lastIndexOf(lastAttachment);
++
++              attachmentForm.append('attachmentIds', lastAttachment.id.toString());
++              attachmentForm.append('rollbackOnFailure', 'true');
++              attachmentForm.append('f', 'json');
++              attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++
++              deleteObservables.push(this.http.post(deleteAttachmentURL, attachmentForm));
++            }
+ 
+-          attachmentForm.append('attachmentId', attachmentId.toString());
+-          attachmentForm.append('attachment', this.formAttachmentData);
+-          attachmentForm.append('f', 'json');
+-          attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++            forkJoin(deleteObservables).subscribe(attachmentDeleteResults => {
++              const deleteAttachmentData = <any>attachmentDeleteResults;
++              let status = true;
++              deleteAttachmentData.find(data => {
++                const success = data['deleteAttachmentResults'][0].success;
++                if (!success) {
++                  status = false;
++                }
++              });
++              if (deleteAttachmentData !== undefined) {
++                if (status !== true) {
++                  console.error('Attachment cannot add');
++                  // TODO: Notify Error
++                } else {
++                  const updateObservables = [];
++                  for (let j = 0; j < newAttachmentCount; j++) {
++                    updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, this.formGroup.value['attachment'][j], attachments[j].id));
++                  }
++                  forkJoin(updateObservables).subscribe(updateAttachmentRes => {
++                    let status = true;
++                    const updatedAttachmentData = <any>updateAttachmentRes;
++                    updatedAttachmentData.find(data => {
++                      const success = data['updateAttachmentResult'].success;
++                      if (!success) {
++                        status = false;
++                      }
++                    });
++                    if (updatedAttachmentData !== undefined) {
++                      if (status !== true) {
++                        console.error('Attachment did not updated');
++                      }
++                      this.dialog.close();
++                      this.dialog.close(true);
++                    } else {
++                      this.dialog.close();
++                      this.dialog.close(true);
++                    }
++                  });
++                }
++                dialog.close();
++                this.dialog.close(true);
++              } else {
++                dialog.close();
++                this.dialog.close(true);
++              }
++            });
++          } else if (previousAttachmentCount < newAttachmentCount) {
++            const attachmentToBeAddedCount = newAttachmentCount - previousAttachmentCount;
++            const newAttachmentFiles = this.formGroup.value['attachment'];
++            const addObservables = [];
++            // burada da bu count kadar ekleme yapılacak diğerleri update edilecek
++            for (let i = 0; i < attachmentToBeAddedCount; i++) {
++              const attachmentForm = new FormData();
++              const lastAttachment = newAttachmentFiles[(newAttachmentFiles.length - 1) - i];
++              const lastAttachmentIndex = attachments.lastIndexOf(lastAttachment);
++
++              attachmentForm.append('attachment', lastAttachment);
++              attachmentForm.append('rollbackOnFailure', 'true');
++              attachmentForm.append('f', 'json');
++              attachmentForm.append('token', sessionStorage.getItem('CBSArcToken'));
++
++              addObservables.push(this.http.post(addAttachmentURL, attachmentForm));
++            }
+ 
+-          this.http.post(editAttachmentURL, attachmentForm).subscribe(updateAttachmentRes => {
+-            const updatedAttachmentData = <any>updateAttachmentRes['updateAttachmentResult'];
++            forkJoin(addObservables).subscribe(attachmentAddResults => {
++              const addAttachmentData = <any>attachmentAddResults;
++              let status = true;
++              addAttachmentData.find(data => {
++                const success = data['addAttachmentResult'].success;
++                if (!success) {
++                  status = false;
++                }
++              });
+ 
+-            if (updatedAttachmentData !== undefined) {
+-              const status = updatedAttachmentData.success;
+-              if (status !== true) {
+-                console.error('Attachment did not updated');
++              if (addAttachmentData !== undefined) {
++                if (status !== true) {
++                  console.error('Attachment cannot add');
++                  // TODO: Notify Error
++                } else {
++                  const updateObservables = [];
++                  for (let j = 0; j < previousAttachmentCount; j++) {
++                    updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, newAttachmentFiles[j], attachments[j].id));
++                  }
++                  forkJoin(updateObservables).subscribe(updateAttachmentRes => {
++                    let status = true;
++                    const updatedAttachmentData = <any>updateAttachmentRes;
++                    updatedAttachmentData.find(data => {
++                      const success = data['updateAttachmentResult'].success;
++                      if (!success) {
++                        status = false;
++                      }
++                    });
++                    if (updatedAttachmentData !== undefined) {
++                      if (status !== true) {
++                        console.error('Attachment did not updated');
++                      }
++                      this.dialog.close();
++                      this.dialog.close(true);
++                    } else {
++                      this.dialog.close();
++                      this.dialog.close(true);
++                    }
++                  });
++                }
++                dialog.close();
++                this.dialog.close(true);
++              } else {
++                dialog.close();
++                this.dialog.close(true);
+               }
+-              dialog.close();
+-              this.dialog.close(true);
+-            } else {
+-              dialog.close();
+-              this.dialog.close(true);
++            });
++          } else { // eşitse zaten direkt olarak kaç taneyse o kadarı tek tek update edilecek
++            const updateObservables = [];
++            for (let j = 0; j < newAttachmentCount; j++) {
++              updateObservables.push(this.postUpdateAttachment(updateAttachmentURL, this.formGroup.value['attachment'][j], attachments[j].id));
+             }
+-
+-          });
++            forkJoin(updateObservables).subscribe(updateAttachmentRes => {
++              let status = true;
++              const updatedAttachmentData = <any>updateAttachmentRes;
++              updatedAttachmentData.find(data => {
++                const success = data['updateAttachmentResult'].success;
++                if (!success) {
++                  status = false;
++                }
++              });
++              if (updatedAttachmentData !== undefined) {
++                if (status !== true) {
++                  console.error('Attachment did not updated');
++                }
++                this.dialog.close();
++                this.dialog.close(true);
++              } else {
++                this.dialog.close();
++                this.dialog.close(true);
++              }
++            });
++          }
+         }
+       } else {
+         dialog.close();
+         this.dialog.close(true);
+       }
+-
+     });
+   }
+ 
+   removeIfHasAttachment(dialog: DialogRef) {
+     const featureAttributes = <any>this.infoAttributes;
+-    const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
++    // const attachmentInfosURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/attachments?f=pjson` +
++    const attachmentInfosURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${featureAttributes.objectid}/attachments?f=pjson` +
+       `&token=${sessionStorage.getItem('CBSArcToken')}`;
+ 
+     this.getAttachments(attachmentInfosURL).subscribe(attachments => {
+       if (attachments !== undefined && attachments.length > 0) {
+-        const editAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/deleteAttachments`;
++        // const editAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/14/${featureAttributes.objectid}/deleteAttachments`;
++        const editAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${featureAttributes.objectid}/deleteAttachments`;
+ 
+         const attachmentForm = new FormData();
+         const attachmentIds = attachments.map(attachmentObject => attachmentObject.id);
+@@ -879,49 +1440,159 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     return this.http.get(url).pipe(map(res => <Array<esri.AttachmentInfo>>res['attachmentInfos']));
+   }
+ 
++  // addAnotherFile(event: Event) {
++  //   const currentFileFields = this.moduleFormData.filter(data => data.type === 'file');
++  //   if (currentFileFields.length <= 4) {
++  //     this.addAnotherFileState = true;
++  //     this.addDynamicFileField(currentFileFields);
++  //   }
++  // }
++
++  // onClickFileCloseButton(event: Event) {
++  //   const target = event.target as HTMLElement;
++  //   const parentElement = target.parentElement as HTMLElement;
++  //   const fileContainer = parentElement.parentElement as HTMLElement;
++
++  //   const currentLead = this.recursiveFormLead(this.moduleFormData, 0);
++
++  //   // moduleformdatadan silinecek namelerindeki sayılardan 1 azaltılacak eğer bundan bir önceki parent fileContainer değilse name sadece attachment olacak
++
++  //   const textContent = fileContainer.textContent;
++  //   let nameIndexOfFormData = '';
++  //   if (textContent.includes('_')) {
++  //     const splitArray = textContent.split('_');
++  //     nameIndexOfFormData += splitArray[1].charAt(0);
++  //   }
++
++  //   const indexOfElementToBeDeleted = this.moduleFormData.findIndex(moduleData => moduleData.type === 'file' && moduleData.name.includes(nameIndexOfFormData));
++
++  //   const nameOfElementToBeDeleted = this.moduleFormData[indexOfElementToBeDeleted].name;
++
++  //   const firstPartOfModuleFormData = this.moduleFormData.slice(0, indexOfElementToBeDeleted);
++  //   const secondPartOfModuleFormData = this.moduleFormData.slice(indexOfElementToBeDeleted + 1);
++
++  //   // name ve aliaslarında _ içerenlerinkinden sayılardan 1 er sayı azalacak
++
++  //   secondPartOfModuleFormData.forEach(data => {
++  //     if (data.type === 'file' && data.name.includes('_')) {
++  //       const splitNameArray = data.name.split('_');
++  //       const splitAliasArray = data.alias.split('_');
++  //       const index = Number(splitNameArray[1]);
++  //       data.name = splitNameArray[0] + '_' + `${index - 1}`;
++  //       data.alias = splitAliasArray[0] + '_' + `${index - 1}`;
++  //     }
++  //   });
++
++  //   this.moduleFormData = [].concat(firstPartOfModuleFormData, secondPartOfModuleFormData);
++  //   this.formGroup.removeControl(nameOfElementToBeDeleted);
++
++  //   const firstPart = this.moduleData.formData[currentLead].slice(0, indexOfElementToBeDeleted);
++  //   const secondPart = this.moduleData.formData[currentLead].slice(indexOfElementToBeDeleted + 1);
++
++  //   this.moduleData.formData[currentLead] = [].concat(firstPart, secondPart);
++
++  // }
++
+   addAttachment(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
+-    const addAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/14/${results[0].objectId}/addAttachment`;
+ 
+-    const attachmentFormData = new FormData();
++    const observables = this.attachmentDataArray.map(attachmentData => {
++      // const addAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/14/${results[0].objectId}/addAttachment`;
++      const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${results[0].objectId}/addAttachment`;
++
++      const attachmentFormData = new FormData();
++
++      attachmentFormData.append('attachment', attachmentData);
++      attachmentFormData.append('f', 'json');
++      attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+ 
+-    attachmentFormData.append('attachment', this.formAttachmentData);
+-    attachmentFormData.append('f', 'json');
+-    attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
+ 
++      return this.http.post(addAttachmentURL, attachmentFormData);
++    });
++
++    forkJoin(observables).subscribe(attachmentAddResults => {
+ 
+-    this.http.post(addAttachmentURL, attachmentFormData).subscribe(attachmentAddResult => {
+-      const addedAttachmentData = <any>attachmentAddResult['addAttachmentResult'];
++      attachmentAddResults.forEach(attachmentAddResult => {
++        const addedAttachmentData = <any>attachmentAddResult['addAttachmentResult'];
+ 
+-      if (addedAttachmentData !== undefined) {
+-        const status = addedAttachmentData.success;
+-        if (status !== true) {
+-          console.error('Attachment cannot add');
+-          // TODO: Notify Error
++        if (addedAttachmentData !== undefined) {
++          const status = addedAttachmentData.success;
++          if (status !== true) {
++            console.error('Attachment cannot add');
++            // TODO: Notify Error
++          }
++          dialog.close();
++          this.dialog.close(true);
++        } else {
++          dialog.close();
++          this.dialog.close(true);
+         }
++      }, (error) => {
++        this.notify.open('Dosya Eklenirken Hata Oluştu, Lütfen Kontrol Ediniz', 'danger', 10);
+         dialog.close();
+         this.dialog.close(true);
+-      } else {
+-        dialog.close();
+-        this.dialog.close(true);
+-      }
+-    }, (error) => {
+-      this.notify.open('Dosya Eklenirken Hata Oluştu, Lütfen Kontrol Ediniz', 'danger', 10);
+-      dialog.close();
+-      this.dialog.close(true);
++      });
+     });
+   }
+ 
++  // addAttachment2(formValues: any, dialog: DialogRef, results: Array<{ success: boolean, objectId: number }>) {
++
++  //   const observables = this.attachmentDataArray.map(attachmentData => {
++  //     // const addAttachmentURL = `${environment.arcgisMEBURL}/FeatureServer/14/${results[0].objectId}/addAttachment`;
++  //     const addAttachmentURL = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${results[0].objectId}/addAttachment`;
++
++  //     const attachmentFormData = new FormData();
++
++  //     attachmentFormData.append('attachment', attachmentData);
++  //     attachmentFormData.append('f', 'json');
++  //     attachmentFormData.append('token', sessionStorage.getItem('CBSArcToken'));
++
++
++  //     return this.http.post(addAttachmentURL, attachmentFormData);
++  //   });
++
++  //   forkJoin(observables).subscribe(attachmentAddResults => {
++
++  //     attachmentAddResults.forEach(attachmentAddResult => {
++  //       const addedAttachmentData = <any>attachmentAddResult['addAttachmentResult'];
++
++  //       if (addedAttachmentData !== undefined) {
++  //         const status = addedAttachmentData.success;
++  //         if (status !== true) {
++  //           console.error('Attachment cannot add');
++  //           // TODO: Notify Error
++  //         }
++  //         dialog.close();
++  //         this.dialog.close(true);
++  //       } else {
++  //         dialog.close();
++  //         this.dialog.close(true);
++  //       }
++  //     }, (error) => {
++  //       this.notify.open('Dosya Eklenirken Hata Oluştu, Lütfen Kontrol Ediniz', 'danger', 10);
++  //       dialog.close();
++  //       this.dialog.close(true);
++  //     });
++  //   });
++  // }
++
+   deleteMalikData(where: string) {
+     const postFormData = new FormData();
+     postFormData.append('where', where);
+     postFormData.append('f', 'json');
+     postFormData.append('rollbackOnFailure', 'true');
+ 
++    // GAGA BURASI AÇILACAK
+     return this.http.post(environment.arcgisMEBURL + 'FeatureServer/' + 17 + '/deleteFeatures', postFormData, {
+       params: {
+         token: sessionStorage.getItem('CBSArcToken'),
+       }
+     });
++
++    // return this.http.post('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3/deleteFeatures', postFormData, {
++    //   params: {
++    //     token: sessionStorage.getItem('CBSArcToken'),
++    //   }
++    // });
+   }
+ 
+   addMalikData(malikData: Array<{ attributes: { malik_id: string, islem_id: string } }>) {
+@@ -930,37 +1601,108 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     postFormData.append('f', 'json');
+     postFormData.append('rollbackOnFailure', 'true');
+ 
++    // GAGA BURASI AÇILACAK
+     return this.http.post(environment.arcgisMEBURL + 'FeatureServer/' + 17 + '/addFeatures', postFormData, {
+       params: {
+         token: sessionStorage.getItem('CBSArcToken'),
+       }
+     });
++    // return this.http.post('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3/addFeatures', postFormData, {
++    //   params: {
++    //     token: sessionStorage.getItem('CBSArcToken'),
++    //   }
++    // });
++
+   }
+ 
+   onDeleteProcess() {
+-    if (this.acceptanceDialog === undefined) {
+-      this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'Silme', false, {
+-        data: {
+-          message: 'İşleme bağlı tüm hareketler silinecek. Kaydı Silmek İstediğinize Emin Misiniz ?'
+-        }
+-      }, false, 'light');
+-      this.acceptanceDialog.afterClosed.subscribe(closeResult => {
+-        if (closeResult === true) {
+-          this.deleteProcess();
+-        }
+-        this.acceptanceDialog = undefined;
+-      });
++    // eğer multiSelectIDsi null değilse çoklu seçimle eklenmiş bir işlem demektir.
++    // bu durumda çoklu seçimle eklenmiş tüm işlemlerin mi yoksa sadece seçilmiş işlemin mi silinip silinmeyeceği sorulacak.
++    let message = 'İşleme Bağlı Tüm Hareketler Silinecek. Kaydı Silmek İstediğinize Emin Misiniz?';
++    if (this.infoAttributes['e_yatirim_proje_no']) {
++      const warningMessage = 'Bu İşlem Çoklu Seçimle Eklenmiştir.';
++
++      if (this.multiSelectAcceptanceDialog === undefined) {
++        this.multiSelectAcceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'UYARI', false, {
++          data: {
++            message: warningMessage,
++            multiSelectDeleteProcess: true
++          }
++        }, false, 'light');
++        this.multiSelectAcceptanceDialog.afterClosed.subscribe(multiSelectChoise => {
++          if (multiSelectChoise === 'allProcess') {
++            // tslint:disable-next-line:max-line-length
++            message = 'Bu İşlemle Birlikte Çoklu Olarak Eklenmiş Tüm İşlemler ve Bu İşlemlere Bağlı Tüm Hareketler Silinecek. Kayıtları Silmek İstediğinize Emin Misiniz?'
++          }
++
++          if (this.acceptanceDialog === undefined) {
++            this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'Silme', false, {
++              data: {
++                message: message
++              }
++            }, false, 'light');
++            this.acceptanceDialog.afterClosed.subscribe(closeResult => {
++              if (closeResult === true) {
++                this.deleteProcess(multiSelectChoise);
++              }
++              this.acceptanceDialog = undefined;
++            });
++          }
++
++          this.multiSelectAcceptanceDialog = undefined;
++        });
++      }
++    } else {
++      if (this.acceptanceDialog === undefined) {
++        this.acceptanceDialog = this.dialogService.open(AcceptDialogComponent, 'Silme', false, {
++          data: {
++            message: message
++          }
++        }, false, 'light');
++        this.acceptanceDialog.afterClosed.subscribe(closeResult => {
++          if (closeResult === true) {
++            this.deleteProcess();
++          }
++          this.acceptanceDialog = undefined;
++        });
++      }
+     }
+   }
+ 
+-  deleteProcess() {
++  getMultiSelectDatas() {
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
++
++    return this.http.get(url, {
++      params: {
++        where: `e_yatirim_proje_no='${this.infoAttributes['e_yatirim_proje_no']}' and touch_by='goksuvat'`,
++        outFields: ['*'],
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson'
++      }
++    });
++  }
++
++  async deleteProcess(multiSelectChoise?: string) {
+     const objectid = this.infoAttributes['objectid'];
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/deleteFeatures';
++    let headerMessage = 'Modül Siliniyor';
++    let toBeDeletedObjectIDs = [];
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/deleteFeatures';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/deleteFeatures';
+     const queryProperties = <esri.QueryProperties>{
+       objectIds: [objectid],
+     };
+ 
+-    const dialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'Modül Siliniyor', false,
++    if (multiSelectChoise) {
++      if (multiSelectChoise === 'allProcess') {
++        await this.getMultiSelectDatas().toPromise().then(multiSelectDatas => {
++          toBeDeletedObjectIDs = multiSelectDatas['features'].map(data => data['attributes'].objectid);
++          queryProperties.objectIds = toBeDeletedObjectIDs;
++          headerMessage = 'Modüller Siliniyor';
++        });
++      }
++    }
++
++    const dialog = this.dialogService.openUnClosable(ProgressInfoComponent, headerMessage, false,
+       { data: {} }, false, 'light');
+ 
+     this.deleteFeatures(queryProperties, url).subscribe(deleteProcessRes => {
+@@ -971,11 +1713,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           // TODO: Control Result
+         });
+       }
+-      const movementValues = `islem_refid = ${objectid}`;
++      const movementValues = `islem_refid IN (${toBeDeletedObjectIDs.toString()})`;
+       const movementQueryProperties = <esri.QueryProperties>{
+         where: movementValues,
+       };
+-      const movementLayerURL = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/deleteFeatures';
++      // const movementLayerURL = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/deleteFeatures';
++      const movementLayerURL = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/deleteFeatures';
+ 
+ 
+       this.deleteFeatures(movementQueryProperties, movementLayerURL).subscribe(deleteMovementRes => {
+@@ -988,17 +1731,66 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
++  updateDosyaNo(formValues: any) {
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/updateFeatures';
++
++    const formData = new FormData();
++    const features: Array<esri.Graphic> = [];
++    // @ts-ignore
++    const feature: esri.Graphic = {
++      attributes: formValues
++    };
++    features.push(feature);
++
++    formData.append('f', 'json');
++    formData.append('rollbackOnFailure', 'true');
++    formData.append('features', JSON.stringify(features));
++
++    this.http.post(url, formData, { params: { token: sessionStorage.getItem('CBSArcToken') } }).subscribe();
++  }
++
++  updateIslemID(objectId: any) {
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/updateFeatures';
++
++    const formData = new FormData();
++    const features: Array<esri.Graphic> = [];
++    // @ts-ignore
++    const feature: esri.Graphic = {
++      attributes: { objectid: objectId, id: objectId }
++    };
++    features.push(feature);
++
++    formData.append('f', 'json');
++    formData.append('rollbackOnFailure', 'true');
++    formData.append('features', JSON.stringify(features));
++
++    return this.http.post(url, formData, { params: { token: sessionStorage.getItem('CBSArcToken') } });
++  }
++
+   initalizeWithFormData(formData: Array<FormData>, recentFormValues?: Object) {
++    if (this.isMulti) {
++      const hasMalikSecimField = this.hasMalikFieldOnModuleFormDataForMultiSelect();
++      if (hasMalikSecimField) {
++        const isSelectedAllParcelIDsSame = this.isSelectedAllParcelIDsSameOnMultiSelect();
++        if (!isSelectedAllParcelIDsSame) {
++          this.dialog.close();
++          this.notify.open('Çoklu Seçim İçin Uygun Bir Operasyon Değildir', 'danger', 5);
++          return;
++        }
++      }
++    }
++
+     let value: any;
+     let formControlValue: any;
+ 
+-
+     formData.forEach(formControl => {
++
+       let tbaDotMethodUygulamaState = false;
+       let ucretFieldDotMethodUygState = false;
+ 
+       const formControlName = formControl.name;
+       const required = formControl.required;
++
+       if (formControl.type === 'domain') {
+         this.bindFieldDomainValues(formControl);
+       } else if (formControl.type === 'malik') {
+@@ -1007,6 +1799,10 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       if (recentFormValues !== undefined) {
+         value = recentFormValues[formControlName];
++        if (formControlName === 'alan') {
++          value = Number(value).toLocaleString('tr-TR');
++          // value = this.dotMethod(value.toString());
++        }
+         if (formControl.domain_values.length > 0) {
+           formControlValue = formControl.domain_values.find(domain => {
+             if (isNaN(value)) {
+@@ -1036,10 +1832,13 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       if (formControl.type === 'file' && this.processState === 0) {
+         const featureAttributes = <any>this.infoAttributes;
+         const objectid = featureAttributes['objectid'];
+-        const islemUrl = `${environment.arcgisMEBURL}/FeatureServer/14/${objectid}/`;
++        // const islemUrl = `${environment.arcgisMEBURL}/FeatureServer/14/${objectid}/`;
++        const islemUrl = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${objectid}/`;
+         const attachmentInfosURL = islemUrl + `attachments?token=${sessionStorage.getItem('CBSArcToken')}&f=pjson`;
+         this.getAttachments(attachmentInfosURL).subscribe(attachmentData => {
+-          this.attachmentData = attachmentData;
++          attachmentData.forEach(attachment => {
++            this.attachmentData.push(attachment);
++          });
+         });
+       }
+ 
+@@ -1047,15 +1846,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         if (this.moduleData.value === 14 && (formControlName === 'esas_no' || formControlName === 'karar_no')) {
+           tbaDotMethodUygulamaState = true;
+         }
+-        if (formControlName === 'ucret') {
+-          ucretFieldDotMethodUygState = true;
+-        }
+-        if (tbaDotMethodUygulamaState || ucretFieldDotMethodUygState) {
+-          if (this.processState === 0 && value !== null) {
+-            const commaValue = value.replace('.', ',');
+-            value = this.dotMethod(commaValue);
+-          }
+-        }
++
++        // GAGA UCRET FIELDI ARTIK NUMBER OLDUĞU İÇİN NOKTALAMA İÇİN LOCALE METODU KULLANILACAK
++        // if (formControlName === 'ucret') {
++        //   ucretFieldDotMethodUygState = true;
++        // }
++        // if (tbaDotMethodUygulamaState || ucretFieldDotMethodUygState) {
++        //   if (this.processState === 0 && value !== null) {
++        //     const commaValue = value.replace('.', ',');
++        //     value = this.dotMethod(commaValue);
++        //   }
++        // }
+       }
+ 
+       const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
+@@ -1071,6 +1872,31 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       }
+       this.formGroup.addControl(formControlName, createdFormControl);
+ 
++      // if (this.moduleData.value === 10 && formControlName === 'dosya_no') {
++      //   if (this.processState !== -1) {
++      //     const objectId = this.islemObjectId;
++      //     this.infoAttributes['dosya_no'] = objectId;
++      //     this.formGroup.controls[formControlName].setValue(objectId);
++      //     this.formGroup.controls[formControlName].disable();
++      //   } else {
++      //     if (this.infoAttributes !== undefined) {
++      //       this.formGroup.controls[formControlName].setValue(this.infoAttributes['dosya_no']);
++      //     }
++      //     this.formGroup.controls[formControlName].disable();
++      //   }
++      // }
++
++      if (this.moduleData.value === 10 && formControlName === 'dosya_no') {
++        if (this.infoAttributes !== undefined) {
++          this.formGroup.controls[formControlName].setValue(this.infoAttributes['dosya_no']);
++        }
++        // else {
++        //   const objectId = this.islemObjectId;
++        //   this.formGroup.controls[formControlName].setValue(objectId);
++        // }
++        this.formGroup.controls[formControlName].disable();
++      }
++
+       if (recentFormValues !== undefined) {
+         const atolyeIslemValue = recentFormValues['talep_amaci'];
+         if (this.moduleData.value === 14 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
+@@ -1105,7 +1931,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     if (foundBinaSayiField !== undefined && recentFormValues !== undefined) {
+       const binaSayiValue = Number(recentFormValues[foundBinaSayiField.name]);
+-      this.addOrRemoveDynamicFields(binaSayiValue, recentFormValues);
++      this.addOrremoveDynamicFieldsForBinaSayiForBinaSayi(binaSayiValue, recentFormValues);
+     }
+   }
+ 
+@@ -1170,7 +1996,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const firstFormData = moduleData.formData[0];
+     const foundLead = this.recursiveFormLead(firstFormData, 0);
+ 
+-    const leadingFormData = moduleData.formData[foundLead];
++    let leadingFormData = moduleData.formData[foundLead];
++    let durumu;
++    if (this.dialogConfig.data['formValues'] !== undefined) {
++      durumu = this.dialogConfig.data['formValues']['durumu'];
++    } else {
++      durumu = this.moduleData.value;
++    }
++
++    if (moduleData.value === 10 && durumu === 39) {
++      leadingFormData = moduleData.formData[7];
++    }
+ 
+     this.createInitializedForm();
+     this.moduleFormData = leadingFormData;
+@@ -1240,6 +2076,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   }
+ 
+   findLead(formControlValue: number | string, formData: FormData) {
++    this.previousLead = this.currentLead;
+     const numberValue = Number(formControlValue);
+ 
+     let formValue: number | string;
+@@ -1253,6 +2090,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       chosenValue.values.find(value => value === formValue) !== undefined);
+ 
+     if (foundChosenValue !== undefined) {
++      this.currentLead = foundChosenValue.lead;
+       return foundChosenValue.lead;
+     }
+   }
+@@ -1265,6 +2103,15 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     return this.http.get<Array<ModuleFormData>>('assets/TypeData.json');
+   }
+ 
++  getTestLayerFields() {
++    return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1', {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson',
++      }
++    }).pipe(map(response => response['fields']));
++  }
++
+   getLayerFields() {
+     return this.http.get<Array<esri.Field>>(environment.arcgisMEBURL + 'FeatureServer/' + 14, {
+       params: {
+@@ -1344,12 +2191,13 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       formData['sayi'] = toplamMaliyetStringData;
+     } else if (ucretFieldProcessArray.includes(this.moduleData.value)) {
+-      if (formData['ucret']) {
+-        let ucretField = <string>formData['ucret'];
+-        ucretField = ucretField.replace(/\./g, '');
+-        ucretField = ucretField.replace(/,/g, '.');
+-        formData['ucret'] = ucretField;
+-      }
++      // GAGA UCRET FIELD ARTIK NUMBER OLDUĞU ICIN BUNA GEREK KALMAYACAK
++      // if (formData['ucret']) {
++      //   let ucretField = <string>formData['ucret'];
++      //   ucretField = ucretField.replace(/\./g, '');
++      //   ucretField = ucretField.replace(/,/g, '.');
++      //   formData['ucret'] = ucretField;
++      // }
+     }
+     let feature = <esri.Graphic>{
+       attributes: formData,
+@@ -1361,7 +2209,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     // arasında CAST operasyonu yapılmıyor. Yani TBA maliyet fieldları içinde filtreleme yapamaz.
+     // Hatta kamulaştırma bedeli olan ucret fieldlarında da filtreleme yapamaz.
+ 
+-    feature = this.dotToCommaMethod(feature);
++    // feature = this.dotToCommaMethod(feature);
+     features.push(feature);
+     this.addFeatureBoundData(features);
+ 
+@@ -1371,13 +2219,31 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     postFormData.append('rollbackOnFailure', 'true');
+ 
+     if (this.processState === -1) {
+-      return this.http.post(environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/addFeatures', postFormData, {
+-        params: {
+-          token: sessionStorage.getItem('CBSArcToken'),
+-        }
+-      });
++      if (this.moduleData.value === 10) {
++        return this.http.post('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/addFeatures', postFormData, {
++          params: {
++            token: sessionStorage.getItem('CBSArcToken'),
++          }
++        });
++      } else {
++        // return this.http.post(environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/addFeatures', postFormData, {
++        //   params: {
++        //     token: sessionStorage.getItem('CBSArcToken'),
++        //   }
++        return this.http.post('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/addFeatures', postFormData, {
++          params: {
++            token: sessionStorage.getItem('CBSArcToken'),
++          }
++        });
++      }
+     } else if (this.processState === 1) {
+-      return this.http.post(environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/updateFeatures', postFormData, {
++      // return this.http.post(environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/updateFeatures', postFormData, {
++      //   params: {
++      //     token: sessionStorage.getItem('CBSArcToken'),
++      //   }
++      // });
++
++      return this.http.post('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/updateFeatures', postFormData, {
+         params: {
+           token: sessionStorage.getItem('CBSArcToken'),
+         }
+@@ -1507,16 +2373,33 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       filters: 'Filtreler',
+       noRowsToShow: 'Veri bulunamadı',
+     };
++
+   }
+ 
+   onGridReady() {
+-    const processState = this.processState;
++    this.agGrid.context = { componentParent: this };
++    let processState = this.processState;
+ 
+     const colDefs = this.createMalikColumDefinitions();
+     this.agGrid.api.setColumnDefs(colDefs);
+ 
+     const malikTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 15;
+ 
++    // const deneme = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3';
++
++
++
++    // İCRA VE YENİ ESAS HAREKETLERİNDE YENİ İŞLEM AÇILACAK
++    // TÜM MALİKLER GELECEK AMA İLK İŞLEMDE SEÇİLMİŞ MALİKLER TİKLİ OLARAK GELECEK
++    // BU AYRI BİR KONU OLARAK İŞLENECEK = > İCRADA SEÇİLMİŞ BU MALİKLER ÜZERİNDEN HAREKET EKLENİRKEN TEKRAR İCRA 
++    // HAREKETİ OLMASI DURUMUNDA İCRA AÇMIŞ OLAN MALİK TEKRAR AÇAMAYACAK,
++
++    if (this.formValues !== undefined) {
++      if (this.yeniIslemPenceresiAcilacakDomainList.includes(this.formValues['durumu'])) {
++        processState = 4;
++      }
++    }
++
+     if (processState === -1) {
+       if (!this.isMulti) {
+         const tasinmazID = <number>this.feature.attributes['tasinmaz_id'];
+@@ -1546,7 +2429,9 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       const islem_id = this.infoAttributes['globalid'];
+ 
+       const where = `islem_id = '${islem_id}'`;
++      // GAGA BURASI AÇILACAK
+       const malikIslemTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 17;
++      // const malikIslemTableURL = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3';
+ 
+       this.getMalikIds(malikIslemTableURL, where).subscribe(malikIDs => {
+         let malikWhere = 'globalid IN (';
+@@ -1595,12 +2480,15 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+             this.agGrid.api.setRowData([]);
+           }
+         });
+-      });
+-    } else if (processState === 1) {
++      }); //  GAGA EN SON PROCESSSTATE 4 İLE YENİ İŞLEM AÇILAN HAREKET DURUMLARINDA 
++      // İLK İŞLEMDE SEÇİLMİŞ MALİKLER TİKLENMİŞ OLARAK TÜM MALİKLER LİSTELENECEK
++    } else if (processState === 1 || processState === 4) {
+       const islem_id = this.infoAttributes['globalid'];
+ 
+       const where = `islem_id = '${islem_id}'`;
++      // GAGA BURASI AÇILACAK
+       const malikIslemTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 17;
++      // const malikIslemTableURL = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3';
+ 
+       this.getMalikIds(malikIslemTableURL, where).subscribe(malikIDs => {
+         let malikWhere = 'globalid IN (';
+@@ -1651,42 +2539,295 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         });
+       });
+     }
+-    this.agGrid.context = { componentParent: this };
+   }
+ 
+   move(array, from, to) {
+     array.splice(to, 0, array(from, 1)[0]);
+   }
+ 
+-  rowSelected() {
+-    const rows = this.agGrid.api.getSelectedRows();
+-    const selectionData = this.selectionData;
++  // Malik Seçimi Olan İşlemlerin İçinde Farklı Parseller Varsa Çoklu Seçim Yapılamaz. Çünkü Farklı Parsellerin Farklı Malikleri Var. 
++  // Bu yüzden multi seçimse ve kamulaştırma davaları ise ve seçilenlerdeki tüm parsellerin parselidleri eşit değilse uyarı verdirticem
++  isSelectedAllParcelIDsSameOnMultiSelect() {
++    this.isSelectedAllParcelIDsSameOnMultiSelectState = true;
++    const dialogData = this.dialogConfig.data;
++
++    const tasinmazIDs: Array<any> = dialogData.featureDatas[0]['selectedGraphics'].map(selectedGraphic => selectedGraphic['graphic']['attributes']['tasinmaz_id']);
++
++    // Sadece 1 tane tasinmazID varsa zaten sadece 1 tane parsel seçmiş demektir. Bu durumda çoklu işlem yapabilir.
++    if (tasinmazIDs.length > 1) {
++      for (let i = 0; i < tasinmazIDs.length; i++) {
++        if (tasinmazIDs[i + 1] !== undefined) {
++          if (tasinmazIDs[i] !== tasinmazIDs[i + 1]) {
++            this.isSelectedAllParcelIDsSameOnMultiSelectState = false;
++          }
++        }
++      }
++    }
++
++    if (this.isSelectedAllParcelIDsSameOnMultiSelectState) {
++      return true;
++    } else {
++      return false;
++    }
++  }
++
++  hasMalikFieldOnModuleFormDataForMultiSelect(event?: Event) {
++    this.hasMalikFieldOnModuleFormDataState = false;
++    let foundMalikField;
++
++    if (event && event.type === 'select') {
++      const formControlName = (<HTMLInputElement>event.target).name;
++      const formControlValue = this.formGroup.controls[formControlName].value;
++
++      const formData = this.findFormData(formControlName);
++      const lead = this.findLead(formControlValue, formData);
++
++      foundMalikField = this.moduleData.formData[lead].find(data => data.type === 'malik')
++    } else {
++      foundMalikField = this.moduleFormData.find(data => data.type === 'malik');
++    }
++
++    if (foundMalikField) {
++      this.hasMalikFieldOnModuleFormDataState = true;
++    }
++    return this.hasMalikFieldOnModuleFormDataState;
++  }
++
++  // İşlemi Olan Malik Listesi Setlemek İçin
++  setMaliksAlreadyInProcessList() {
++    let parselID;
++    if (this.isMulti) {
++      const hasMalikSecimField = this.hasMalikFieldOnModuleFormDataForMultiSelect();
++      if (hasMalikSecimField) {
++        const isSelectedAllParcelIDsSame = this.isSelectedAllParcelIDsSameOnMultiSelect();
++        if (!isSelectedAllParcelIDsSame) {
++          return;
++        } else {
++          parselID = this.dialogConfig.data['featuresDatas'][0]['selectedGraphics'][0]['graphic']['attributes']['tasinmaz_id'];
++        }
++      }
++    } else {
++      parselID = this.dialogConfig.data['feature']['attributes']['tasinmaz_id'];
++      const processUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
++      const islemMalikUrl = environment.arcgisMEBURL + 'FeatureServer/17/query';
++      // const islemMalikUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3/query';
++      const processProperties = <esri.QueryProperties>{
++        where: `parsel_id = ${parselID}`,
++        outFields: ['dosya_no', 'globalid']
++      };
++
++      this.getFeatures(processUrl, processProperties).toPromise().then(processRes => {
++        processRes.features.forEach(process => {
++          const islemID = process.attributes['globalid'];
++          const dosyaNo = process.attributes['dosya_no'];
++          const islemMalikQueryProperties = <esri.QueryProperties>{
++            where: `islem_id='${islemID}'`, // BURASI HİSSEID YE GÖRE KONTROL EDİLECEK SONRASINDA
++            outFields: ['*']
++          };
++          this.getFeatures(islemMalikUrl, islemMalikQueryProperties).toPromise().then(islemMalikRes => {
++            if (islemMalikRes.features.length > 0) {
++              islemMalikRes.features.forEach(islemMalik => {
++                const data = islemMalik.attributes;
++                const malikWithDosyaNo: MalikDosyaNo = {
++                  dosya_no: dosyaNo, islem_id: data['islem_id'], malik_id: data['malik_id'],
++                  objectid: data['objectid']
++                };
++                this.malikListWithDosyaNo.push(malikWithDosyaNo);
++                this.malikListAlreadyHasProcess.push(islemMalik.attributes);
++              });
++            }
++          });
++        });
++      });
++    }
++  }
++
++  ifMalikHasAlreadyInOtherProcess(parselID: any, malikId: any) {
++    // const processUrl = environment.arcgisMEBURL + 'FeatureServer/' + 14 + '/query';
++    const processUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/query';
++    const islemMalikUrl = environment.arcgisMEBURL + 'FeatureServer/17/query';
++    // const islemMalikUrl = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/3/query';
++
++    const islemMalikQueryProperties = <esri.QueryProperties>{
++      where: `malik_id = '${malikId}'`, // DEĞİŞTİRİLECEK GLOBALID SADECE ID OLACAK
++      outFields: ['*']
++    };
++
++    let returnValue: any = -1;
++
++    return this.getFeatures(islemMalikUrl, islemMalikQueryProperties)
++      .toPromise().then(islemMalikFeatures => {
++        if (islemMalikFeatures.features.length > 0) { // O Malikin İşlemi Var Demektir O Zaman O İşlemin Parsel ID si ile Uyuşuyor Mu
++          // Diye Bakılması Lazım
++
++          const processQueryProperties = <esri.QueryProperties>{
++            where: `parsel_id = ${parselID}`,
++            outFields: ['dosya_no', 'globalid'] // DEĞİŞTİRİLECEK GLOBALID SADECE ID OLACAK
++          };
++
++          return this.getFeatures(processUrl, processQueryProperties).toPromise()
++            .then(processFeatures => {
++              if (processFeatures.features.length > 0) {
++                islemMalikFeatures.features.forEach(malikIslemi => {
++                  const islemID = malikIslemi.attributes['islem_id'];
++                  const foundFeature = processFeatures.features.find(processFeature => processFeature.attributes['globalid'] === islemID);
++
++                  if (foundFeature) {
++                    returnValue = foundFeature.attributes;
++                  }
++                });
++                return returnValue;
++              }
++            });
++        }
++      });
++  }
++
++  setMalikCalculations(rows: Array<any>) {
++    // Detayda selectionDatayı hesaplamasın artık. Çünkü artık alan(Davalık Yüz Ölçümü) elle de girilebilecek.
++    // Bu durumda servisten gelen değer gösterilmesi için calculate yapmayacak
++    if (this.processState !== 0) {
++      const selectionData = this.selectionData;
++      let shareArea = 0;
++      let maliyeArea = 0;
++      let otherArea = 0;
++
++      for (let i = 0; i < rows.length; i++) {
++        const row = rows[i];
++        const area = row['hisse_yuz_olcum'];
++        shareArea += area;
++        if (row['vergi_no'] === '6110312806') {
++          maliyeArea += area;
++        } else {
++          otherArea += area;
++        }
++      }
++
++      selectionData.count = rows.length;
++      selectionData.maliye_area = Number(maliyeArea.toFixed(2));
++      selectionData.other_area = Number(otherArea.toFixed(2));
++
++      this.formGroup.controls['alan'].patchValue(Number(shareArea.toFixed(2)).toLocaleString('tr-TR'));
++
++      const alanControl = this.formGroup.controls['alan'];
++
++      // Alanın valuesu setlenirse formgroup otomatikman valid oluyor. O zaman da malik seçmeden kaydedebiliyor.
++      // Alan değeri 0.00 ise hiç malik seçilmemiş demektir. Bu durumda alan controlü undefined yapılırsa formgroup un validliği düşer.
++      if (alanControl.value === '0.00') {
++        alanControl.setValue(undefined);
++      }
++      this.checkAndUpdateCalculateFuntions(this.moduleData, this.formGroup);
++    }
++  }
+ 
+-    if (this.processState === 0) {
++  rowSelected(event: RowClickedEvent) {
++    if (this.lockRowSelectedEvent) {
+       return;
+     }
+ 
+-    let shareArea = 0;
+-    let maliyeArea = 0;
+-    let otherArea = 0;
+-    for (let i = 0; i < rows.length; i++) {
+-      const row = rows[i];
+-      const area = row['hisse_yuz_olcum'];
+-      shareArea += area;
+-      if (row['vergi_no'] === '6110312806') {
+-        maliyeArea += area;
+-      } else {
+-        otherArea += area;
++    const rows = this.agGrid.api.getSelectedRows();
++
++    if (event.api.getFocusedCell() !== undefined && !this.headerCheckboxSelectionState) {
++      const focusedColID = event.api.getFocusedCell().column.getColId();
++      if (focusedColID === 'mirasci' || focusedColID === 'mirasci_detay') {
++        if (event.node.isSelected()) {
++          event.node.setSelected(false);
++        } else {
++          event.node.setSelected(true);
++        }
++
++        this.lockRowSelectedEvent = true;
++
++        setTimeout(() => {
++          this.lockRowSelectedEvent = false;
++        });
++
++        return;
++      }
++    }
++
++    this.malikHasAlreadyAddedState = false;
++
++    // Bir Parsel Üzerindeki İşlemlerde İşlem Eklenirken Malik Seçimi Yapıldığında
++    // Seçilen Malikin Halihazırda O Parselin İşlemlerinde Halihazırda Bir İşlemi Mevcut ise
++    // [* Yani İşlem Tablosunda ParselID(tasinmazID) deki İşlemlerin GlobalID'leri Tek Tek (şimdilik globalidye bakıcam
++    // sonrasında id fieldına göre bakılacak) İşlem-Malik Tablosunda Sorgulanacak Var İse İşlem-Malik Tablosundaki
++    // malikID ile İşlem Ekleme Penceresindeki Malik Seçimi Tablosunda Tiklenen MalikID Eşleşiyorsa Uyarı Verilecek *]
++    // O Malikin Halihazırdaki İşlemi Üzerinden Devam Etmesi İçin Dosya No Bilgisi ile Birlikte Uyarı Verilecek
++    // [* Bu Yüzden Her Halükarda İşlemler Tablosuna Tekrar Sadece Dosya No Bilgisi İçin İstek Atılmaması İçin
++    // İşlem Tablosuna Atılan İlk İstekte Alınan GlobalID nin Yanında DosyaNo Bilgisi De Tutulacak*]
++    // SOR?? VEYA İŞLEMLER TABLOSUNA TEKRAR İSTEK ATMAMAK İÇİN İŞLEM-MALİK TABLOSUNA DOSYANO FIELDI EKLENEBİLİR Mİ ?
++
++    let parselID;
++    if (this.isMulti) {
++      parselID = this.dialogConfig.data['featureDatas'][0]['selectedGraphics'][0]['graphic']['attributes']['tasinmaz_id'];
++    } else {
++      parselID = this.dialogConfig.data['feature']['attributes']['tasinmaz_id'];
++    }
++
++    const malikID = event.data['globalid'];
++    const isTicked = event.node.isSelected();
++    const infoAttributes = this.infoAttributes;
++    let dosyaNoState = false;
++    let malikKisitlamasiState = this.kamulastirmaDavalariIslemiMalikSecimKisitlamasiUygulanacakTalepTuruState;
++    let talepTuru;
++
++    if (infoAttributes !== undefined) {
++      if (infoAttributes['dosya_no'] !== undefined || infoAttributes['dosya_no'] !== null) {
++        dosyaNoState = true;
++
++        talepTuru = infoAttributes['talep_turu'];
++      }
++    } else {
++      const talepTuruControl = this.formGroup.controls['talep_turu'];
++      if (talepTuruControl !== undefined) {
++        talepTuru = talepTuruControl.value;
+       }
+     }
+ 
+-    selectionData.count = rows.length;
+-    selectionData.maliye_area = Number(maliyeArea.toFixed(2));
+-    selectionData.other_area = Number(otherArea.toFixed(2));
++    if (talepTuru !== undefined) {
++      this.kamulastirmaDavalariIslemiMalikSecimKisitlamasiUygulanacakTalepTuruState = true;
++      malikKisitlamasiState = true;
++    }
++
++    if (isTicked && malikKisitlamasiState) {
++      const promise = this.ifMalikHasAlreadyInOtherProcess(parselID, malikID).then(res => {
++
++        if (res !== -1 && res !== undefined) {
++          const dosyaNo = res['dosya_no'];
++          let selectedMalikInExactProcessState = false;
++
++          // Seçilmiş İşlemin Dosya Numarası Varsa Ve Bu Dosya Numarası İle Seçilen Malikin Bulunduğu Dosya Numarası Eşitse
++          // O Malik Eklenip Çıkarılabilir.
++          if (dosyaNo !== undefined) {
++            if (dosyaNoState) {
++              const dosyaNoIncludingSelectedMalik = dosyaNo;
++              const dosyaNoOfExactProcess = this.infoAttributes['dosya_no'];
++
++              if (dosyaNoIncludingSelectedMalik === dosyaNoOfExactProcess) {
++                selectedMalikInExactProcessState = true;
++              }
++            }
+ 
+-    this.formGroup.controls['alan'].patchValue(shareArea.toFixed(2));
++            if (!selectedMalikInExactProcessState) {
++              // TODO UYARI VERİLECEK
++              event.node.setSelected(false);
++              this.malikHasAlreadyAddedState = true;
++              const warningText = `Seçilen Malik Halihazırda Davalıktır. Lütfen #${dosyaNo} Numaralı 
++                Dosya Üzerinden İşlemi Devam Ettiriniz`;
++              this.notify.open(warningText, 'danger', 5);
++            } else {
++              this.setMalikCalculations(rows);
++            }
++          }
++        } else {
++          this.setMalikCalculations(rows);
++        }
++      });
++    } else {
++      this.setMalikCalculations(rows);
++    }
+ 
+-    this.checkAndUpdateCalculateFuntions(this.moduleData, this.formGroup);
+   }
+ 
+   getMalikIds(url: string, where: string) {
+@@ -1724,73 +2865,200 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const malikName = this.createColDef('Ad', 'ad', 'agTextColumnFilter');
+     const malikSurname = this.createColDef('Soyad', 'soyad', 'agTextColumnFilter');
+     const malikArea = this.createColDef('Yüzölçüm', 'hisse_yuz_olcum', 'agNumberColumnFilter');
++    const dosyaNo = this.createColDef('Dosya No', 'dosya_no', 'agNumberColumnFilter');
++    const mirasci = this.createColDef('Mirasçı Ekle', 'mirasci', '');
++    const mirasciDetay = this.createColDef('Mirasçı Detay', 'mirasci_detay', '');
++    dosyaNo.valueGetter = (params) => {
++      const foundMalik = this.malikListWithDosyaNo.find(malik => malik['malik_id'] === params.data['globalid']);
++      if (foundMalik) {
++
++        return foundMalik['dosya_no'];
++      }
++    };
+ 
+-
+-    colDefs.push(checkbox, malikTC, malikName, malikSurname, malikArea);
++    colDefs.push(checkbox, malikTC, malikName, malikSurname, malikArea, dosyaNo, mirasci, mirasciDetay);
+     return colDefs;
+   }
+ 
++  getMirasciFields() {
++    // BURASI MİRASÇI TABLOSU URL İ OLACAK
++    return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/5/query', {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson',
++      }
++    }).pipe(map(response => response['fields']));
++  }
++
++  onOpenMirasciDetail(params: any) {
++    this.mirasciState = true;
++    const tasinmazID = this.dialogConfig.data['feature']['attributes']['tasinmaz_id'];
++    // BURASI MİRASÇI TABLOSU URL İ OLACAK
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/4/query';
++    let isInfo = 1;
++    const queryProperties = <esri.QueryProperties>{
++      outFields: ['*'],
++      where: `tasinmaz_id='${tasinmazID}' and hisseid='${params['globalid']}'`,
++    };
++    const progress = this.dialogService.openUnClosable(ProgressInfoComponent, 'Mirasçı Detayı Alınıyor', false, {}, false, 'light');
++
++    this.getFeatures(url, queryProperties).subscribe(res => {
++      if (res.features.length > 0) {
++        progress.close();
++
++        this.mirasciDetailDialogRef = this.dialogService.open(MirasciComponent, 'Mirasçı Detayı', false, {
++          data: {
++            isInfo: 1,
++            featuresInfo: res.features
++          }
++        }, false, 'light');
++
++        this.mirasciDetailDialogRef.afterClosed.subscribe((closeParams: boolean) => {
++          if (closeParams === true) {
++            this.agGrid.api.purgeInfiniteCache();
++          }
++          this.mirasciDetailDialogRef = undefined;
++        });
++      }
++    });
++
++    setTimeout(() => {
++      this.mirasciState = false;
++    });
++  }
++
++  onOpenAddMirasci(params: any) {
++    this.mirasciState = true;
++    const tasinmazID = this.dialogConfig.data['feature']['attributes']['tasinmaz_id'];
++
++    let mirasciDialogRef = this.dialogService.open(MirasciComponent, 'Mirasçı Ekle', false, {
++      data: {
++        malikInfo: params,
++        tasinmazID: tasinmazID,
++        isInfo: -1
++      }
++    }, false, 'light');
++
++    mirasciDialogRef.afterClosed.subscribe((closeParams: boolean) => {
++      if (closeParams === true) {
++        this.agGrid.api.purgeInfiniteCache();
++      }
++      mirasciDialogRef = undefined;
++    });
++
++    setTimeout(() => {
++      this.mirasciState = false;
++    });
++  }
++
+   createColDef(headerName: string, fieldName: string, filterType: 'agNumberColumnFilter' | 'agTextColumnFilter' | '', checkbox = false) {
+     if (checkbox !== false) {
+       return <ColDef>{
+         headerName: headerName,
+         colId: fieldName,
+         field: fieldName,
+-        headerCheckboxSelection: true,
++        cellRendererParams: {
++          checkbox: true
++        },
++        headerCheckboxSelection: params => {
++          if (!this.malikChangeState) {
++            return false;
++          } else {
++            this.headerCheckboxSelectionState = true;
++            return true;
++          }
++        },
+         headerCheckboxSelectionFilteredOnly: true,
+-        checkboxSelection: true
+-      };
+-    } else {
+-      return <ColDef>{
+-        headerName: headerName,
+-        colId: fieldName,
+-        field: fieldName,
+-        filter: filterType,
+-        filterParams: {
+-          textCustomComparator: (filter: string, value: string, filterText: string) => {
+-            // @ts-ignore
+-            const filterTextLowerCase = filterText.toLocaleLowerCase('tr-TR');
+-            // @ts-ignore
+-            const valueLowerCase = value.toLocaleLowerCase('tr-TR');
+-
+-            switch (filter) {
+-              case 'contains':
+-                return valueLowerCase.indexOf(filterTextLowerCase) >= 0;
+-              case 'notContains':
+-                return valueLowerCase.indexOf(filterTextLowerCase) === -1;
+-              case 'equals':
+-                return valueLowerCase === filterTextLowerCase;
+-              case 'notEqual':
+-                return valueLowerCase !== filterTextLowerCase;
+-              case 'startsWith':
+-                return valueLowerCase.indexOf(filterTextLowerCase) === 0;
+-              case 'endsWith':
+-                const index = valueLowerCase.lastIndexOf(filterTextLowerCase);
+-                return index >= 0 && index === (valueLowerCase.length - filterTextLowerCase.length);
+-              default:
+-                // should never happen
+-                console.warn('invalid filter type ' + filter);
+-                return false;
+-            }
+-          },
+-          caseSensitive: true
++        checkboxSelection: true,
++        valueFormatter: (params) => {
++          if (!this.malikChangeState) {
++            params.colDef.checkboxSelection = false;
++            this.suppressRowClickSelection = true;
++          }
+         }
+       };
++    } else {
++      if (fieldName === 'mirasci') {
++        return <ColDef>{
++          headerName: headerName,
++          colId: fieldName,
++          cellRendererFramework: RendererComponent,
++          cellRendererParams: { title: 'Mirasçı Ekle', Component: this },
++          field: fieldName,
++          filter: false,
++          sortable: false,
++          width: 120
++        };
++      } else if (fieldName === 'mirasci_detay') {
++        return <ColDef>{
++          headerName: headerName,
++          colId: fieldName,
++          cellRendererFramework: RendererComponent,
++          cellRendererParams: { title: 'Mirasçı Detay', Component: this },
++          field: fieldName,
++          filter: false,
++          sortable: false,
++          width: 120
++        };
++      }
++      else {
++        return <ColDef>{
++          headerName: headerName,
++          colId: fieldName,
++          field: fieldName,
++          filter: filterType,
++          filterParams: {
++            textCustomComparator: (filter: string, value: string, filterText: string) => {
++              // @ts-ignore
++              const filterTextLowerCase = filterText.toLocaleLowerCase('tr-TR');
++              // @ts-ignore
++              const valueLowerCase = value.toLocaleLowerCase('tr-TR');
++
++              switch (filter) {
++                case 'contains':
++                  return valueLowerCase.indexOf(filterTextLowerCase) >= 0;
++                case 'notContains':
++                  return valueLowerCase.indexOf(filterTextLowerCase) === -1;
++                case 'equals':
++                  return valueLowerCase === filterTextLowerCase;
++                case 'notEqual':
++                  return valueLowerCase !== filterTextLowerCase;
++                case 'startsWith':
++                  return valueLowerCase.indexOf(filterTextLowerCase) === 0;
++                case 'endsWith':
++                  const index = valueLowerCase.lastIndexOf(filterTextLowerCase);
++                  return index >= 0 && index === (valueLowerCase.length - filterTextLowerCase.length);
++                default:
++                  // should never happen
++                  console.warn('invalid filter type ' + filter);
++                  return false;
++              }
++            },
++            caseSensitive: true
++          }
++        };
++      }
+     }
+   }
+ 
+-  downloadFile() {
++  downloadFile(event: Event) {
++    const target = event.target as HTMLButtonElement;
++    const buttonNameArray = target.name.split('_');
++    const indexOfDownloadButton = buttonNameArray[1];
++
+     const infoAttributes = this.infoAttributes;
+     const objectId = <number>infoAttributes.objectid;
+ 
+     const attachmentInfos = this.attachmentData;
+-    const attachment = attachmentInfos[0];
++    const attachment = attachmentInfos[indexOfDownloadButton];
+ 
+     const attachmentName = attachment.name;
+     const attachmentId = attachment.id;
+     const contentType = attachment.contentType;
+ 
+-    const url = `${environment.arcgisMEBURL}FeatureServer/14/${objectId}/attachments/${attachmentId}` +
++    // const url = `${environment.arcgisMEBURL}FeatureServer/14/${objectId}/attachments/${attachmentId}` +
++    //   `?token=${sessionStorage.getItem('CBSArcToken')}`;
++    const url = `https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/1/${objectId}/attachments/${attachmentId}` +
+       `?token=${sessionStorage.getItem('CBSArcToken')}`;
+     this.http.get(url, { responseType: 'blob' }).subscribe((data: Blob) => {
+ 
