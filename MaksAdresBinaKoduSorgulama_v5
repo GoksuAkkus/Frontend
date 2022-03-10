@@ -1,0 +1,942 @@
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 28216554b40527dac0f77aaa2e3cffbab3e24c82..86aa47ce5b5e957dda53933b0684c6f6c3a88e34 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -2282,6 +2282,10 @@ export class MainComponent implements OnInit {
+     this.convertAndOpenInfoWithFeatureSet(searchResult);
+   }
+ 
++  searchMAKSAdresBinaKoduInfoEvent () {
++
++  }
++  
+   convertAndOpenInfoWithFeatureSet(featureSet: esri.FeatureSet, openModules?: boolean) {
+     const hitTestResultModel: esri.HitTestResult = { results: [] };
+ 
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index b18ceffce417aab377143bc79ba1ec4f30fa9a6e..826518b21c46a5a5368c37cde38d93349f3f3d0b 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -37,6 +37,8 @@ export class ModuleReportComponent implements OnInit {
+   guiPermissions: Array<boolean> = [];
+   symbologyBuilderDialog: DialogRef;
+ 
++  moduleFormData: ModuleFormData;
++
+   constructor(public dialogConfig: DialogConfig, public dialogRef: DialogRef,
+     private http: HttpClient, private auth: AuthService, private dialog: DialogService) { }
+ 
+@@ -183,7 +185,35 @@ export class ModuleReportComponent implements OnInit {
+     return dottedString;
+   }
+ 
++  filterInGelenGidenSayiColumn(value) {
++    const url = environment.arcgisSQL + 'MapServer/3/query';
++    const response = this.http.get(url, {
++      params: {
++        where: `i_islem_turu = ${this.moduleFormData.type} and (i_sayi=${value} || h_gelen_sayi =${value} || h_giden_sayi=${value})`,
++        token: sessionStorage.getItem('CBSArcToken'), f:'json'
++      }
++    }).subscribe();
++
++    return response;
++  }
++
++  filterInGelenGidenTarihColumn(value) {
++    const url = environment.arcgisSQL + 'MapServer/3/query';
++    const response = this.http.get(url, {
++      params: {
++        where: `i_islem_turu = ${this.moduleFormData.type} and (i_bitis_tarihi=${value} || h_gelen_tarih =${value} || h_giden_tarih=${value})`,
++        token: sessionStorage.getItem('CBSArcToken'), f:'json'
++      }
++    }).subscribe();
++
++    return response;
++  }
++
+   createColDefs(fields: Array<esri.Field>, moduleFormData?: ModuleFormData) {
++    if(moduleFormData) {
++      this.moduleFormData = moduleFormData;
++    }
++
+     let colDefs: Array<ColDef> = [];
+     fields.forEach(field => {
+       const colDef: ColDef = {};
+@@ -276,7 +306,37 @@ export class ModuleReportComponent implements OnInit {
+           ]
+         };
+       }
+-      colDefs.push(colDef);
++      const gelenGidenSayiColDef: ColDef = {
++        headerName: 'Gelen/Giden Sayı',
++        colId: 'gelgit_sayi',
++        field: 'gelgit_sayi',
++        filter: 'agTextColumnFilter',
++        valueGetter: (params) => {
++          if (params.data !== undefined) {
++            const fieldValue = <string>params.data[colDef.field];
++            const commaValue = fieldValue.replace('.', ',');
++
++            return this.dotMethod(commaValue);
++          }
++        }
++      };
++
++      const gelenGidenTarihColDef: ColDef = {
++        headerName: 'Gelen/Giden Tarih',
++        colId: 'gelgit_tarih',
++        field: 'gelgit_tarih',
++        filter: 'agDateColumnFilter',
++        valueGetter: (params) => {
++          if (params.data !== undefined) {
++            const fieldValue = <string>params.data[colDef.field];
++            const commaValue = fieldValue.replace('.', ',');
++
++            return this.dotMethod(commaValue);
++          }
++        }
++      };
++      
++        colDefs.push(colDef);
+     });
+ 
+     // TEXT OLAN TOPLAM MALİYET FİELDINDA FİLTER YAPILMASI İÇİN
+@@ -423,8 +483,15 @@ export class ModuleReportComponent implements OnInit {
+     this.createColDefs(allFields);
+     const dataSource: IDatasource = {
+       getRows: (params) => {
++        const gelgitSayiFilterModel = params.filterModel['gelgit_sayi'];
++        const gelgitTarihFilterModel = params.filterModel['gelgit_tarih'];
++        
++        delete params.filterModel['gelgit_sayi'];
++        delete params.filterModel['gelgit_tarih'];
++
+         const queryParams = this.checkSortParameter(params, queryProperties);
+-        const filteredParams = this.addFilterParameters(params.filterModel, queryParams, processMovementLayer);
++        let filteredParams = this.addFilterParameters(params.filterModel, queryParams, processMovementLayer);
++        filteredParams = this.addFilterParametersForGelGit(filteredParams, gelgitSayiFilterModel, gelgitTarihFilterModel);
+         this.addZonePerm(moduleLayer, filteredParams);
+ 
+         this.filterParams = filteredParams;
+@@ -547,8 +614,15 @@ export class ModuleReportComponent implements OnInit {
+ 
+     const dataSource: IDatasource = {
+       getRows: (params) => {
++        const gelgitSayiFilterModel = params.filterModel['gelgit_sayi'];
++        const gelgitTarihFilterModel = params.filterModel['gelgit_tarih'];
++        
++        delete params.filterModel['gelgit_sayi'];
++        delete params.filterModel['gelgit_tarih'];
++
+         const queryParams = this.checkSortParameter(params, queryProperties);
+-        const filteredParams = this.addFilterParameters(params.filterModel, queryParams, processMovementLayer);
++        let filteredParams = this.addFilterParameters(params.filterModel, queryParams, processMovementLayer);
++        filteredParams = this.addFilterParametersForGelGit(filteredParams, gelgitSayiFilterModel, gelgitTarihFilterModel);
+         this.addZonePerm(processMovementLayer, filteredParams);
+         this.filterParams = filteredParams;
+         this.whereQuery = filteredParams.where;
+@@ -702,6 +776,30 @@ export class ModuleReportComponent implements OnInit {
+     return params;
+   }
+ 
++  addFilterParametersForGelGit(queryParams: esri.QueryProperties, gelgitSayiFilterModel: any, gelgitTarihFilterModel: any) {
++    const params = Object.assign({}, queryParams);
++
++    if(gelgitSayiFilterModel) {
++      const sayiQuery = new QueryConstructor(gelgitSayiFilterModel, params.where, 'i_sayi');
++      params.where = sayiQuery.getWhereQuery();
++      const gidenSayiQuery = new QueryConstructor(gelgitSayiFilterModel, params.where, 'h_giden_sayi');
++      params.where = gidenSayiQuery.getWhereQuery();
++      const gelenSayiQuery = new QueryConstructor(gelgitSayiFilterModel, params.where, 'h_gelen_sayi');
++      params.where = gelenSayiQuery.getWhereQuery();
++    }
++
++    if(gelgitTarihFilterModel) {
++      const tarihQuery = new QueryConstructor(gelgitTarihFilterModel, params.where, 'i_bitis_tarihi');
++      params.where = tarihQuery.getWhereQuery();
++      const gidenTarihQuery = new QueryConstructor(gelgitTarihFilterModel, params.where, 'h_giden_tarih');
++      params.where = gidenTarihQuery.getWhereQuery();
++      const gelenTarihQuery = new QueryConstructor(gelgitTarihFilterModel, params.where, 'h_gelen_tarih');
++      params.where = gelenTarihQuery.getWhereQuery();
++    }
++
++    return params;
++  }
++
+   getFieldDomain(fieldName: string, layer: esri.FeatureLayer): esri.Domain {
+     const foundField: esri.Field = layer.fields.find(field => field.name === fieldName);
+     if (foundField !== undefined) {
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 5151e6b354fdb97d012fd89bbdaaecfe240989f3..519091c11af19dc2b69fc4afcb80a113c7b79a0e 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -1341,7 +1341,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       malAlimiMaliyetString = malAlimiMaliyetString.replace(/\./g, '');
+       malAlimiMaliyetString = malAlimiMaliyetString.replace(/,/g, '.');
+       formData['karar_no'] = malAlimiMaliyetString;
+-
++      //TOPLAM MALİYET BURADA SET EDİLİYOR
+       toplamMaliyet += Number(malAlimiMaliyetString);
+ 
+       const toplamMaliyetStringData = toplamMaliyet.toFixed(2);
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..8577d22c98b0b4864bffdd9c5939866c23de776d
+--- /dev/null
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -0,0 +1,75 @@
++<div class="tkgm-tapu-search-container">
++    <div class="header" (click)="dispatchMaksAdresBinaKoduSearchClicked($event)">
++      <h3>Adres Kodu/Bina Kodu Sorgula</h3>
++      <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
++        <g transform="translate(-4357.014 -110.735)">
++          <path d="M4379.745,130.755a.94.94,0,0,1,.255.68,1.281,1.281,0,0,1-.255.619,4.95,4.95,0,0,1-.65.768,6.075,6.075,0,0,1-.77.647,1.179,1.179,0,0,1-.614.266.89.89,0,0,1-.674-.271l-5.169-5.153a10.006,10.006,0,0,1-2.521,1.17,9.548,9.548,0,0,1-6.46-.335,9.675,9.675,0,0,1-3.057-2.062,9.518,9.518,0,0,1-2.068-3.051,9.589,9.589,0,0,1,0-7.426,9.577,9.577,0,0,1,2.068-3.052,9.867,9.867,0,0,1,3.049-2.067,9.531,9.531,0,0,1,7.426,0,9.916,9.916,0,0,1,3.055,2.067,9.638,9.638,0,0,1,2.064,3.052,9.544,9.544,0,0,1,.338,6.47,9.627,9.627,0,0,1-1.173,2.509Zm-20.158-10.434a6.673,6.673,0,0,0,.564,2.745,7.066,7.066,0,0,0,3.732,3.7,6.81,6.81,0,0,0,2.72.549,6.725,6.725,0,0,0,2.706-.549,7.117,7.117,0,0,0,2.219-1.492,7.263,7.263,0,0,0,1.511-2.208,6.734,6.734,0,0,0,.559-2.745,6.662,6.662,0,0,0-.559-2.711,7.433,7.433,0,0,0-1.511-2.226,6.987,6.987,0,0,0-2.219-1.506,6.731,6.731,0,0,0-2.706-.556,6.816,6.816,0,0,0-2.72.556,7.008,7.008,0,0,0-2.225,1.506,7.351,7.351,0,0,0-1.507,2.226A6.6,6.6,0,0,0,4359.587,120.321Z" fill="#d1000f"/>
++          <path d="M4366.933,114.443a1.125,1.125,0,0,1,.824.349,1.2,1.2,0,0,1,.348.873,1.143,1.143,0,0,1-.348.829,1.117,1.117,0,0,1-.824.352,3.616,3.616,0,0,0-3.641,3.634,1.15,1.15,0,0,1-.35.832,1.126,1.126,0,0,1-.821.338,1.188,1.188,0,0,1-.889-.338,1.157,1.157,0,0,1-.333-.832,5.894,5.894,0,0,1,.465-2.323,6.025,6.025,0,0,1,1.294-1.94,5.93,5.93,0,0,1,4.275-1.774Z" fill="#d1000f"/>
++        </g>
++      </svg>
++  
++    </div>
++    <div class="form-container">
++      <form class="form">
++        <div class="form-group">
++          <input id="selectIlArcgis" class="form-input" type="select" name="iller" autocomplete="off"
++            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++            (focus)="onToggleDropdown($event)" required>
++          <label for="selectIlArcgis" class="form-label">İl Seçiniz</label>
++          <img src="assets/img/arrow.png" alt="" class="arrow-down">
++        </div>
++        <div class="select-options">
++          <span class="option" id="{{il.uavtil}}" *ngFor="let il of ilArray"
++            (mousedown)="onSelect($event)">{{il.ad}}</span>
++        </div>        
++
++        <div class="form-group">
++          <input id="selectIlceMaks" class="form-input" type="select" name="ilceler" autocomplete="off"
++            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++            (focus)="onToggleDropdown($event)" required>
++          <label for="selectIlceMaks" class="form-label">İlçe Seçiniz</label>
++          <img src="assets/img/arrow.png" alt="" class="arrow-down">
++        </div>
++        <div class="select-options">
++          <span class="option" id="{{ilce.kod}}" *ngFor="let ilce of denemeArray[0].ilceler"
++            (mousedown)="onSelect($event)">{{ilce.ad}}</span>
++        </div>
++        <div class="form-group">
++          <input id="selectMahalleMaks" class="form-input" type="select" name="mahalleler" autocomplete="off"
++            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++            (focus)="onToggleDropdown($event)" required>
++          <label for="selectMahalleMaks" class="form-label">Mahalle Seçiniz</label>
++          <img src="assets/img/arrow.png" alt="" class="arrow-down">
++        </div>
++        <div class="select-options">
++          <span class="option" id="{{mahalle.kod}}" *ngFor="let mahalle of denemeArray[0].mahalleler"
++            (mousedown)="onSelect($event)">{{mahalle.ad}}</span>
++        </div>
++
++        <div class="form-group">
++          <input id="selectCsbmMaks" class="form-input" type="select" name="csbmler" autocomplete="off"
++            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++            (focus)="onToggleDropdown($event)" required>
++          <label for="selectCsbmMaks" class="form-label">Csbm Seçiniz</label>
++          <img src="assets/img/arrow.png" alt="" class="arrow-down">
++        </div>
++        <div class="select-options">
++          <span class="option" id="{{csbm.kod}}" *ngFor="let csbm of denemeArray[0].csbmler"
++            (mousedown)="onSelect($event)">{{csbm.ad}}</span>
++        </div>
++
++        <div class="form-group">
++          <input id="selectDiskapiNoMaks" class="form-input" type="select" name="diskapiNolar" autocomplete="off"
++            style="font-size:14px;" (input)="onInput($event)" (blur)="onToggleDropdown($event)"
++            (focus)="onToggleDropdown($event)" required>
++          <label for="selectDiskapiNoMaks" class="form-label">Dışkapı No Seçiniz</label>
++          <img src="assets/img/arrow.png" alt="" class="arrow-down">
++        </div>
++        <div class="select-options">
++          <span class="option" id="{{diskapino.disKapiNo}}" *ngFor="let diskapino of denemeArray[0].binalar"
++            (mousedown)="onSelect($event)">{{diskapino.disKapiNo}}</span>
++        </div>
++      </form>
++    </div>
++  </div>
++  
+\ No newline at end of file
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..52ba1930bbf780f9416703552c2d1516cb9d4aa6
+--- /dev/null
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.scss
+@@ -0,0 +1,170 @@
++@import '../../../global.scss';
++
++.tkgm-tapu-search-container {
++  border: 1px solid $primaryColor;
++  border-radius: 5px;
++  overflow: auto;
++  position: relative;
++  overflow: visible;
++
++  .header {
++    display: flex;
++    flex-direction: row;
++    justify-content: space-between;
++    align-items: center;
++    padding: 10px;
++    cursor: pointer;
++    color: $primaryColor;
++  }
++
++  .form-container {
++    display: flex;
++    flex-direction: column;
++    align-items: flex-start;
++    position: relative;
++    padding: 0 10px;
++    visibility: hidden;
++    height: 0;
++    opacity: 0;
++    transition: height 0.5s, opacity 1s;
++
++    &.show-form {
++      visibility: visible;
++      height: 260px;
++      opacity: 1;
++    }
++
++    .form {
++      position: relative;
++      width: 100%;
++    }
++  }
++}
++
++.form-container>.form-group {
++  margin-left: auto;
++  margin-right: auto;
++  max-width: 300px;
++}
++
++.form-group {
++  position: relative;
++  display: flex;
++  flex-direction: row;
++  align-items: center;
++  border-bottom: 1px solid #757575;
++}
++
++.form-container .form-group .arrow-down {
++  width: 20px;
++  height: 20px;
++  margin-left: -15px;
++  margin-top: 10px;
++  transition: 0.5s;
++}
++
++.form-input {
++  position: relative;
++  display: block;
++  width: 100%;
++  border: none;
++  background-color: transparent;
++  margin: 0px auto;
++  padding: 15px 0px 0px 0px;
++  height: 25px;
++  outline: none !important;
++  font-size: 20px;
++  background: -webkit-linear-gradient(bottom, #51BBBE 50%, #51BBBE 50%);
++  background: linear-gradient(to top, #51BBBE 50%, #51BBBE 50%);
++  background-position: left bottom;
++  background-size: 0 1px;
++  background-repeat: no-repeat;
++  transition: all .2s ease-in-out;
++}
++
++.form-label {
++  position: absolute;
++  top: 0;
++  left: 0;
++  text-align: left;
++  display: block;
++  width: 100%;
++  height: 45px;
++  line-height: 55px;
++  font-size: 16px;
++  font-weight: 200;
++  background: transparent;
++  color: #757575;
++  margin: 0px auto;
++  cursor: text;
++  transition: all .15s ease-in-out;
++}
++
++.form-input {
++
++  &:valid+.form-label,
++  &:focus+.form-label {
++    height: 20px;
++    line-height: 20px;
++    font-size: 11px;
++    color: black;
++  }
++}
++
++.select-options {
++  display: flex;
++  position: absolute;
++  flex-direction: column;
++  justify-content: flex-start;
++  max-height: 175px;
++  left: 0;
++  right: 0;
++  overflow-y: auto;
++  animation: fadeIn 0.5s;
++  z-index: 10;
++  color: #4F97A3;
++  background-color: white;
++  display: none;
++  box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14), 0 3px 14px 2px rgba(0, 0, 0, 0.12);
++
++  >.option {
++    font-size: 14px;
++    font-weight: 300;
++    padding: 10px;
++    cursor: pointer;
++
++    &:hover {
++      background-color: #eeeeee;
++      color: #4F97A3;
++    }
++  }
++}
++
++.r-90 {
++  transform: rotate(90deg);
++}
++
++.meb-form-btn-container {
++  position: relative;
++  margin: 12px 0;
++
++  .btn-info {
++    display: inline-block;
++    font-weight: 400;
++    background-color: #17a2b8;
++    color: white;
++    text-align: center;
++    vertical-align: middle;
++    -webkit-user-select: none;
++    -moz-user-select: none;
++    -ms-user-select: none;
++    user-select: none;
++    border: 1px solid transparent;
++    padding: .275rem 1rem;
++    font-size: 14px;
++    line-height: 1.5;
++    border-radius: .25rem;
++    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
++    cursor: pointer;
++  }
++}
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.spec.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..235b364d48b0bea84ccc68ee6dd50ec1766d9ec6
+--- /dev/null
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { MaksAdresbinakoduComponent } from './maks-adresbinakodu.component';
++
++describe('MaksAdresbinakoduComponent', () => {
++  let component: MaksAdresbinakoduComponent;
++  let fixture: ComponentFixture<MaksAdresbinakoduComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ MaksAdresbinakoduComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(MaksAdresbinakoduComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..78b329d1e289984484da0a900c319cd223edfe83
+--- /dev/null
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -0,0 +1,292 @@
++import { EventEmitter, Input, Output } from '@angular/core';
++import { Component, OnInit } from '@angular/core';
++import { Observable, Subscription } from 'rxjs';
++import { DialogRef } from 'src/app/dialog/dialog-ref';
++import { DialogService } from 'src/app/dialog/dialog.service';
++import { DistrictPermTKGM, UserPermission } from 'src/app/models/Login/user-permission';
++import { MaksData, Il, Csbm } from 'src/app/models/MAKSData';
++import { SearchFilterObject, TKGMGeometryObject, TKGMParcelRequest } from 'src/app/models/TKGM/tkgm-search-data';
++import { NotificationService } from 'src/app/notification/notification.service';
++import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
++import { AuthService } from 'src/app/services/auth.service';
++import { WebDataService } from 'src/app/services/web-data.service';
++import esri = __esri;
++@Component({
++  selector: 'app-maks-adresbinakodu',
++  templateUrl: './maks-adresbinakodu.component.html',
++  styleUrls: ['./maks-adresbinakodu.component.scss']
++})
++export class MaksAdresbinakoduComponent implements OnInit {
++
++  @Output() maksAdresBinaKoduClicked = new EventEmitter();
++  @Output() gotoSelectedObject = new EventEmitter<TKGMGeometryObject>();
++
++  @Input()
++  set mapView(mapView) {
++    this._mapView = mapView;
++  }
++
++  get mapView() {
++    return this._mapView;
++  }
++
++  subscription: Subscription;
++  dataArray: Array<Array<any>> = [];
++  filterArray: Array<Array<any>> = [];
++  denemeArray: Array<MaksData> = [new MaksData()];
++  selectedDataArray: Array<any> = [];
++  progressInfoDialogRef: DialogRef;
++  _mapView: esri.MapView;
++  ilArray: Array<Il> = [];
++  userPerm: UserPermission;
++  districtPerm: Array<DistrictPermTKGM> = [];
++
++  constructor(private webdataservice: WebDataService, private dialogService: DialogService, private notify: NotificationService,
++    private auth: AuthService) { }
++
++  ngOnInit() {
++
++    this.userPerm = this.auth.userPerm;
++    const mapView = this._mapView;
++    const cityPerm: Array<string> = [];
++
++    if (this.userPerm !== undefined) {
++      this.auth.userPerm['permZoneCityTKGM'].map(cityName => {
++        cityPerm.push(cityName.toLocaleUpperCase());
++      });
++
++      this.districtPerm = this.auth.userPerm['permZoneDistrictTKGM'];
++
++      if (this.districtPerm.length > 0) {
++        this.districtPerm.map(perm => {
++          if (!cityPerm.some(city => city === perm['city'].toLocaleUpperCase())) {
++            cityPerm.push(perm['city'].toLocaleUpperCase());
++          }
++        });
++      }
++
++      const permittedCities = [];
++
++      const ilLayer: esri.FeatureLayer = <esri.FeatureLayer>mapView.map.allLayers.find(layer => layer.title === 'İl');
++      const ilLayerQuery: esri.QueryProperties = {
++        where: '1=1',
++        orderByFields: ['ad asc'],
++        outFields: ['ad', 'uavtil'],
++        groupByFieldsForStatistics: ['ad', 'uavtil'],
++        returnGeometry: false,
++      };
++
++      ilLayer.queryFeatures(ilLayerQuery).then(res => {
++        const features = res.features;
++        for (let i = 0; i < features.length; i++) {
++          const il = new Il();
++          il.ad = features[i].attributes['ad'];
++          il.uavtil = features[i].attributes['uavtil'];
++          this.ilArray.push(il);
++        }
++      });
++    }
++  }
++
++  dispatchMaksAdresBinaKoduSearchClicked(event: Event) {
++    this.maksAdresBinaKoduClicked.emit(event);
++  }
++
++  onToggleDropdown() {
++    const inputElement: HTMLInputElement = <HTMLInputElement>event.target;
++    const formGroup = inputElement.parentElement;
++    const dropDownImg = inputElement.parentElement.lastElementChild;
++    const selectContainer: HTMLElement = <HTMLElement>formGroup.nextElementSibling;
++
++    if (dropDownImg.classList.contains('r-90')) {
++      selectContainer.style.display = 'none';
++    } else {
++      selectContainer.style.display = 'flex';
++      this.filterArray[0] = this.dataArray[0];
++    }
++
++    dropDownImg.classList.toggle('r-90');
++  }
++
++  onInput() {
++    const inputElement: HTMLInputElement = <HTMLInputElement>event.target;
++    const inputContainer = inputElement.parentElement;
++    const formElement: HTMLFormElement = <HTMLFormElement>inputContainer.parentElement;
++    this.resetFormData(formElement, inputContainer);
++
++    const inputValue = inputElement.value;
++
++    const index = this.getIndexElement(inputContainer);
++
++    const searchFilterObject: SearchFilterObject = {
++      array: this.dataArray[index],
++      filterKey: inputValue,
++      isNumber: false
++    };
++
++    if (index < 3) {
++      this.filterArray[index] = this.filterSearchData(searchFilterObject);
++    } else {
++      searchFilterObject.isNumber = true;
++      this.filterArray[index] = this.filterSearchData(searchFilterObject);
++      this.selectedDataArray[index] = inputValue;
++    }
++  }
++
++  onSelect(event: Event) {
++
++    const selectedElement: HTMLElement = <HTMLElement>event.target;
++    const selectContainer: HTMLElement = selectedElement.parentElement;
++    const form: HTMLFormElement = <HTMLFormElement>selectContainer.parentElement;
++
++    const inputContainer: HTMLElement = <HTMLElement>selectContainer.previousElementSibling;
++    const selectInput: HTMLInputElement = <HTMLInputElement>inputContainer.firstElementChild;
++
++    const selectContainerNextElement: HTMLElement = <HTMLElement>selectContainer.nextElementSibling;
++    let notifyMessageTitle;
++
++    if (selectContainerNextElement !== null) {
++      const nextElementInput: HTMLInputElement = <HTMLInputElement>selectContainerNextElement.firstElementChild;
++      notifyMessageTitle = nextElementInput.name;
++    }
++
++    this.resetFormData(form, inputContainer);
++
++    selectInput.value = '';
++    selectInput.blur();
++
++    const selectedElementTitle = selectedElement.innerText;
++    selectInput.value = selectedElementTitle;
++    selectInput.blur();
++
++    const inputArray = [];
++
++    const currentTarget = event.currentTarget;
++    const selectName = selectInput.name;
++    const kod = currentTarget['id'];
++    switch (selectName) {
++      case 'iller': {
++        inputArray[0] = kod;
++        break;
++      }
++      case 'ilceler': {
++        inputArray[1] = kod;
++        break;
++      }
++      case 'mahalleler': {
++        inputArray[2] = kod;
++        break;
++      }
++      case 'csbmler': {
++        inputArray[3] = kod;
++        break;
++      }
++      case 'diskapiNolar': {
++        inputArray[4] = kod;
++        break;
++      }
++    }
++    const dataService = this.webdataservice;
++
++    // const deneme = dataService.getIlcelerFromMAKS(23);
++    // console.log(deneme);
++
++    const index = this.getIndexElement(inputContainer);
++
++    dataService.getIlcelerFromMAKS(inputArray[0]).subscribe(res => {
++      this.denemeArray[0].ilceler = res['ilceler'];
++    });
++    dataService.getMahallelerFromMAKS(inputArray[1]).subscribe(res => {
++      this.denemeArray[0].mahalleler = res['mahalleler'];
++      console.log(res.mahalleler);
++    });
++    dataService.getCsbmlerFromMAKS(inputArray[2]).subscribe(res => {
++      this.denemeArray[0].csbmler = res['csbmler'];
++    });
++    dataService.getBinalarFromMAKS(inputArray[3]).subscribe(res => {
++      this.denemeArray[0].binalar = res['binalar'];
++    });
++
++    if (this.subscription !== undefined) {
++      this.subscription.unsubscribe();
++    }
++
++
++  }
++
++  getGeometryFromTKGM(search_query) {
++    this.webdataservice.getGeometryFromTKGM(search_query).subscribe(result => {
++      const tkgmGeometryObject: TKGMGeometryObject = {
++        rings: result['rings'],
++      };
++      this.gotoSelectedObject.emit(tkgmGeometryObject);
++      this.closeProgressDialog();
++    }, error => {
++      this.closeProgressDialog();
++      this.notify.open('Geometri yüklenirken hata oluştu!', 'danger', 5);
++    });
++  }
++
++  setPermittedDistrictsArray() {
++    const selectedCity = this.dataArray[0].find(city => city.id === parseInt(this.selectedDataArray[0], 0));
++
++    if (this.districtPerm.length > 0) {
++      const permittedDistricts = [];
++
++      this.districtPerm.map(perm => {
++        if (selectedCity.ad === perm['city'].toLocaleUpperCase()) {
++          permittedDistricts.push(perm['district'].toLocaleUpperCase());
++        }
++      });
++
++      if (permittedDistricts.length > 0) {
++        this.filterArray[1] = [];
++        permittedDistricts.map(dist => {
++          const district = this.dataArray[1].find(item => item.ad === dist);
++          this.filterArray[1].push(district);
++        });
++      }
++    }
++  }
++
++  filterSearchData(searchFilterObject: SearchFilterObject) {
++    if (searchFilterObject.array && searchFilterObject.array.length !== 0) {
++      return searchFilterObject.array.filter(item => searchFilterObject.isNumber ? item.includes(searchFilterObject.filterKey) :
++        item.ad.includes(searchFilterObject.filterKey.toLocaleUpperCase()));
++    }
++  }
++
++  getIndexElement(inputContainerElement: HTMLElement): number {
++    let previousElementSibling = inputContainerElement.previousElementSibling;
++    let index = 0;
++    while (previousElementSibling !== null) {
++      if (!previousElementSibling.classList.contains('select-options')) {
++        index++;
++      }
++      previousElementSibling = previousElementSibling.previousElementSibling;
++    }
++
++    return index;
++  }
++
++  resetFormData(form: HTMLFormElement, inputContainerElement: HTMLElement) {
++    const formElements: HTMLCollectionOf<HTMLFormElement> = <HTMLCollectionOf<HTMLFormElement>>form.elements;
++    const formElementsLength = formElements.length;
++    const index = this.getIndexElement(inputContainerElement);
++
++    for (let i = index + 1; i < formElementsLength; i++) {
++      const inputElement: HTMLFormElement = <HTMLFormElement>formElements[i];
++      if (inputElement !== undefined) {
++        inputElement.value = '';
++        this.filterArray[i] = [];
++      }
++    }
++  }
++
++  closeProgressDialog() {
++    if (this.progressInfoDialogRef !== undefined) {
++      this.progressInfoDialogRef.close();
++      this.progressInfoDialogRef = undefined;
++    }
++  }
++}
+diff --git a/src/app/search/search.component.html b/src/app/search/search.component.html
+index 70b6b1aea77aa1930f15a6fbf935a717043069e2..1cc96f80919526aee770f5c93655ca20e616ef95 100644
+--- a/src/app/search/search.component.html
++++ b/src/app/search/search.component.html
+@@ -23,7 +23,15 @@
+        (tkgmPassiveParcelInfo)="searchTKGMPassiveParcelEvent($event)" [mapView]="this._mapView">
+      </app-tkgm-tapu>
+    </div>
+-   <div *ngIf="this.showElement && (guiPermissions[4] === true || guiPermissions[6] ==  true)" class="person-search search-form-parent">
++
++   <div class="tkgm-tapu-search search-form-parent">
++     <app-maks-adresbinakodu [mapView]="mapView" (maksAdresBinaKoduClicked)="openSearchFormEvent($event)" (gotoSelectedObject)="gotoSelectedObjectEvent($event)">
++
++     </app-maks-adresbinakodu>
++   </div>
++
++   <div *ngIf="this.showElement && (guiPermissions[4] === true || guiPermissions[6] ==  true)"
++     class="person-search search-form-parent">
+      <app-person-search (personSearchClicked)="openSearchFormEvent($event)"
+        (getGercekKisiBtnClicked)="getGercekKisiEvent($event)" (getTuzelKisiBtnClicked)="getTuzelKisiEvent($event)"
+        [guiPermissions]="this.guiPermissions">
+@@ -51,20 +59,20 @@
+      </div>
+    </div>
+    <div class="detailed-search">
+-    <div class="header" (click)="dispatchopenTasimali()">
+-      <h3>Taşımalı</h3>
+-      <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
+-        <g transform="translate(-4357.014 -110.735)">
+-          <path
+-            d="M4379.745,130.755a.94.94,0,0,1,.255.68,1.281,1.281,0,0,1-.255.619,4.95,4.95,0,0,1-.65.768,6.075,6.075,0,0,1-.77.647,1.179,1.179,0,0,1-.614.266.89.89,0,0,1-.674-.271l-5.169-5.153a10.006,10.006,0,0,1-2.521,1.17,9.548,9.548,0,0,1-6.46-.335,9.675,9.675,0,0,1-3.057-2.062,9.518,9.518,0,0,1-2.068-3.051,9.589,9.589,0,0,1,0-7.426,9.577,9.577,0,0,1,2.068-3.052,9.867,9.867,0,0,1,3.049-2.067,9.531,9.531,0,0,1,7.426,0,9.916,9.916,0,0,1,3.055,2.067,9.638,9.638,0,0,1,2.064,3.052,9.544,9.544,0,0,1,.338,6.47,9.627,9.627,0,0,1-1.173,2.509Zm-20.158-10.434a6.673,6.673,0,0,0,.564,2.745,7.066,7.066,0,0,0,3.732,3.7,6.81,6.81,0,0,0,2.72.549,6.725,6.725,0,0,0,2.706-.549,7.117,7.117,0,0,0,2.219-1.492,7.263,7.263,0,0,0,1.511-2.208,6.734,6.734,0,0,0,.559-2.745,6.662,6.662,0,0,0-.559-2.711,7.433,7.433,0,0,0-1.511-2.226,6.987,6.987,0,0,0-2.219-1.506,6.731,6.731,0,0,0-2.706-.556,6.816,6.816,0,0,0-2.72.556,7.008,7.008,0,0,0-2.225,1.506,7.351,7.351,0,0,0-1.507,2.226A6.6,6.6,0,0,0,4359.587,120.321Z"
+-            fill="#d1000f" />
+-          <path
+-            d="M4366.933,114.443a1.125,1.125,0,0,1,.824.349,1.2,1.2,0,0,1,.348.873,1.143,1.143,0,0,1-.348.829,1.117,1.117,0,0,1-.824.352,3.616,3.616,0,0,0-3.641,3.634,1.15,1.15,0,0,1-.35.832,1.126,1.126,0,0,1-.821.338,1.188,1.188,0,0,1-.889-.338,1.157,1.157,0,0,1-.333-.832,5.894,5.894,0,0,1,.465-2.323,6.025,6.025,0,0,1,1.294-1.94,5.93,5.93,0,0,1,4.275-1.774Z"
+-            fill="#d1000f" />
+-        </g>
+-      </svg>
+-    </div>
+-  </div>
++     <div class="header" (click)="dispatchopenTasimali()">
++       <h3>Taşımalı</h3>
++       <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
++         <g transform="translate(-4357.014 -110.735)">
++           <path
++             d="M4379.745,130.755a.94.94,0,0,1,.255.68,1.281,1.281,0,0,1-.255.619,4.95,4.95,0,0,1-.65.768,6.075,6.075,0,0,1-.77.647,1.179,1.179,0,0,1-.614.266.89.89,0,0,1-.674-.271l-5.169-5.153a10.006,10.006,0,0,1-2.521,1.17,9.548,9.548,0,0,1-6.46-.335,9.675,9.675,0,0,1-3.057-2.062,9.518,9.518,0,0,1-2.068-3.051,9.589,9.589,0,0,1,0-7.426,9.577,9.577,0,0,1,2.068-3.052,9.867,9.867,0,0,1,3.049-2.067,9.531,9.531,0,0,1,7.426,0,9.916,9.916,0,0,1,3.055,2.067,9.638,9.638,0,0,1,2.064,3.052,9.544,9.544,0,0,1,.338,6.47,9.627,9.627,0,0,1-1.173,2.509Zm-20.158-10.434a6.673,6.673,0,0,0,.564,2.745,7.066,7.066,0,0,0,3.732,3.7,6.81,6.81,0,0,0,2.72.549,6.725,6.725,0,0,0,2.706-.549,7.117,7.117,0,0,0,2.219-1.492,7.263,7.263,0,0,0,1.511-2.208,6.734,6.734,0,0,0,.559-2.745,6.662,6.662,0,0,0-.559-2.711,7.433,7.433,0,0,0-1.511-2.226,6.987,6.987,0,0,0-2.219-1.506,6.731,6.731,0,0,0-2.706-.556,6.816,6.816,0,0,0-2.72.556,7.008,7.008,0,0,0-2.225,1.506,7.351,7.351,0,0,0-1.507,2.226A6.6,6.6,0,0,0,4359.587,120.321Z"
++             fill="#d1000f" />
++           <path
++             d="M4366.933,114.443a1.125,1.125,0,0,1,.824.349,1.2,1.2,0,0,1,.348.873,1.143,1.143,0,0,1-.348.829,1.117,1.117,0,0,1-.824.352,3.616,3.616,0,0,0-3.641,3.634,1.15,1.15,0,0,1-.35.832,1.126,1.126,0,0,1-.821.338,1.188,1.188,0,0,1-.889-.338,1.157,1.157,0,0,1-.333-.832,5.894,5.894,0,0,1,.465-2.323,6.025,6.025,0,0,1,1.294-1.94,5.93,5.93,0,0,1,4.275-1.774Z"
++             fill="#d1000f" />
++         </g>
++       </svg>
++     </div>
++   </div>
+    <div *ngIf="this.showElement && guiPermissions[7] === true" class="detailed-search">
+      <div class="header" (click)="dispatchOpenDynamicSearch()">
+        <h3>Dinamik Ara</h3>
+diff --git a/src/app/search/search.component.ts b/src/app/search/search.component.ts
+index bed391f4eb893167a26d40e0bf0e238297050cd7..b01cbb22687aeed6b720bdb7c0c4fbe157ab9ad8 100644
+--- a/src/app/search/search.component.ts
++++ b/src/app/search/search.component.ts
+@@ -22,6 +22,7 @@ export class SearchComponent implements OnInit {
+   @Output() openDetailedSearch = new EventEmitter();
+   @Output() openDynamicSearch = new EventEmitter();
+   @Output() searchTKGMPassiveParcelInfo = new EventEmitter();
++  @Output() searchMAKSAdresBinaKoduInfo = new EventEmitter();
+   @Output() showMebParcelsOnDatatable = new EventEmitter();
+   @Output() showResultOnDatatableBySearchBox = new EventEmitter();
+   @Output() searchGercekKisi = new EventEmitter<TKGMGercekKisiRequest>();
+@@ -274,6 +275,10 @@ export class SearchComponent implements OnInit {
+     this.gotoTKGMGeometry.emit(tkgmGeometryObject);
+   }
+ 
++  searchMAKSAdresBinaKoduInfoEvent(searchData: TKGMSearchRequest) {
++    this.searchMAKSAdresBinaKoduInfo.emit(searchData);
++  }
++
+   searchTKGMParcelInfoEvent(searchData: TKGMSearchRequest) {
+     this.searchTKGMParcelInfo.emit(searchData);
+   }
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 882801fdf66b119eec17ecfac35e1f9c303d6ae3..024d11c5772cd95bcbd643ad8b0173e9c86e5611 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -49,6 +49,7 @@ import { NVIObject } from '../models/NVI/nviobject';
+ import { ModelData } from '../yapi-info';
+ import { Observable } from 'rxjs/internal/Observable';
+ import esri = __esri;
++import { MaksData , Il} from '../models/MAKSData';
+ 
+ 
+ @Injectable({
+@@ -57,6 +58,7 @@ import esri = __esri;
+ export class WebDataService {
+   _boylemEnlemDeger: string;
+   tkgmURL = environment.ws + 'TKGM/';
++  maksURL = environment.ws + 'Cbs/';
+   yapiURL = environment.yapiURL;
+   ogrenciServisUrl = environment.ws + 'Ogrenci/';
+   tasimaliGenelURL = environment.ws + 'MebTasimaliGenel/';
+@@ -68,6 +70,38 @@ export class WebDataService {
+ 
+   constructor(private auth: AuthService, private http: HttpClient) { }
+ 
++  getIllerFromArcgis() {
++    // tslint:disable-next-line:max-line-length
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/mebcbs2023/FeatureServer/12/query?where=1%3D1&outFields=ad%2C+uavtil&returnGeometry=false&orderByFields=ad+asc&groupByFieldsForStatistics=ad%2C+uavtil&f=pjson';
++
++    const deneme =  this.http.get<Array<Il>>(url , { headers: this.auth.createHeader() }).subscribe(res => {
++      res = res['features']['attributes'];
++    });
++
++    return deneme;
++  }
++  getIlcelerFromMAKS(ilID: number) {
++    const url = this.maksURL + 'GetMaksIleBagliIlceListele?ilKodu=' + ilID;
++    const maksData = this.http.get<Array<MaksData>>(url , { headers: this.auth.createHeader() });
++
++      return maksData;
++  }
++
++  getMahallelerFromMAKS(ilceID: number) {
++    return this.http.get<MaksData>(this.maksURL + 'GetMaksIlceyeBagliMahalleListele?ilceKodu=' + ilceID,
++      { headers: this.auth.createHeader() });
++  }
++
++  getCsbmlerFromMAKS(mahalleID: number) {
++    return this.http.get<Array<MaksData>>(this.maksURL + 'GetMaksMahalleyeBagliCsbmListele?mahalleKodu=' + mahalleID,
++      { headers: this.auth.createHeader() });
++  }
++
++  getBinalarFromMAKS(csbmID: number) {
++    return this.http.get<Array<MaksData>>(this.maksURL + 'GetMaksCsbmyeBagliBinaListele?csbmKodu=' + csbmID,
++      { headers: this.auth.createHeader() });
++  }
++
+   getIllerFromTKGM() {
+     return this.http.get<Array<TKGMData>>(this.tkgmURL + 'getIL', { headers: this.auth.createHeader() });
+   }
+@@ -524,7 +558,7 @@ export class WebDataService {
+ 
+   mesafeGetikTekAlternatif(birinciNoktaKoordinalari: string, ikinciNoktaKoordinalari: string) {
+     this._boylemEnlemDeger = birinciNoktaKoordinalari + ',' + ikinciNoktaKoordinalari;
+-// tslint:disable-next-line:max-line-length
++    // tslint:disable-next-line:max-line-length
+     const requestBody = '<?xml version="1.0" encoding="UTF-8"?><wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">' +
+       '<ows:Identifier>gs:ShortestPath</ows:Identifier>' +
+       '<wps:DataInputs>' +
+@@ -548,7 +582,7 @@ export class WebDataService {
+       '</wps:ResponseForm>' +
+       '</wps:Execute>';
+ 
+-      // tslint:disable-next-line:max-line-length
++    // tslint:disable-next-line:max-line-length
+     const returnGeoJson = this.http.post<Array<String>>(environment.geoserverLink + '' + environment.geoserver, requestBody, { headers: this.auth.createHeaderWPS() });
+     return returnGeoJson;
+   }
+@@ -564,7 +598,7 @@ export class WebDataService {
+   }
+ 
+   getKoordinatByGuzergahId(guzergahId: number) {
+-    const requestParams = {guzergahId: guzergahId.toString()};
++    const requestParams = { guzergahId: guzergahId.toString() };
+ 
+     return this.http.get<Array<string>>(this.tasimaliGuzergahURL + 'koordinatGetir', {
+       headers: this.auth.createHeader(),
+@@ -573,7 +607,7 @@ export class WebDataService {
+   }
+ 
+   getKoordinatListByGuzergahIdList(guzergahIdList: Array<number>) {
+-    const requestParams = {guzergahIdList: guzergahIdList.toString()};
++    const requestParams = { guzergahIdList: guzergahIdList.toString() };
+ 
+     return this.http.get<Array<GuzergahKoordinat>>(this.tasimaliGuzergahURL + 'cokluKoordinatGetir', {
+       headers: this.auth.createHeader(),
