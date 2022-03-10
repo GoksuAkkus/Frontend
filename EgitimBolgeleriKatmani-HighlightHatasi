@@ -1,0 +1,92 @@
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 10462c6d66678bd04174ac56b51ea45bed17522c..0b17c5d475f0e98b8ef0d8160eebff20ed5520ff 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -1084,7 +1084,7 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       } else if (selectedLayer.visible === false && selectedLayer.title === 'Yapısal Durum') {
+         this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
+       } else {
+-        if (selectedLayer.title === 'Kadastro Parselleri') {
++        if (selectedLayer.title === 'Kadastro Parselleri' || selectedLayerTitle === 'Eğitim Bölgeleri') {
+           this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
+         } else {
+           console.error('Bilgiye gidebilmek için katman açık olması gerekmektedir');
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index d13947f5e3059f005a58d0e64a52cee29ce22759..754d37cf07b8b65f0862c7bce2e1fda6de623bca 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -15,6 +15,8 @@ import { loadModules } from 'esri-loader';
+ import { StationInfoComponent } from './station_info/station_info.component';
+ import { DiffInfoComponent } from './diff-info/diff-info.component';
+ import { EmitObject } from '../models/emitObject';
++import { ProjectionService } from '../mapUtils/projection.service';
++import { MeasureService } from '../mapUtils/measure.service';
+ 
+ @Component({
+   selector: 'app-info',
+@@ -67,6 +69,8 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   _generalInstutationAnalyze: boolean;
+   _user: LoginResponse;
+ 
++  polygonModule: esri.PolygonConstructor;
++
+   @Input()
+   set emitObject(emitObject) {
+     this._emitObject = emitObject;
+@@ -175,7 +179,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     return this._generalInstutationAnalyze;
+   }
+ 
+-  constructor() { }
++  constructor(private projectionService: ProjectionService, public measureService: MeasureService) { }
+ 
+   ngOnInit() {
+   }
+@@ -474,8 +478,31 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     if (!isGeneral) {
+       result = this._hitTestResultResults.find(hitTestResult => hitTestResult.graphic.layer.get('infoTitle') === value);
+       infoModel.mainGraphic = result.graphic;
++      const graphic = result.graphic;
++      const graphicLayerTitle = result.graphic.layer.title;
++      let geometry = result.graphic.geometry;
++
++      if (graphicLayerTitle === 'Eğitim Bölgeleri') {
++        loadModules(['esri/geometry/Polygon']).then(([Polygon]) => {
++          this.polygonModule = Polygon;
++          const polygonProperties: esri.PolygonProperties = {
++            rings: geometry['rings'][0],
++            spatialReference: this.mapView.spatialReference
++          };
++          const polygon: esri.Polygon = new this.polygonModule(polygonProperties);
++          this.projectionService.convertWgs84PolygonGeomTo3857(polygon);
++          geometry = polygon;
++          graphic.geometry = geometry;
++          this.measureService.getBufferGeometry(geometry, -2, 'meters').then(bufferGeometry => {
++            // graphic.set('bufferGeometry', bufferGeometry);
++            graphic.geometry = bufferGeometry;
++            this.highlightGraphic(graphic);
++          });
+ 
+-      this.highlightGraphic(result.graphic);
++        });
++      } else {
++        this.highlightGraphic(result.graphic);
++      }
+ 
+       const mapViewGoToOption: esri.MapViewBaseGoToOptions = {
+         duration: 1000,
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 5db7e6afc2aeb4d73e2be8b0a84f359a045ee638..278a95e8bd7b8e1e5be826b652564211d5eacb9d 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -2338,7 +2338,9 @@ export class MainComponent implements OnInit {
+ 
+         if (graphic.layer.title !== 'İlçe') {
+           this.measureService.getBufferGeometry(geometry, -2, 'meters').then(bufferGeometry => {
+-            graphic.set('bufferGeometry', bufferGeometry);
++            if (graphic.layer['infoTitle'] !== 'Eğitim Bölgeleri') {
++              graphic.set('bufferGeometry', bufferGeometry);
++            }
+           });
+         }
+       });
