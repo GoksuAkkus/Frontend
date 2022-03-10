@@ -1,0 +1,318 @@
+diff --git a/src/app/models/emitObject.ts b/src/app/models/emitObject.ts
+index 4883daac2ac51e7bcc1481e9bae6cb651713c8ff..ef7dd3172ce804e02032c604aa06fe661eba0b98 100644
+--- a/src/app/models/emitObject.ts
++++ b/src/app/models/emitObject.ts
+@@ -2,4 +2,10 @@ export class EmitObject {
+     featureSet: any;
+     objectId: string;
+     fromReports: boolean;
++    rowClickData: any;
++}
++
++export class EmitObjectForLastMovement {
++    objectId: string;
++    lastMovement: string;
+ }
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index fcc621e2c6bf4fc9d87600c4dde5102f7fd23b78..0b5459990c98df1e3375dec5f8cff608d6e8664d 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -72,6 +72,7 @@ export class ModuleReportComponent implements OnInit {
+     this.selectedRowObjectId = rowClickedEvent.data['i_objectid'];
+     const emitObject: EmitObject = new EmitObject();
+     emitObject.objectId = this.selectedRowObjectId;
++    emitObject.rowClickData = rowClickedEvent.data;
+     emitObject.fromReports = true;
+     let ada_no, parsel_no;
+     if (search_id === null || search_id === undefined) {
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index 9dea177da0e888c79303121db099445d8147b7ea..2c9678e0c35e886285318db0e34c85bcc377e81f 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -17,7 +17,7 @@ import { QueryConstructor } from 'src/app/models/AGGrid/query-constructor';
+ import { MovementListComponent } from 'src/app/movements/movement-list/movement-list.component';
+ import esri = __esri;
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
+-import { EmitObject } from 'src/app/models/emitObject';
++import { EmitObject, EmitObjectForLastMovement } from 'src/app/models/emitObject';
+ 
+ @Component({
+   selector: 'app-module-list',
+@@ -38,12 +38,16 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+   emitObject: EmitObject;
+ 
+-  lastMovementTitle = 'Son Hareket';
++  hDurumuDomains: any;
++  lastMovementFilterArray: Array<EmitObjectForLastMovement> = [];
++  rowsInfoArray: Array<EmitObjectForLastMovement> = [];
++  allRows: Array<any> = [];
+ 
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient) { }
+ 
+   ngOnInit() {
++
+     const dialogData = this.dialogConfig.data;
+     const moduleData = <ModulesModel>dialogData.moduleData;
+ 
+@@ -55,25 +59,28 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+     const featureData = dialogData.featureData;
+     const layerWhereField = moduleData.layerField;
+-
+     const whereField = moduleData.moduleField;
+ 
++    this.initializeLastMovement(whereField);
+     this.initalizeAGGrid();
+-    this.getRequiredFields(featureData, layerWhereField).then(feature => {
+-      const whereValue = feature.getAttribute(layerWhereField);
+-      this.getLayerFields().subscribe(fields => {
+-        this.fields = fields;
+-        const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
+-          'talep_turu', 'alt_konu', 'touch_by', 'touch_date', 'create_date'];
+-
+-        let colDefs = this.createColumnDefinitions(fields, showFields);
+-        colDefs = this.createModuleDefs(colDefs);
+-
+-        this.agGrid.api.setColumnDefs(colDefs);
+-        this.setDataSourceOfGrid(whereField, whereValue);
++
++    setTimeout(() => {
++      this.getRequiredFields(featureData, layerWhereField).then(feature => {
++        const whereValue = feature.getAttribute(layerWhereField);
++        this.getLayerFields().subscribe(fields => {
++          this.fields = fields;
++          const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
++            'talep_turu', 'alt_konu', 'touch_by', 'touch_date', 'create_date'];
++
++          let colDefs = this.createColumnDefinitions(fields, showFields);
++          colDefs = this.createModuleDefs(colDefs);
++
++          this.agGrid.api.setColumnDefs(colDefs);
++          this.setDataSourceOfGrid(whereField, whereValue);
++        });
++        this.featureData = feature;
+       });
+-      this.featureData = feature;
+-    });
++    }, 1000);
+     this.moduleData = moduleData;
+   }
+ 
+@@ -148,6 +155,59 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     this.agGrid.context = { componentParent: this };
+   }
+ 
++  initializeLastMovement(whereField: string) {
++    const movementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Hareket');
++    const processMovementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem_Hareket');
++    const durumuField = movementLayer.fields.find(field => (field.name === 'durumu' || field.name === 'h_durumu'));
++    if (durumuField !== null) {
++      this.hDurumuDomains = durumuField.domain['codedValues'];
++    }
++
++    const value = this.emitObject.rowClickData[`i_${whereField}`];
++    const queryProp: esri.QueryProperties = {
++      where: `i_${whereField}=${value}`,
++      returnGeometry: false,
++      outFields: ['i_objectid', 'h_durumu']
++    };
++
++    processMovementLayer.queryFeatures(queryProp).then(response => {
++      response.features.forEach(feature => {
++        const rowInfo = new EmitObjectForLastMovement();
++        const attributes = feature.attributes;
++        const hDurumu = attributes['h_durumu'];
++        if (hDurumu === null) {
++          rowInfo.lastMovement = '';
++        } else {
++          const codeValue = this.hDurumuDomains.find(domain => domain.code === Number(hDurumu));
++          rowInfo.lastMovement = codeValue['name'];
++        }
++        rowInfo.objectId = attributes['i_objectid'];
++        this.rowsInfoArray.push(rowInfo);
++      });
++    });
++  }
++
++  filterForLastMovement(filterModel: any) {
++    const filterParam = filterModel['lastMovement']['filter'].toLocaleLowerCase();
++    const newRows = [];
++    this.lastMovementFilterArray = [];
++
++    this.rowsInfoArray.forEach(rowInfo => {
++      if (rowInfo.lastMovement.toLocaleLowerCase().includes(filterParam)) {
++        this.lastMovementFilterArray.push(rowInfo);
++      }
++    });
++
++    this.lastMovementFilterArray.forEach(element => {
++      const objectId = element.objectId;
++      const foundRow = this.allRows.find(row => row['objectid'] === objectId);
++      if (foundRow) {
++        newRows.push(foundRow);
++      }
++    });
++    return newRows;
++  }
++
+   setDataSourceOfGrid(whereField: string, whereValue: string | number) {
+     if (isNaN(Number(whereValue))) {
+       whereValue = `'${whereValue}'`;
+@@ -163,38 +223,47 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+     const dataSource: IDatasource = {
+       getRows: (params) => {
+-        const num = params.endRow - params.startRow;
+-        queryProperties.num = num;
+ 
+-        const start = params.startRow;
+-        queryProperties.start = start;
++        if (params.filterModel['lastMovement']) {
++          const newRows = this.filterForLastMovement(params.filterModel);
++          delete params.filterModel['lastMovement'];
++          params.successCallback(newRows, newRows.length);
++        } else {
++          const num = params.endRow - params.startRow;
++          queryProperties.num = num;
+ 
+-        const queryParams = this.checkSortParameter(params, queryProperties);
+-        const filteredParams = this.addFilterParameters(params.filterModel, queryParams);
++          const start = params.startRow;
++          queryProperties.start = start;
+ 
+-        this.getFeatureCount(url, filteredParams).subscribe(filterCount => {
+-          this.getFeatures(url, filteredParams).subscribe(res => {
+-            let objectModel = res.features.map(feature => feature.attributes);
+-            const isFilter = this.agGrid.api.isAnyFilterPresent();
+-            // Filter yapılmışsa Object Model setlenmemeli
++          const queryParams = this.checkSortParameter(params, queryProperties);
++          const filteredParams = this.addFilterParameters(params.filterModel, queryParams);
+ 
+-            // Burası Sadece İşlemler Modülünden Row Seçildiğinde Çalışmalı
+-            if (this.emitObject !== undefined && this.emitObject.fromReports && !isFilter) {
+-              const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.emitObject.objectId));
++          this.getFeatureCount(url, filteredParams).subscribe(filterCount => {
++            this.getFeatures(url, filteredParams).subscribe(res => {
++              let objectModel = res.features.map(feature => feature.attributes);
++              const isFilter = this.agGrid.api.isAnyFilterPresent();
++              // Filter yapılmışsa Object Model setlenmemeli
+ 
+-              const firstPart = objectModel[selectedRowIndex];
+-              objectModel.splice(selectedRowIndex, 1);
++              // Burası Sadece İşlemler Modülünden Row Seçildiğinde Çalışmalı
++              if (this.emitObject !== undefined && this.emitObject.fromReports && !isFilter) {
++                const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.emitObject.objectId));
+ 
+-              objectModel = [].concat(firstPart, objectModel);
+-            }
++                const firstPart = objectModel[selectedRowIndex];
++                objectModel.splice(selectedRowIndex, 1);
+ 
+-            params.successCallback(objectModel, filterCount);
++                objectModel = [].concat(firstPart, objectModel);
++              }
+ 
+-            if (this.emitObject !== undefined && !isFilter) {
+-              this.colorYellowSelectedRow(this.emitObject.fromReports);
+-            }
++              this.allRows.push(...objectModel);
++
++              params.successCallback(objectModel, filterCount);
++
++              if (this.emitObject !== undefined && !isFilter) {
++                this.colorYellowSelectedRow(this.emitObject.fromReports);
++              }
++            });
+           });
+-        });
++        }
+       }
+     };
+     this.agGrid.api.setDatasource(dataSource);
+@@ -276,9 +345,17 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       headerName: 'Son Hareket',
+       colId: 'lastMovement',
+       field: 'lastMovement',
+-      filter: false
++      filter: 'agTextColumnFilter',
++      valueGetter: (params) => {
++        if (params.data !== undefined) {
++          const objectid = params.data['objectid'];
++          const foundRow = this.rowsInfoArray.find(row => row['objectId'] === objectid);
++          return foundRow.lastMovement;
++        }
++      }
+     };
+     colDefs.push(lastMovementColDef);
++
+     return colDefs;
+   }
+ 
+@@ -301,20 +378,9 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       filter: false,
+       width: 100
+     };
+-    const lastMovementCol = <ColDef>{
+-      colId: 'lastMovement',
+-      colKey: 'lastMovement',
+-      headerName: 'Son Hareket',
+-      cellRendererFramework: RendererComponent,
+-      cellRendererParams: { title: this.lastMovementTitle },
+-      sortable: false,
+-      filter: false,
+-      width: 100
+-    };
+ 
+     fieldColDefs.push(processCol);
+     fieldColDefs.push(transactionsCol);
+-    fieldColDefs.push(lastMovementCol);
+ 
+     return fieldColDefs;
+   }
+@@ -551,31 +617,6 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     return formData;
+   }
+ 
+-  forLastMovement(params: any, colDef: ColDef) {
+-    const objectid = params.data['objectid'];
+-    const rowIndex = params.rowIndex.toString();
+-
+-    const processMovementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem_Hareket');
+-    const movementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Hareket');
+-    const queryProp: esri.QueryProperties = {
+-      where: `i_objectid=${objectid}`,
+-      outFields: ['h_durumu']
+-    };
+-
+-    processMovementLayer.queryFeatures(queryProp).then(response => {
+-
+-      const domainCode = response.features[0].attributes['h_durumu'];
+-      const durumuField = movementLayer.fields.find(field => (field.name === 'durumu' || field.name === 'h_durumu'));
+-      if (durumuField !== null) {
+-        const domain = durumuField.domain['codedValues'].find(codeValue => codeValue.code === Number(domainCode));
+-
+-        const rowNode = this.agGrid.api.getRowNode(rowIndex);
+-        rowNode.setDataValue('lastMovement', domain.name);
+-        this.agGrid.api.refreshCells();
+-      }
+-    });
+-  }
+-
+   closeAllDialogRefs() {
+     if (this.moduleCreateRef !== undefined) {
+       this.moduleCreateRef.close();
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index c4d74db55a5e1894f500d9b149ef002311637f04..ae80d0d2945ac1ba8c95ca75dcefa6ae4ec71a24 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -178,8 +178,6 @@ export class RendererComponent implements ICellRendererAngularComp {
+             this.params.context.componentParent.onGetMalikSBIByHisseId(this.params.data);
+         } else if (this.params.title === 'Hareket Detay') {
+             this.params.context.componentParent.openMovementDetail(this.params.data);
+-        } else if (this.params.title === 'Son Hareket') {
+-            this.params.context.componentParent.forLastMovement(this.params, this.params.colDef);
+         }
+     }
+ 
