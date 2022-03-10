@@ -1,0 +1,392 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index e578693ab85eb0fc33a9624fc9f4ae98db55b8b7..6b4a3f4e748e4eccb0a362e826290773289a5371 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -128,6 +128,7 @@ import { OnayRendererComponent } from './info/renderers/onay-renderer.component'
+ import { MaksAdresbinakoduComponent } from './search/maks-adresbinakodu/maks-adresbinakodu.component';
+ import { AcikadressorgulamaComponent } from './search/acikadressorgulama/acikadressorgulama.component';
+ import { MirasciComponent } from './mirasci/mirasci.component';
++import { MalikReportComponent } from './malik-report/malik-report.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -246,7 +247,8 @@ import { MirasciComponent } from './mirasci/mirasci.component';
+     OnayRendererComponent,
+     MaksAdresbinakoduComponent,
+     AcikadressorgulamaComponent,
+-    MirasciComponent
++    MirasciComponent,
++    MalikReportComponent
+   ],
+   imports: [
+     BrowserAnimationsModule,
+diff --git a/src/app/malik-report/malik-report.component.html b/src/app/malik-report/malik-report.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..6335d5f2d74c8b189ae6641f235ae1a3910529e6
+--- /dev/null
++++ b/src/app/malik-report/malik-report.component.html
+@@ -0,0 +1,6 @@
++<div class="modal-content">
++    <div class="module-datatable">
++      <ag-grid-angular #agGrid class="ag-theme-balham ag-grid" (gridReady)="onGridReady()">
++      </ag-grid-angular>
++    </div>
++  </div>
+\ No newline at end of file
+diff --git a/src/app/malik-report/malik-report.component.scss b/src/app/malik-report/malik-report.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..bf69fad81a0b4151744c0925a6c3c2606d8040ec
+--- /dev/null
++++ b/src/app/malik-report/malik-report.component.scss
+@@ -0,0 +1,111 @@
++@import '../../global.scss';
++
++.modal-content {
++  display: flex;
++  flex-direction: column;
++  justify-content: flex-start;
++  margin: 10px 10px 15px 15px;
++  width: 800px;
++  min-width: 430px;
++  max-width: 1250px;
++  max-height: 800px;
++  min-height: 400px;
++}
++
++.module-datatable {
++  flex: 1;
++  display: flex;
++}
++
++.ag-grid {
++  width: 100%;
++}
++
++.istatistik-button {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 200px;
++  color: white;
++  border-radius: 4px;
++  background-color: $primaryColor;
++  padding: 6px 8px;
++  outline: none;
++  border: none;
++  font-weight: 600;
++  font-size: 16px;
++  transition: background-color .3s ease-out;
++  cursor: pointer;
++  margin-left: 10px;
++
++  &:hover {
++    background-color: lighten($primaryColor, 8);
++  }
++
++  &:active {
++    background-color: lighten($primaryColor, 20);
++  }
++
++  &.active {
++    background-color: lighten($primaryColor, 20);
++  }
++
++  &:focus {
++    background-color: lighten($primaryColor, 20);
++  }
++}
++
++.button-container {
++  display: flex;
++
++  >.btn-feyz {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    color: white;
++    border-radius: 4px;
++    background-color: $primaryColor;
++    padding: 6px 8px;
++    outline: none;
++    border: none;
++    width: 40px;
++    font-weight: 600;
++    font-size: 16px;
++    transition: background-color .3s ease-out;
++    cursor: pointer;
++
++    &:hover {
++      background-color: lighten($primaryColor, 8);
++    }
++
++    &:active {
++      background-color: lighten($primaryColor, 20);
++    }
++  }
++
++  >.layer-show-button {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    color: white;
++    border-radius: 4px;
++    background-color: $primaryColor;
++    padding: 6px 8px;
++    outline: none;
++    border: none;
++    width: 200px;
++    font-weight: 600;
++    font-size: 16px;
++    margin-left: 20px;
++    transition: background-color .3s ease-out;
++    cursor: pointer;
++
++    &:hover {
++      background-color: lighten($primaryColor, 8);
++    }
++
++    &:active {
++      background-color: lighten($primaryColor, 20);
++    }
++  }
++}
+diff --git a/src/app/malik-report/malik-report.component.spec.ts b/src/app/malik-report/malik-report.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9213ca45464b83e9c41406a32d9279aec0984bdf
+--- /dev/null
++++ b/src/app/malik-report/malik-report.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { MalikReportComponent } from './malik-report.component';
++
++describe('MalikReportComponent', () => {
++  let component: MalikReportComponent;
++  let fixture: ComponentFixture<MalikReportComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ MalikReportComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(MalikReportComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/malik-report/malik-report.component.ts b/src/app/malik-report/malik-report.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..86b1722c9afef4f06c80485c1b479b253f9cd643
+--- /dev/null
++++ b/src/app/malik-report/malik-report.component.ts
+@@ -0,0 +1,168 @@
++import { HttpClient } from '@angular/common/http';
++import { Component, OnInit, ViewChild } from '@angular/core';
++import { AgGridNg2 } from 'ag-grid-angular';
++import { DialogConfig } from '../dialog/dialog-config';
++import { ModulesModel } from '../models/Info/modules-model';
++import { UserPermission } from '../models/Login/user-permission';
++import { AuthService } from '../services/auth.service';
++import esri = __esri;
++
++@Component({
++  selector: 'app-malik-report',
++  templateUrl: './malik-report.component.html',
++  styleUrls: ['./malik-report.component.scss']
++})
++export class MalikReportComponent implements OnInit {
++  @ViewChild('agGrid', { static: true }) agGrid: AgGridNg2;
++  
++  mapView: esri.MapView;
++  guiPermissions: Array<boolean> = [];
++  moduleData: Array<ModulesModel> = [];
++  whereQuery: string;
++
++  constructor(public dialogConfig: DialogConfig,  private http: HttpClient,  private auth: AuthService) { }
++
++  ngOnInit() {
++    const data = this.dialogConfig.data;
++    this.mapView = <esri.MapView>data.mapView;
++    const userPermission = data.userPerm;
++
++    this.fillGUIAuthorization(userPermission);
++    this.initalizeAGGrid();
++  }
++
++  fillGUIAuthorization(userPermission: UserPermission) {
++    this.guiPermissions.push(this.isAuthorized(userPermission, 0));
++    this.guiPermissions.push(this.isAuthorized(userPermission, 1));
++  }
++
++  isAuthorized(userPermission: UserPermission, id: number) {
++    if (userPermission === undefined) {
++      return true;
++    }
++
++    const flattenPermItems = userPermission.flattenPermGUI[1];
++
++    if (flattenPermItems !== undefined) {
++      if (flattenPermItems.items.includes(id)) {
++        return true;
++      } else {
++        return false;
++      }
++    } else {
++      return false;
++    }
++  }
++
++  initalizeAGGrid() {
++    const agGrid = this.agGrid;
++
++    agGrid.floatingFilter = true;
++    agGrid.pagination = true;
++    agGrid.paginationAutoPageSize = true;
++    agGrid.maxBlocksInCache = 2;
++    agGrid.infiniteInitialRowCount = 1;
++    agGrid.suppressFieldDotNotation = true;
++    agGrid.rowModelType = 'infinite';
++    agGrid.rowDeselection = true;
++    agGrid.rowSelection = 'single';
++    agGrid.defaultColDef = {
++      sortable: true,
++      resizable: true,
++      filter: true,
++      width: 75
++    };
++    agGrid.localeText = {
++      page: 'Sayfa',
++      more: 'Daha',
++      to: '->',
++      of: ' / ',
++      next: 'Sonraki',
++      previous: 'Önceki',
++      loadingOoo: 'Yükleniyor...',
++      equals: 'Eşit',
++      notEqual: 'Eşit Değil',
++      lessThan: 'Küçüktür',
++      greaterThan: 'Büyüktür',
++      lessThanOrEqual: 'Küçük Eşittir',
++      greaterThanOrEqual: 'Büyük Eşittir',
++      inRange: 'Aralık',
++      contains: 'İçeren',
++      notContains: 'İçermez',
++      endsWith: '-ile Başlayan',
++      startsWith: '-ile Biten',
++      filters: 'Filtreler',
++      noRowsToShow: 'Veri bulunamadı',
++    };
++
++    agGrid.context = { componentParent: this };
++  }
++
++  onGridReady() {
++    this.getData().subscribe(moduleData => {
++      this.moduleData = moduleData;
++
++      const auth = this.auth;
++      const userPerm = auth.userPerm;
++
++      const allowedModules: { ids: Array<number>, names: Array<string> } = { ids: [], names: [] };
++      const allowedIDs = allowedModules.ids;
++      const allowedNames = allowedModules.names;
++      if (userPerm !== undefined) {
++        const flattenPermItems = userPerm.flattenPermGUI[2];
++        moduleData.forEach(module => {
++          module.operations.forEach(operation => {
++            const operationID = operation.item;
++            const operationTitle = operation.title;
++
++            if (flattenPermItems !== undefined) {
++              if (flattenPermItems.items.includes(operationID)) {
++                if (!allowedIDs.includes(operationID)) {
++                  allowedIDs.push(operationID);
++                  allowedNames.push(operationTitle);
++                }
++              }
++            }
++          });
++        });
++        const allowedIDsIncreased = [];
++        allowedIDs.forEach(id => allowedIDsIncreased.push(id + 1));
++      } else {
++        moduleData.forEach(module => {
++          module.operations.forEach(operation => {
++            const operationID = operation.item;
++            const operationTitle = operation.title;
++
++            if (!allowedIDs.includes(operationID)) {
++              allowedIDs.push(operationID);
++              allowedNames.push(operationTitle);
++            }
++          });
++        });
++      }
++      
++      if(allowedIDs.includes(10)) {
++        this.getIslemMalikData().subscribe(res => {
++
++        });
++        // kamulaştırma davaları yetkisi varsa görebilecek
++        // yoksa notify ver yetkiniz yok diye.
++        
++      }
++    });
++  }
++  
++  getData() {
++    return this.http.get<Array<ModulesModel>>('assets/Modules.json');
++  }
++
++  getIslemMalikData() {
++    // İŞLEM MALİK TABLOSUNA İSTEK ATILACAK
++    // BURADA HİSSEIDYE GÖRE MALİKLER VE DOSYANUMARALARI ÇEKİLECEK VE LİSTELENECEK
++    // BU YÜZDEN ÖNCE HİSSEID OLAYINI DÜZELTMELİSİN. GLOBALIDYE GÖRE KAYDEDİLME OLAYLARI VS...
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/mebcbs2023/mebcbs2023/FeatureServer/17'
++    return this.http.get(url, { });
++  }
++  
++
++}
+diff --git a/src/app/module-report/module-report.component.html b/src/app/module-report/module-report.component.html
+index f7125935245390bbbb19e2f18b425e2f138effe6..2c19f186b5f1db7c47ad811bf5f51025ad6e2f3b 100644
+--- a/src/app/module-report/module-report.component.html
++++ b/src/app/module-report/module-report.component.html
+@@ -6,6 +6,7 @@
+         {{allowedModules.names[i]}}</option>
+     </select>
+     <button class="istatistik-button" (click)="onClickStatistics()"> İstatistikler </button>
++    <button class="istatistik-button" (click)="onClickMalikReport()"> Malik Raporu </button>
+   </div>
+   <div class="module-datatable">
+     <ag-grid-angular #agGrid class="ag-theme-balham ag-grid" (gridReady)="onGridReady()"
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 52b4fcd218c9b010f58692a7a89341d10f6f4ba7..b14b8f26f0259fe29d62bc95030dd974437b64db 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -20,6 +20,7 @@ import { UserPermission } from '../models/Login/user-permission';
+ import { LayerSymbologyComponent } from '../layer-symbology/layer-symbology.component';
+ import { ModuleReportStatisticsComponent } from './module-report-statistics/module-report-statistics.component';
+ import { EmitObject } from '../models/emitObject';
++import { MalikReportComponent } from '../malik-report/malik-report.component';
+ @Component({
+   selector: 'app-module-report',
+   templateUrl: './module-report.component.html',
+@@ -995,5 +996,10 @@ export class ModuleReportComponent implements OnInit {
+     const statisticsDialog = this.dialog.open(ModuleReportStatisticsComponent, 'İstatistikler', true,
+       { data: { mapView: this.mapView } }, undefined, 'red-to-light');
+   }
++
++  onClickMalikReport() {
++    const statisticsDialog = this.dialog.open(MalikReportComponent, 'Malik Raporu', true,
++      { data: { mapView: this.mapView } }, undefined, 'red-to-light');
++  }
+ }
+ 
