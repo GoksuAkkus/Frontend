@@ -1,0 +1,23 @@
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index 341dcacf9747bb6dadea1fbdde8d4231ff858dff..e185a6345e143222249e96a91380cf306f16581e 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -2014,6 +2014,18 @@
+             {
+               "value": 3,
+               "name": ""
++            }, 
++            {
++              "value": 4,
++              "name": ""
++            },
++             {
++              "value": 5,
++              "name": ""
++            }, 
++            {
++              "value": 6,
++              "name": ""
+             }
+           ]
+           },
