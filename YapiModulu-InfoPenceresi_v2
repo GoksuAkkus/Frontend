@@ -1,0 +1,912 @@
+diff --git a/src/app/data-table/data-table.component.html b/src/app/data-table/data-table.component.html
+index bb82de7f63310be474d510b66f73b6485a1caa4a..8c7b7138a960aa81b1111f4425c86c0629ab3bd4 100644
+--- a/src/app/data-table/data-table.component.html
++++ b/src/app/data-table/data-table.component.html
+@@ -12,9 +12,9 @@
+         </svg>
+       </div>
+       <div class="layer-select">
+-        <span class="option"   (mousedown)="onSelectLayer($event)"> Yapı::Enerji</span>
++        <!-- <span class="option"   (mousedown)="onSelectLayer($event)"> Yapı::Enerji</span>
+           <span class="option"  (mousedown)="onSelectLayer($event)">Yapı::Yapısal Durum</span>
+-          <span class="option"  (mousedown)="onSelectLayer($event)">Yapı::Yapısal Bilgi</span>
++          <span class="option"  (mousedown)="onSelectLayer($event)">Yapı::Yapısal Bilgi</span> -->
+           <span class="option" *ngFor="let layer of filteredLayers"
+           (mousedown)="onSelectLayer($event)">{{layer.title}}</span>
+       </div>
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 4210a4257524513f14928be5de49e29802bb21e3..29a0facdfe266854ccfe6b08177d4acd13dcf013 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -39,7 +39,8 @@ export class DataTableComponent implements OnInit, OnDestroy {
+   bufferGraphic: esri.Graphic;
+ 
+   infoData: ModelData;
+-  constructor(private webDataService: WebDataService, public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService, private http: HttpClient) { }
++  constructor(private webDataService: WebDataService, 
++    public dialogConfig: DialogConfig, public dialogRef: DialogRef, private dialog: DialogService, private http: HttpClient) { }
+ 
+   ngOnInit() {
+     const data = this.dialogConfig.data;
+@@ -339,7 +340,7 @@ export class DataTableComponent implements OnInit, OnDestroy {
+   }
+ 
+   filterYapi(filterModelElement: string, filterModelProperties: Object, operator?) {
+-    const type = filterModelProperties['type'];
++
+     const filter = filterModelProperties['filter'];
+ 
+     const filterType = filterModelProperties['filterType'];
+@@ -357,14 +358,74 @@ export class DataTableComponent implements OnInit, OnDestroy {
+ 
+       firstConditionWhereQuery = this.createWhereQueryOfYapiFilter(filterModelProperties['condition1']);
+       secondConditionWhereQuery = this.createWhereQueryOfYapiFilter(filterModelProperties['condition2']);
+-      whereQuery = filterModelElement + ' ' + firstConditionWhereQuery + operator + ' ' + filterModelElement + secondConditionWhereQuery;
++
++      whereQuery = '( ' + filterModelElement + ' ' + firstConditionWhereQuery + operator +
++        ' ' + filterModelElement + secondConditionWhereQuery + ' )';
+ 
+     } else {
+-      whereQuery =  filterModelElement + ' ' + this.createWhereQueryOfYapiFilter(filterModelProperties);
++      whereQuery = filterModelElement + ' ' + this.createWhereQueryOfYapiFilter(filterModelProperties);
+     }
+     return whereQuery;
+ 
+   }
++
++  setDataSourceForYapi(colDefs: ColDef[], tableName: string) {
++    this.agGrid.api.setColumnDefs(colDefs);
++
++    const dataSourceYapi = {
++      getRows: (params) => {
++        const start = params.startRow;
++        const end = params.endRow;
++        const count = end - start;
++        let whereQuery = '';
++        let where = '1=1';
++
++        if (Object.keys(params.filterModel).length !== 0) {
++
++          const filterModel = params.filterModel;
++
++          for (const element in filterModel) {
++
++            if (element) {
++              const filterModelElement = filterModel[element];
++
++              if (filterModelElement.operator) {
++                const operator = filterModelElement.operator;
++                whereQuery += this.filterYapi(element, filterModelElement, operator) + ' AND ';
++              } else {
++                whereQuery += this.filterYapi(element, filterModelElement) + ' AND ';
++              }
++            }
++          }
++          const deleteString = whereQuery.length - 4;
++          whereQuery = whereQuery.substring(0, deleteString);
++        }
++        if (whereQuery !== '') {
++          where = whereQuery;
++        }
++        this.http.get<number>(environment.yapiURL + 'grid/countDataForYapi', {
++          params: {
++            where: where,
++            layerName: tableName
++          }
++        }).subscribe(countData => {
++          const istek = this.http.get<Array<any>>(environment.yapiURL + 'gridDetayliArama', {
++            params: {
++              layerName: tableName,
++              start: start.toString(),
++              count: count.toString(),
++              where: where
++            }
++          }).subscribe(gridData => {
++            params.successCallback(gridData, countData);
++          });
++        });
++      }
++    } as IDatasource;
++
++    this.agGrid.api.setDatasource(dataSourceYapi);
++  }
++
+   filterData(event: Event) {
+     const grid = document.getElementById('agGrid');
+ 
+@@ -384,72 +445,23 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     const layerInnerContainer = inputContainer.parentElement;
+     const layerDropdownContainer = layerInnerContainer.previousElementSibling;
+     const formGroup = layerDropdownContainer.firstElementChild;
+-    const deneme = formGroup.firstElementChild;
+-    const value = deneme['value'];
+-
+-    if (value === 'Yapı::Enerji') {
+-      const colDefs = this.createColumnDefinitionsForYapi('yapi_enerji');
+-      this.agGrid.api.setColumnDefs(colDefs);
+-
+-      const dataSourceYapi = {
+-        getRows: (params) => {
+-          const start = params.startRow;
+-          const end = params.endRow;
+-          const count = end - start;
+-          let whereQuery = '';
+-          let where = '1=1';
+-          if (params.filterModel !== {}) {
+-
+-            const filterModel = params.filterModel;
+-
+-            for (const element in filterModel) {
+-
+-              if (element) {
+-                const filterModelElement = filterModel[element];
+-
+-                if (filterModelElement.operator) {
+-                  const operator = filterModelElement.operator;
+-                  whereQuery += this.filterYapi(element, filterModelElement, operator) + ' AND ';
+-                } else {
+-                  whereQuery += this.filterYapi(element, filterModelElement) + ' AND ';
+-                }
+-              }
+-            }
+-            const deleteString = whereQuery.length - 4;
+-            whereQuery = whereQuery.substring(0, deleteString);
+-          }
+-          if (whereQuery !== '') {
+-            where = whereQuery;
+-          }
+-          this.http.get<number>(environment.yapiURL + 'grid/countDataForYapi', {
+-            params: {
+-              where: where,
+-              layerName: 'yapi_enerji'
+-            }
+-          }).subscribe(countData => {
+-            const istek = this.http.get<Array<any>>(environment.yapiURL + 'gridDetayliArama', {
+-              params: {
+-                layerName: 'yapi_enerji',
+-                start: start.toString(),
+-                count: count.toString(),
+-                where: where
+-              }
+-            }).subscribe(gridData => {
+-              params.successCallback(gridData, countData);
+-            });
+-          });
+-        }
+-      } as IDatasource;
+-
+-      this.agGrid.api.setDatasource(dataSourceYapi);
++    const layerSelect1 = formGroup.firstElementChild;
++    const layerName = layerSelect1['value'];
++
++    let tableName: string;
++    if (layerName === 'Yapı::Enerji') {
++      tableName = 'yapi_enerji';
++    } else if (layerName === 'Yapı::Yapısal Durum') {
++      tableName = 'yapisal_durum';
++    } else if (layerName === 'Yapı::Yapısal Bilgi') {
++      tableName = 'yapisal_bilgi';
++    }
++    if (tableName !== undefined) {
++      const colDefs = this.createColumnDefinitionsForYapi(tableName);
++      this.setDataSourceForYapi(colDefs, tableName);
+       return;
+     }
+-    // if (queryLayer.title === 'Yapı::Yapısal Durum') {
+ 
+-    // }
+-    // if (queryLayer.title === 'Yapı::Yapısal Bilgi') {
+-
+-    // }
+     if (this.bufferAnalysisState !== true) {
+       queryProperties = {
+         where: textArea.value,
+@@ -605,6 +617,8 @@ export class DataTableComponent implements OnInit, OnDestroy {
+ 
+           this.queryFeatureData(authorizedFields, 'tasinmaz_id', tasinmazID, parselLayer);
+         });
++      } else if (selectedLayer.visible === false && selectedLayer.title === 'Yapısal Durum') {
++          this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
+       } else {
+         console.error('Bilgiye gidebilmek için katman açık olması gerekmektedir');
+       }
+@@ -622,10 +636,15 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       outFields: outFields,
+       returnGeometry: true,
+     };
++    console.log('selectedLayer:', selectedLayer);
++    console.log('queryParams:', queryParams);
+ 
+-    selectedLayer.queryFeatures(queryParams).then(responseObject => {
++    const layerQuery = selectedLayer.queryFeatures(queryParams).then(responseObject => {
+       this.dialogRef.emit(responseObject);
++      console.log('responseObject:', responseObject);
+     });
++    console.log('layerQuery: ', layerQuery);
++
+   }
+ 
+   addFilterParameters(filterModel: FilterModel, queryParams: esri.QueryProperties) {
+@@ -977,9 +996,9 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       const bina_kullanim = this.createColDefForYapi('Bina Kullanım', 'bina_kullanim', 'domain');
+       const koy_okulu = this.createColDefForYapi('Köy Okulu', 'koy_okulu', 'domain');
+       const kat_adedi = this.createColDefForYapi('Kat Adedi', 'kat_adedi', 'number');
+-      const kat_yuksekligi = this.createColDefForYapi('kat_yuksekligi', 'kat_yuksekligi', 'number');
++      const kat_yuksekligi = this.createColDefForYapi('kat_yuksekligi', 'kat_yuksekligi', 'text');
+       const kot_adedi = this.createColDefForYapi('Kot Adedi', 'kot_adedi', 'number');
+-      const kot_yuksekligi = this.createColDefForYapi('Kot Yüksekliği', 'kot_yuksekligi', 'number');
++      const kot_yuksekligi = this.createColDefForYapi('Kot Yüksekliği', 'kot_yuksekligi', 'text');
+       const kat_asansoru = this.createColDefForYapi('Kat Asansörü', 'kat_asansoru', 'domain');
+       const yangin_merdiveni = this.createColDefForYapi('Yangın Merdiveni', 'yangin_merdiveni', 'domain');
+       const yangin_sondurme_sistemi = this.createColDefForYapi('Yangın Söndürme Sistemi', 'yangin_sondurme_sistemi', 'domain');
+@@ -1058,5 +1077,4 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     }
+     return colDef;
+   }
+-
+ }
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index d0ab1efe7c303e68da7cdb83429efe6d71358a59..b4c98034f02acc58849eb1fd4789849f0048c9f6 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -360,6 +360,66 @@ export class EsriMapComponent implements OnInit {
+       serhWatchHandle.remove();
+     });
+ 
++    const yapisalDurumLayerProperties = <esri.FeatureLayerProperties> {
++      title: 'Yapısal Durum',
++      url: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/3',
++      visible: false,
++      isActiveLayer: true
++    };
++    const yapisalDurumLayer = new FeatureLayer(yapisalDurumLayerProperties);
++    yapisalDurumLayer.set('authorized', true);
++    const yapisalDurumWatchHandle = yapisalDurumLayer.watch('fields', (fields: Array<esri.Field>) => {
++      const disabledFields = ['objectid', 'objectid_1'];
++      fields.forEach( field => {
++        if (disabledFields.includes (field.name)) {
++          field.set('disabled', true);
++        }
++
++        field.set('rAuthorized', true);
++      });
++      yapisalDurumWatchHandle.remove();
++    });
++
++    const yapisalBilgiLayerProperties = <esri.FeatureLayerProperties> {
++      title: 'Yapısal Bilgi',
++      url: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/4',
++      visible: false,
++      isActiveLayer: true
++    };
++    const yapisalBilgiLayer = new FeatureLayer(yapisalBilgiLayerProperties);
++    yapisalBilgiLayer.set('authorized', true);
++    const yapisalBilgiWatchHandle = yapisalBilgiLayer.watch('fields', (fields: Array<esri.Field>) => {
++      const disabledFields = ['objectid', 'objectid_1'];
++      fields.forEach( field => {
++        if (disabledFields.includes (field.name)) {
++          field.set('disabled', true);
++        }
++
++        field.set('rAuthorized', true);
++      });
++      yapisalBilgiWatchHandle.remove();
++    });
++
++    const yapiEnerjiLayerProperties = <esri.FeatureLayerProperties> {
++      title: 'Yapı Enerji',
++      url: 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/1',
++      visible: false,
++      isActiveLayer: true
++    };
++    const yapiEnerjiLayer = new FeatureLayer(yapiEnerjiLayerProperties);
++    yapiEnerjiLayer.set('authorized', true);
++    const yapisEnerjiWatchHandle = yapiEnerjiLayer.watch('fields', (fields: Array<esri.Field>) => {
++      const disabledFields = ['objectid', 'objectid_1'];
++      fields.forEach( field => {
++        if (disabledFields.includes (field.name)) {
++          field.set('disabled', true);
++        }
++
++        field.set('rAuthorized', true);
++      });
++      yapisEnerjiWatchHandle.remove();
++    });
++
+     const moduleLayerProperties = <esri.FeatureLayerProperties>{
+       title: 'İslem',
+       url: environment.arcgisMEBURL + '/FeatureServer/14',
+@@ -434,6 +494,9 @@ export class EsriMapComponent implements OnInit {
+     map.add(malik_tasinmazLayer);
+     map.add(serhBeyanLayer);
+     map.add(mebDetailExtraLayer);
++    map.add(yapisalDurumLayer);
++    map.add(yapisalBilgiLayer);
++    map.add(yapiEnerjiLayer);
+   }
+ 
+   createMaksLayers(map: esri.Map) {
+@@ -614,6 +677,11 @@ export class EsriMapComponent implements OnInit {
+     return wmsLayer;
+   }
+ 
++  // createYapiLayer(map: esri.Map) {
++  //   const yapiEnerjiUrl = 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/1';
++  //   const yapisalDurumUrl = 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/3';
++  //   const yapisalBilgiUrl = 'https://cbs.meb.gov.tr/server/rest/services/MEB_IEDB/YAPI/FeatureServer/4';
++  // }
+   createSitAlanLayer(map: esri.Map) {
+     loadModules(['esri/layers/MapImageLayer']).then(([MapImageLayer]) => {
+       const MapImageLayerConstructor = <esri.MapImageLayerConstructor>MapImageLayer;
+diff --git a/src/app/info/generic-info/generic-info.component.html b/src/app/info/generic-info/generic-info.component.html
+index 84f0d6bdeb89c5da55d761573888b10f28fc95af..ebfdfabb61347fece1aac7d16bd6f7c2a52d254b 100644
+--- a/src/app/info/generic-info/generic-info.component.html
++++ b/src/app/info/generic-info/generic-info.component.html
+@@ -98,7 +98,7 @@
+ 
+ 
+ 
+-        <input *ngIf="_tabData.features[0].layer['infoTitle'] === 'Kurumlar'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()">
++        <input *ngIf="_tabData.features[0].layer['originalTitle'] === 'Bina Kurum'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()">
+ 
+ 
+ 
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index 2b166324d7c438e50dc209c19c0dbbea6447f9fe..42f822871e39bcbdcb198052a2dc29e5f0a8b253 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -64,6 +64,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   @Input()
+   set tabData(tabData) {
+     this._tabData = tabData;
++    console.log('tabData: ',this._tabData);
+     if (tabData !== undefined) {
+       this._isEditable = false;
+       this.changeDomainValues();
+@@ -1295,7 +1296,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+ 
+   onClickYapiBilgileri() {
+     this._tabData.set('yapibilgileri', true);
+-     this.yapiBilgileri.emit(this._tabData.features[0].attributes['bina_refid']);
++     this.yapiBilgileri.emit(this._tabData.features[0].attributes['refid']);
+     // this.yapiBilgileri.emit(this._tabData.features[0].attributes['kurum_kodu']);
+   }
+ }
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index da6d886cd2128667323ebfb7b4ca891ecb7fb573..acd32a67c715bca59887c49e86548706a960feae 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -22,7 +22,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   @Output() finalizeEdit = new EventEmitter<{ feature: esri.Graphic, operation: number }>();
+   @Output() districtSelect = new EventEmitter<esri.FeatureSet>();
+   @Output() acceptRejectChanges = new EventEmitter<{ features: Array<esri.Graphic>, isDelete: boolean }>();
+-  @Output() kurumKodu = new EventEmitter<number>();
++  @Output() binaSiraNo = new EventEmitter<number>();
+   @Output() schoolTypeSelect =
+     new EventEmitter<{
+       header: string, layer: esri.FeatureLayer, queryString: string,
+@@ -903,9 +903,9 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     this.closeInfo();
+   }
+ 
+-  onYapiBilgileri(kurum_kodu: number) {
+-    if (kurum_kodu !== undefined && kurum_kodu !== null) {
+-      this.kurumKodu.emit(kurum_kodu);
++  onYapiBilgileri(binaSiraNo: number) {
++    if (binaSiraNo !== undefined && binaSiraNo !== null) {
++      this.binaSiraNo.emit(binaSiraNo);
+     }
+   }
+ 
+diff --git a/src/app/main/main.component.html b/src/app/main/main.component.html
+index 1f55553cae7ffef78747d306a964fd46256281a0..92298e61964c38631fc488e4e09b59a801a6b430 100644
+--- a/src/app/main/main.component.html
++++ b/src/app/main/main.component.html
+@@ -47,7 +47,7 @@
+   [hitTestResult]="hitTestResult" [infoObject]="infoObject" (infoClose)="onCloseInfo()" [userPerm]="auth.userPerm"
+   (initEdit)="initEditEvent($event)" (finalizeEdit)="finalizeEditEvent($event)"
+   (acceptRejectChanges)="acceptRejectChangesEvent($event)" (otherSchoolTypeSelect)="otherSchoolTypeSelectEvent($event)"
+-  (schoolTypeSelect)="schoolTypeSelectEvent($event)" (districtSelect)="convertAndOpenInfoWithFeatureSet($event)" (kurumKodu) = "getYapiBilgileri($event)"> 
++  (schoolTypeSelect)="schoolTypeSelectEvent($event)" (districtSelect)="convertAndOpenInfoWithFeatureSet($event)" (binaSiraNo) = "getYapiBilgileri($event)"> 
+ </app-info>
+ <app-yapi-bilgileri-info *ngIf="infoData !== undefined" [infoData]="infoData" (infoClose)="onCloseYapiInfo()" (yapiInfoBack) = "onClickBackYapi()"></app-yapi-bilgileri-info>
+ <app-reports *ngIf="reportsWindowState" [mapView]="mapView" (openInfoDialog)="openInfoDialogEvent($event)"
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index e96326d8894d7dc5c66d4bec0689de004086f518..3baae5a4817fe2f8f6ebf809c5f7f3635a52c05b 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -29,7 +29,7 @@ import { GeoJsonModel } from '../models/Modules/geojson';
+ import { Subject, forkJoin } from 'rxjs';
+ import { HttpClient } from '@angular/common/http';
+ import { NviDialogComponent } from '../nvi-dialog/nvi-dialog.component';
+-import { ModelData } from '../yapi-info';
++import { ModelData, InfoData } from '../yapi-info';
+ 
+ @Component({
+   selector: 'app-main',
+@@ -92,6 +92,71 @@ export class MainComponent implements OnInit {
+   ngOnInit() {
+   }
+ 
++  getYapiBilgileri(binaSiraNo: number) {
++    // this.webDataService.getBinaSiraNoileInfo(binaSiraNo).subscribe(dd => {
++    //   this.infoData = dd;
++    // });
++    let yapisalBilgiGraphic :esri.Graphic;
++    let yapisalDurumGraphic :esri.Graphic;
++    let yapiEnerjiGraphic :esri.Graphic;
++
++    const yapisalBilgiLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Yapısal Bilgi');
++    const yapisalDurumLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Yapısal Durum');
++    const yapiEnerjiLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Yapı Enerji');
++    const where = `bina_sira_no  = ${binaSiraNo} `;
++
++    const yapisalBilgiAuthorizedFields = yapisalBilgiLayer.fields.filter(field => field.get('rAuthorized') === true);
++    const yapisalDurumAuthorizedFields = yapisalDurumLayer.fields.filter(field => field.get('rAuthorized') === true);
++    const yapiEnerjiAuthorizedFields = yapiEnerjiLayer.fields.filter(field => field.get('rAuthorized') === true);
++
++    const yapisalBilgiOutfields = yapisalBilgiAuthorizedFields.map(authorizedField => authorizedField.name);
++    const yapisalDurumOutfields = yapisalDurumAuthorizedFields.map(authorizedField => authorizedField.name);
++    const yapiEnerjiOutfields = yapiEnerjiAuthorizedFields.map(authorizedField => authorizedField.name);
++
++    const yapisalBilgiQueryParams: esri.QueryProperties = {
++      where: where,
++      outFields: yapisalBilgiOutfields
++    };
++    const yapisalDurumQueryParams: esri.QueryProperties = {
++      where: where,
++      outFields: yapisalDurumOutfields
++    };
++    const yapiEnerjiQueryParams: esri.QueryProperties = {
++      where: where,
++      outFields: yapiEnerjiOutfields
++    };
++
++    yapisalBilgiLayer.queryFeatures(yapisalBilgiQueryParams).then(yapisalBilgiResponse => {
++      yapisalDurumLayer.queryFeatures(yapisalDurumQueryParams).then(yapisalDurumResponse => {
++        yapiEnerjiLayer.queryFeatures(yapiEnerjiQueryParams).then(yapiEnerjiResponse => {
++           yapisalBilgiGraphic = yapisalBilgiResponse.features[0];
++           yapisalDurumGraphic = yapisalDurumResponse.features[0];
++           yapiEnerjiGraphic = yapiEnerjiResponse.features[0];
++
++          const mainInformation = undefined;
++
++          this.infoData = {
++            mainInformation: mainInformation,
++            extraInformation: {
++              yapisal_bilgi: {
++                graphic: yapisalBilgiGraphic,
++                tabName: 'Yapısal Bilgi'
++              },
++              yapisal_durum: {
++                graphic: yapisalDurumGraphic,
++                tabName: 'Deprem'
++              },
++              yapi_enerji: {
++                graphic: yapiEnerjiGraphic,
++                tabName: 'Enerji'
++              }
++            },
++
++          };
++        });
++      });
++    });
++  }
+   searchTuzelKisiEvent(tuzelKisi: TKGMGercekKisiRequest) {
+     const tkgmOrMeb = tuzelKisi['tkgmOrMeb'];
+ 
+@@ -350,7 +415,7 @@ export class MainComponent implements OnInit {
+     this.rightClickEvent = undefined;
+     this.drawEditService.removePointGraphic();
+     setTimeout(() => {
+-      this.mapView.hitTest(event).then(res => {
++      const mapviewHitTestResult =this.mapView.hitTest(event).then(res => {
+         if (this.isMultiSelectModeEnabled) {
+           const hitTestResult = this.mapService.prepareHitTestLayers(res.results);
+           this.multiSelectFeatureSubject.next(hitTestResult);
+@@ -384,9 +449,10 @@ export class MainComponent implements OnInit {
+           }
+         } else {
+           this.hitTestResult = [];
+-        }
++        }console.log('res:', res);
+       });
+     });
++    
+     this.mapService.clearSelectedGraphics('type', 'TKGMParcel');
+     this.mapService.clearSelectedGraphics('type', 'editGeometry');
+ 
+@@ -1493,8 +1559,10 @@ export class MainComponent implements OnInit {
+   }
+ 
+   bufferAnalysisCompletedEvent() {
++    console.log('map:', this.mapView.map);
++    console.log('Bufferdan Önce: ', this.mapView.map.layers);
+     const tempBufferGraphic: esri.Graphic = Object.assign({}, this.mapService.bufferGraphic.toJSON());
+-
++    console.log('tempBufferGraphic: ', tempBufferGraphic);
+     this.bufferAnalysisDialogRef = this.dialogService.open(DataTableComponent, 'Buffer Analizi', true, {
+       data: {
+         bufferAnalysisState: true,
+@@ -1526,6 +1594,7 @@ export class MainComponent implements OnInit {
+       }
+ 
+     });
++    console.log('Bufferdan Sonra: ', this.mapView.map.layers);
+   }
+ 
+   gotoTKGMGeometryEvent(tkgmGeometryObject: TKGMGeometryObject) {
+@@ -1725,10 +1794,4 @@ export class MainComponent implements OnInit {
+   }
+   onDispatchOtherLayerView() { }
+ 
+-  getYapiBilgileri(kurumKodu: number) {
+-    this.webDataService.getBinaSiraNoileInfo(kurumKodu).subscribe(dd => {
+-      this.infoData = dd;
+-    });
+-  }
+-
+ }
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html
+index 44bab15dcaa1dd9dfbd72e7f9832160e4cd70d64..0a193bb85d4a53d8557fbad06210f2e38c9a988c 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.html
+@@ -1,14 +1,14 @@
+-<div class="info-container" [ngClass]="{'over-flow': _tabData !== undefined}" >
++<div class="yapi-info-container" [ngClass]="{'over-flow': _tabData !== undefined}" (window:resize)="onResize()">
+ 
+   <table class="info-table">
+-    <tbody>
+-      <tr *ngFor="let field of _tabData.fields">
++    <tbody *ngFor="let field of _tabData.graphic.layer['fields']">
++      <tr *ngIf = "!field.disabled" >
+         <!-- <ng-container *ngIf="field.fieldName !== 'tahkik_sonucu'"> -->
+         <ng-container>
+           <td>{{field.alias}}</td>
+-          <td *ngIf="field.type !== 'date' && field.type !== 'domain'">{{tabData.properties[field.fieldName]}}</td>
+-          <td *ngIf="field.type === 'domain'">{{getDomainString(field)}}</td>
+-          <td *ngIf="field.type === 'date'">{{getDateString(field.fieldName)}}</td>
++          <td *ngIf="field.type !== 'domain'">{{tabData.graphic.attributes[field.name]}}</td>
++          <td *ngIf="field.type === 'domain'">{{tabData.graphic.getAttribute('d' + field.name)}}</td>
++          <!-- <td *ngIf="field.type === 'date'">{{getDateString(field.fieldName)}}</td> -->
+         </ng-container>
+       </tr>
+     </tbody>
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss
+index b31416f1758fd78223a2e0723a126baeb59f21ec..f4c773fe9982496d90535cdae11d1233c67db56b 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.scss
+@@ -5,7 +5,7 @@ input[type=number] {
+     }
+   }
+   
+-  .info-container {
++  .yapi-info-container {
+     > {
+       .info-title {
+         font-size: 18px;
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
+index da3ea234dec7e9a605f5703e6949a03a0cc1d8e0..9723f12549b8302cbdae3d297b309335c092d468 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-genericinfo/yapi-bilgileri-genericinfo.component.ts
+@@ -1,7 +1,7 @@
+ import { Component, OnInit, Input } from '@angular/core';
+ import { DialogConfig } from '../../dialog/dialog-config';
+ import { InfoData, FieldInfo } from '../../yapi-info';
+-
++import esri = __esri;
+ @Component({
+   selector: 'app-yapi-bilgileri-genericinfo',
+   templateUrl: './yapi-bilgileri-genericinfo.component.html',
+@@ -13,37 +13,7 @@ export class YapiBilgileriGenericinfoComponent implements OnInit {
+   @Input()
+   set tabData(tabData: InfoData) {
+     this._tabData = tabData;
+-    if (this._tabData !== undefined) {
+-      if (this._tabData.tabName === 'Yapısal Bilgi') {
+-
+-        const katYuksekligiIndexes = [];
+-        const kotYuksekligiIndexes = [];
+-
+-        const katYuksekligiFields = this._tabData.fields.filter(field => field.fieldName.includes('kat_yuksekligi_'));
+-        const kotYuksekligiFields = this._tabData.fields.filter(field => field.fieldName.includes('kot_yuksekligi_'));
+-
+-        if (katYuksekligiFields.length !== 0) {
+-
+-          for (let i = 0; i < katYuksekligiFields.length; i++) {
+-
+-            const index = this._tabData.fields.indexOf(katYuksekligiFields[i]);
+-            katYuksekligiIndexes.push(index);
+-
+-          }
+-          this.tabData.fields.splice(katYuksekligiIndexes[0], (katYuksekligiIndexes.length));
+-        }
+-        if (kotYuksekligiFields.length !== 0) {
+-
+-          for (let i = 0; i < kotYuksekligiFields.length; i++) {
+-
+-            const index = this._tabData.fields.indexOf(kotYuksekligiFields[i]);
+-            kotYuksekligiIndexes.push(index);
+-
+-          }
+-          this.tabData.fields.splice(kotYuksekligiIndexes[0], (kotYuksekligiIndexes.length));
+-        }
+-      }
+-    }
++    this.changeDomainValues();
+   }
+   get tabData() {
+     return this._tabData;
+@@ -51,29 +21,86 @@ export class YapiBilgileriGenericinfoComponent implements OnInit {
+   constructor() { }
+ 
+   ngOnInit() {
++    this.setMaxViewHeightWindow();
+   }
+-  getDateString(fieldName: string) {
+-    return new Date(this.tabData.properties[fieldName]).toLocaleDateString();
++
++  onResize() {
++    this.setMaxViewHeightWindow();
+   }
+ 
+-  getDomainString(field: FieldInfo) {
+-    const fieldName = field.fieldName;
+-    const tabData = this.tabData;
+-    const properties = tabData.properties;
+-    const fieldValue = properties[fieldName];
+-    const numberFieldValue = Number(fieldValue);
+-    if (field.domain[0]['code_text'] !== undefined) {
+-      const domains = field.domain;
++  convertTimeStampToDate(timestamp: any) {
++    return new Date(timestamp).toLocaleDateString('tr-TR');
++  }
+ 
+-      const foundDomain = domains.find(domain => {
+-        if (Number(domain['code_text']) === numberFieldValue) {
+-          return true;
++  getDateString(fieldName: string) {
++    return new Date(this.tabData.graphic.attributes[fieldName]).toLocaleDateString();
++  }
++  changeDomainValues() {
++    const feature = this.tabData.graphic;
++    
++      const layer: esri.FeatureLayer = <esri.FeatureLayer>feature.layer;
++      const fields: Array<esri.Field> = this._tabData.graphic.layer['fields'];
++      console.log('generic: ', feature.attributes )
++      fields.forEach(field => {
++        const fieldName: string = field.name;
++        const fieldValue: any = feature.getAttribute(fieldName);
++        if (field.type === 'date') {
++          const year = feature.getAttribute(fieldName);
++          if (year !== null) {
++            const dataValue = this.convertTimeStampToDate(year);
++            feature.setAttribute(fieldName, dataValue);
++          } else {
++            feature.setAttribute(fieldName, fieldValue);
++          }
++        }
++        const domain: esri.Domain = layer.getFieldDomain(field.name, { feature: feature });
++        if (!(domain === null || domain === undefined)) {
++          if (domain.type === 'coded-value') {
++            const codedValueDomain: esri.CodedValueDomain = <esri.CodedValueDomain>domain;
++            const dataValue = codedValueDomain.getName(fieldValue);
++            feature.setAttribute('d' + fieldName, dataValue);
++          } else {
++            console.error('Another Domain Type Found!');
++          }
+         }
+       });
++  }
++  // getDomainString(field: FieldInfo) {
++  //   const fieldName = field.fieldName;
++  //   const tabData = this.tabData;
++  //   const properties = tabData.properties;
++  //   const fieldValue = properties[fieldName];
++  //   const numberFieldValue = Number(fieldValue);
++  //   if (field.domain[0]['code_text'] !== undefined) {
++  //     const domains = field.domain;
++
++  //     const foundDomain = domains.find(domain => {
++  //       if (Number(domain['code_text']) === numberFieldValue) {
++  //         return true;
++  //       }
++  //     });
++
++  //     return foundDomain['value'];
++  //   } else {
++  //     return fieldValue;
++  //   }
++  // }
+ 
+-      return foundDomain['value'];
+-    } else {
+-      return fieldValue;
++  setMaxViewHeightWindow() {
++    const windowHeight = window.innerHeight;
++    const bottomLimit = window.innerHeight - (48 + 15 + 40);
++    const containerElement: HTMLElement = <HTMLElement>document.getElementsByClassName('yapi-info-container').item(0);
++    const containerBounds: DOMRect = <DOMRect>containerElement.getBoundingClientRect();
++
++    for (let i = 100; i > 0; i -= 5) {
++      const ratio = (100 / i);
++      const containerBottom = containerBounds.top + windowHeight / ratio;
++
++      if (containerBottom < bottomLimit) {
++        containerElement.style.maxHeight = i + 'vh';
++        containerElement.style.minHeight = i + 'vh';
++        break;
++      }
+     }
+   }
+ }
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
+index 99abc108736e9499ed10d61d18ab17d97d378ebd..35058611e9698a7e39b36a3d2785f551e7797881 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.html
+@@ -20,7 +20,9 @@
+ 
+     <div class="layer-info-content">
+       <div #tabBar class="tab-bar">
+-        <div (click)="tabChange($event)" class="tab" *ngFor="let tab of tabs">{{tab}}</div>
++        <div  class="tab" *ngFor="let tab of tabs">
++          <p (click)="tabChange($event)"> {{tab}}</p>
++          </div>
+         <div style="display: none;" class="tab-ink"></div>
+       </div>
+       <app-yapi-bilgileri-genericinfo [tabData]="_tabData"></app-yapi-bilgileri-genericinfo>
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
+index 973586873b1a84069035d6f90e0fc04b19d5436a..47c99b4da31e1190ee0a61fb8bc8aed050f25838 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.scss
+@@ -11,7 +11,7 @@
+       display: block;
+       animation: 0.5s fadeIn;
+       -webkit-animation: 0.5s fadeIn;
+-      min-height: 760px;
++      // min-height: 760px;
+       > {
+         .layer-info-header {
+           padding: 12px;
+@@ -117,6 +117,9 @@
+                   background-color: #d1000f;
+                   color: #f3f3f3;
+                 }
++                > p {
++                  font-size: 16px;
++                }
+               }
+   
+               .tab-ink {
+diff --git a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
+index ca9ce5a9489ac1f39830bece9377836a8e646bc4..20f215eb9409e30022c6d95843c5ba1ee8615c28 100644
+--- a/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
++++ b/src/app/yapi-bilgileri-info/yapi-bilgileri-info.component.ts
+@@ -42,13 +42,13 @@ export class YapiBilgileriInfoComponent implements OnInit {
+     this._infoData = infoData;
+ 
+     if (this._infoData !== undefined) {
+-        this.tabs = ['Bina', 'Yapısal Bilgi', 'Deprem', 'Enerji'];
+-      }
++      this.tabs = ['Yapısal Bilgi', 'Deprem', 'Enerji'];
++    }
+ 
+-      this._tabData = this._infoData.mainInformation;
+-      this._tabData.tabName = 'Bina';
++    this._tabData = this._infoData.extraInformation.yapisal_bilgi;
++    this._tabData.tabName = 'Yapısal Bilgi';
+ 
+-      setTimeout(this.defaultTabInit.bind(this));
++    setTimeout(this.defaultTabInit.bind(this));
+ 
+   }
+   get infoData() {
+@@ -58,7 +58,6 @@ export class YapiBilgileriInfoComponent implements OnInit {
+   constructor(private http: HttpClient, private dialogService: DialogService) { }
+ 
+   ngOnInit() {
+-
+   }
+ 
+   defaultTabInit() {
+@@ -94,9 +93,7 @@ export class YapiBilgileriInfoComponent implements OnInit {
+ 
+   tabChange(event: Event) {
+ 
+-    if (this.guncellikDurumDialogRef !== undefined) {
+-      return;
+-    }
++
+     const targetElement: HTMLElement = event.target as HTMLElement;
+     if (!targetElement.classList.contains('active')) {
+       const tabBar: HTMLElement = this.tabBarEl.nativeElement;
+@@ -109,10 +106,6 @@ export class YapiBilgileriInfoComponent implements OnInit {
+       targetElement.classList.toggle('active');
+ 
+       switch (targetElement.innerHTML) {
+-        case 'Bina':
+-          this._tabData = this._infoData.mainInformation;
+-          this._tableName = undefined;
+-          break;
+         case 'Yapısal Bilgi':
+           this._tabData = this._infoData.extraInformation.yapisal_bilgi;
+           this._tableName = 'yapisal_bilgi';
+@@ -130,8 +123,10 @@ export class YapiBilgileriInfoComponent implements OnInit {
+       }
+     }
+   }
++
+   onClickBackButton() {
+     this.yapiInfoBack.emit();
+   }
++  
+ }
+ 
+diff --git a/src/app/yapi-info.ts b/src/app/yapi-info.ts
+index d4b01ba856d87961f8b276119873b6965cfa43f5..7de63058fc6961615178605a61e3b8dd54768f05 100644
+--- a/src/app/yapi-info.ts
++++ b/src/app/yapi-info.ts
+@@ -1,3 +1,5 @@
++import { EsriMapComponent } from './esri-map/esri-map.component';
++
+ export interface ModelData {
+     extraInformation: ExtraInfoData;
+     mainInformation: InfoData;
+@@ -11,8 +13,7 @@ export interface ExtraInfoData {
+ 
+ export interface InfoData {
+     // tslint:disable-next-line:ban-types
+-    properties: Object;
+-    fields: Array<FieldInfo>;
++    graphic: __esri.Graphic;
+     tabName: string;
+ }
+ 
+diff --git a/src/app/yapi-service.service.spec.ts b/src/app/yapi-service.service.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..158e03b56bac2809cfdeb6a53166f67275f13860
+--- /dev/null
++++ b/src/app/yapi-service.service.spec.ts
+@@ -0,0 +1,12 @@
++import { TestBed } from '@angular/core/testing';
++
++import { YapiServiceService } from './yapi-service.service';
++
++describe('YapiServiceService', () => {
++  beforeEach(() => TestBed.configureTestingModule({}));
++
++  it('should be created', () => {
++    const service: YapiServiceService = TestBed.get(YapiServiceService);
++    expect(service).toBeTruthy();
++  });
++});
+diff --git a/src/app/yapi-service.service.ts b/src/app/yapi-service.service.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd1aba9d2bafda18fa05d83f27540d773315d68f
+--- /dev/null
++++ b/src/app/yapi-service.service.ts
+@@ -0,0 +1,9 @@
++import { Injectable } from '@angular/core';
++
++@Injectable({
++  providedIn: 'root'
++})
++export class YapiServiceService {
++
++  constructor() { }
++}
+diff --git a/src/environments/environment.ts b/src/environments/environment.ts
+index fc83def647540b110e9369f652ce82d2b5c543cd..2cb4385d06a1cddab1698721ce43ddf770e1043f 100644
+--- a/src/environments/environment.ts
++++ b/src/environments/environment.ts
+@@ -11,7 +11,8 @@ export const environment = {
+   arcgisMEBPendingURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebpending/',
+   arcgisMEBHistoryURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/mebhistory/',
+   arcgisMEBAnalysisURL: 'http://88.99.85.125:6080/arcgis/rest/services/meb/analiz/MapServer',
+-  yapiURL: 'http://localhost:443/'
++  yapiURL: 'http://localhost:443/',
++  yapiServerUrl: 'http://88.99.85.125:6080/arcgis/rest/services/MEB_IEDB/YAPI/'
+ };
+ 
+ /*
