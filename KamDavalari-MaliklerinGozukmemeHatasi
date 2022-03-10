@@ -1,0 +1,65 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 0257147da22f78f55a5b65007939d6c6b9016e2c..0377cbf3fbd70aa735ee3c2317a8f9ec83d0f20f 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -1582,6 +1582,60 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           }
+         });
+       });
++    } else if (processState === 1) {
++      const islem_id = this.infoAttributes['globalid'];
++
++      const where = `islem_id = '${islem_id}'`;
++      const malikIslemTableURL = environment.arcgisMEBURL + 'FeatureServer/' + 17;
++
++      this.getMalikIds(malikIslemTableURL, where).subscribe(malikIDs => {
++        let malikWhere = 'globalid IN (';
++        malikIDs.forEach(malikID => malikWhere += `'${malikID}',`);
++
++        malikWhere = malikWhere.slice(0, -1);
++        malikWhere += ')';
++
++        const tasinmazID = <number>this.feature.attributes['tasinmaz_id'];
++
++        const allMalikWhere = `tasinmazid = ${tasinmazID} and hisse_durum=3`;
++
++        this.getMalikData(malikTableURL, allMalikWhere).subscribe(responseData => {
++          this.allMalikArray = responseData;
++
++          if (malikIDs.length !== 0) {
++            this.getMalikData(malikTableURL, malikWhere).subscribe(selectedMalikData => {
++              this.selectedMalikArray = selectedMalikData;
++              this.agGrid.api.setRowData(responseData);
++
++              let selectedMalikCount = 0;
++              let other_area = 0;
++              let maliye_area = 0;
++
++              this.agGrid.api.forEachNode((row) => {
++                const globalid = row.data['globalid'];
++
++                const foundMalik = (<Array<any>>selectedMalikData).find(malikData => malikData.globalid === globalid);
++                if (foundMalik !== undefined) {
++                  if (row.data['vergi_no'] === '6110312806') {
++                    maliye_area += row.data['hisse_yuz_olcum'];
++                  } else {
++                    other_area += row.data['hisse_yuz_olcum'];
++                  }
++                  selectedMalikCount++;
++                  row.setSelected(true, false, false);
++                }
++              });
++
++              const selectionData = this.selectionData;
++              selectionData.count = selectedMalikCount;
++              selectionData.maliye_area = Number(maliye_area.toFixed(2));
++              selectionData.other_area = Number(other_area.toFixed(2));
++            });
++          } else {
++            this.agGrid.api.setRowData([]);
++          }
++        });
++      });
+     }
+     this.agGrid.context = { componentParent: this };
+   }
