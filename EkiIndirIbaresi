@@ -1,0 +1,31 @@
+diff --git a/src/app/modules/module-list/rendererClass/renderer.component.ts b/src/app/modules/module-list/rendererClass/renderer.component.ts
+index b769be108d86602cc50279928baa0ffe6e1fa4d6..ae80d0d2945ac1ba8c95ca75dcefa6ae4ec71a24 100644
+--- a/src/app/modules/module-list/rendererClass/renderer.component.ts
++++ b/src/app/modules/module-list/rendererClass/renderer.component.ts
+@@ -107,6 +107,9 @@ export class RendererComponent implements ICellRendererAngularComp {
+         if (params['http'] === true && params.data !== undefined) {
+ 
+             let binaDegisiklikOlumluDurumu = false;
++            // Gerçekleşti (6), Kamulaştırma Tamamlandı (14), İhale Edildi (28), İnşaat Devam Ediyor (30), Kesin Kabul (34) Hareketlerinden
++            // Sonra Her Zaman Attachment yani type: file Olan Field Olduğundan Bütün Bunlara Eki İndir İbaresi Eklendi.
++            const attachmentStates = [6, 14, 28, 30, 34];
+ 
+             const objectId = <number>params.data.objectid;
+             const state = params.data.durumu;
+@@ -114,12 +117,15 @@ export class RendererComponent implements ICellRendererAngularComp {
+             this.loadingStatus = true;
+             const id = params['id'];
+ 
++            const ifAttachment = attachmentStates.find(attState => attState === state);
++
+             const movementData = params.context['componentParent']['movementData']['type'];
+             if (movementData === 13 && state === 2) { // İşlem Bina Değişiklikse ve Hareket Olumlu İse De Belge Eklemeli
+                 binaDegisiklikOlumluDurumu = true;
+             }
++
+             // Önceden sadece Gerçekleşti Hareketinde Belge Vardı. Artık Bina Değişiklik Olumlu Hareketinden Sonra da Olacak.
+-            if (state === 6 || binaDegisiklikOlumluDurumu || state === 28 || state === 30 || state === 34) {
++            if (ifAttachment !== undefined || binaDegisiklikOlumluDurumu) {
+                 const url = `${environment.arcgisMEBURL}/FeatureServer/${id}/${objectId}/attachments?f=pjson` +
+                     `&token=${sessionStorage.getItem('CBSArcToken')}`;
+                 this.http.get(url).subscribe(res => {
