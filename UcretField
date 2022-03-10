@@ -1,0 +1,36 @@
+onInput(event: Event) {
+    const inputElement = <HTMLInputElement>event.target;
+
+    const inputValue = inputElement.value;
+    const regexp = new RegExp(/([0-9,])/g); // kuruş girmek için , koyabilmeleri lazım
+
+    const pressedKey = event['data'];
+    if (pressedKey === null) {
+      inputElement.value = '';
+      return inputElement;
+    }
+
+    const matchedValues = pressedKey.match(regexp);
+
+    if (matchedValues !== null) {
+      return inputElement;
+    }
+
+    inputElement.value = inputValue.slice(0, -1);
+
+    return inputElement;
+  }
+...
+
+else if (ucretFieldProcessArray.includes(this.moduleData.value)) {
+      if (formData['ucret']) {
+        let ucretField = <string>formData['ucret'];
+        ucretField = ucretField.replace(/\./g, '');
+        ucretField = ucretField.replace(/,/g, '.');
+        formData['ucret'] = ucretField;
+      }
+    }
+
+
+            
+
