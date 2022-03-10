@@ -1,0 +1,143 @@
+diff --git a/src/app/models/MaksData.ts b/src/app/models/MaksData.ts
+index 3bcf8bb20311bf5d154963394fae7fb145dcb320..0af395b8ba9c13f29555cd937d12364cc0638ca7 100644
+--- a/src/app/models/MaksData.ts
++++ b/src/app/models/MaksData.ts
+@@ -42,7 +42,7 @@ export interface Bina {
+ 
+     ada: number;
+     binaDurum: string;
+-    binaNo: number;
++    binaNo: number; // numaratajdaki kimlikno
+     binaNumaratajTipi: string;
+     binaYapiTipi: string;
+ 
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+index e74a766dc51f59e631b80f456b02f7b7787e885f..1af8ce74035a35b056ce729782479881b239d9ae 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -77,7 +77,9 @@
+         <button class="btn-info" type="button">Bina Kodu: </button>
+         <label class="info"
+           *ngIf="selectedDiskapiNoIndex != ''">{{denemeArray[0].binalar[selectedDiskapiNoIndex].kod}}</label>
++          <button (click)="onClickBinayaGit(denemeArray[0].binalar[selectedDiskapiNoIndex].binaNo)" type="button">Binaya Git: </button>       
+       </div>
++
+     </form>
+   </div>
+ </div>
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index ff841aaf53be54eccfd9f41c346319f98e72ca9a..7674d6fc83388041b2b99c76f45d2a2a28fc036d 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -1,8 +1,10 @@
+ import { EventEmitter, Input, Output } from '@angular/core';
+ import { Component, OnInit } from '@angular/core';
+-import { Observable, Subscription } from 'rxjs';
++import { loadModules } from 'esri-loader';
++import { bindCallback, Observable, Subscription } from 'rxjs';
+ import { DialogRef } from 'src/app/dialog/dialog-ref';
+ import { DialogService } from 'src/app/dialog/dialog.service';
++import { MapService } from 'src/app/mapUtils/map.service';
+ import { DistrictPermTKGM, UserPermission } from 'src/app/models/Login/user-permission';
+ import { MaksData, Il, Csbm } from 'src/app/models/MAKSData';
+ import { SearchFilterObject, TKGMGeometryObject, TKGMParcelRequest } from 'src/app/models/TKGM/tkgm-search-data';
+@@ -41,9 +43,15 @@ export class MaksAdresbinakoduComponent implements OnInit {
+   ilArray: Array<Il> = [];
+   userPerm: UserPermission;
+   districtPerm: Array<DistrictPermTKGM> = [];
+-
++  pointModule: esri.PointConstructor;
++  graphicModule: esri.GraphicConstructor;
+   constructor(private webdataservice: WebDataService, private dialogService: DialogService, private notify: NotificationService,
+-    private auth: AuthService) { }
++    private auth: AuthService, private mapService: MapService) {
++    loadModules(['esri/Graphic', 'esri/geometry/Point']).then(([Graphic, Point]) => {
++      this.pointModule = Point;
++      this.graphicModule = Graphic;
++    });
++  }
+ 
+   ngOnInit() {
+ 
+@@ -209,19 +217,56 @@ export class MaksAdresbinakoduComponent implements OnInit {
+     }
+   }
+ 
+-  getGeometryFromTKGM(search_query) {
+-    this.webdataservice.getGeometryFromTKGM(search_query).subscribe(result => {
+-      const tkgmGeometryObject: TKGMGeometryObject = {
+-        rings: result['rings'],
++  async onClickBinayaGit(binaNo: number) {
++    this.webdataservice.deneme(binaNo).subscribe(res => {
++      console.log(res);
++      // this.mapService.goToLocation(res);
++
++      const pointProp: esri.PointProperties = {
++        x: res[0][0][0],
++        y: res[0][0][1],
++        spatialReference: { wkid: 4326 }
++      };
++
++      const point = new this.pointModule(pointProp);
++
++      const symbolProperties = <esri.SimpleMarkerSymbol>{
++        type: 'simple-marker',
++        color: {
++          r: 40,
++          g: 148,
++          b: 226
++        },
++        size: 8
++      };
++
++      const graphicProperties: esri.GraphicProperties = {
++        geometry: point,
++        symbol: symbolProperties
++      };
++
++      const graphic: esri.Graphic = new this.graphicModule(graphicProperties);
++
++      const goToTarget: esri.MapViewBaseGoToTarget = {
++        target: graphic,
++        zoom: 22
+       };
+-      this.gotoSelectedObject.emit(tkgmGeometryObject);
+-      this.closeProgressDialog();
+-    }, error => {
+-      this.closeProgressDialog();
+-      this.notify.open('Geometri yüklenirken hata oluştu!', 'danger', 5);
++
++      const goToOptions: esri.MapViewBaseGoToOptions = {
++        animate: true,
++        duration: 1000,
++        easing: 'ease'
++      };
++
++      this.mapView.graphics.add(graphic);
++      this.mapView.goTo(goToTarget, goToOptions);
+     });
++
++    // TODO: EKLENEN POİNTİN SİLİNMESİ GEREKEN DURUMLAR YAPILACAK
++    // TODO: ARAMADA FİLTRELEME ÖZELLİĞİ OLACAK
+   }
+ 
++  // TODO: İZİN VERİLEN BÖLGELERE GÖRE FİLTRELER ÇIKACAK
+   setPermittedDistrictsArray() {
+     const selectedCity = this.dataArray[0].find(city => city.id === parseInt(this.selectedDataArray[0], 0));
+ 
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 024d11c5772cd95bcbd643ad8b0173e9c86e5611..c75a4549e1df470184a9d189c4e7608f9a6bd21e 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -102,6 +102,11 @@ export class WebDataService {
+       { headers: this.auth.createHeader() });
+   }
+ 
++  deneme(binaNo: number) {
++    return this.http.get<Array<Array<number[]>>>(this.maksURL + 'deneme?kimlikNo=' + binaNo,
++      { headers: this.auth.createHeader() });
++  }
++
+   getIllerFromTKGM() {
+     return this.http.get<Array<TKGMData>>(this.tkgmURL + 'getIL', { headers: this.auth.createHeader() });
+   }
