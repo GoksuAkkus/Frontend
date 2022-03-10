@@ -1,0 +1,328 @@
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index a704d3d7621ea14ed8b21819a5cb8748077a1955..b18ceffce417aab377143bc79ba1ec4f30fa9a6e 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -192,21 +192,37 @@ export class ModuleReportComponent implements OnInit {
+         colDef.colId = field.name;
+         colDef.field = field.name;
+         colDef.filter = 'agTextColumnFilter';
+-        if (moduleFormData !== undefined && moduleFormData.value === 14
+-          && (field.name === 'i_esas_no' || field.name === 'i_karar_no' || field.name === 'i_sayi')) {
+-          colDef.filter = 'agNumberColumnFilter';
+-          colDef.valueGetter = (params) => {
+-            if (params.data !== undefined) {
+-              const fieldValue = <string>params.data[colDef.field];
+-              if (!fieldValue) {
+-                return null;
+-              }
+-              const commaValue = fieldValue.replace('.', ',');
+ 
+-              return this.dotMethod(commaValue);
+-            }
+-          };
++        // DOTMETHOD UYGULANMIŞ TEXT FİELDLARINDA FİLTER YAPILMASI İÇİN;
++        let tbaDotMethodUygulamaState = false;
++        let ucretFieldDotMethodUygState = false;
++
++        if (moduleFormData !== undefined) {
++
++          if (moduleFormData.value === 14 && (field.name === 'i_esas_no' || field.name === 'i_karar_no' || field.name === 'i_sayi')) {
++            tbaDotMethodUygulamaState = true;
++          }
++
++          if (field.name === 'ucret') {
++            ucretFieldDotMethodUygState = true;
++          }
++
++          if (tbaDotMethodUygulamaState || ucretFieldDotMethodUygState) {
++            colDef.filter = 'agNumberColumnFilter';
++            colDef.valueGetter = (params) => {
++              if (params.data !== undefined) {
++                const fieldValue = <string>params.data[colDef.field];
++                if (!fieldValue) {
++                  return null;
++                }
++                const commaValue = fieldValue.replace('.', ',');
++
++                return this.dotMethod(commaValue);
++              }
++            };
++          }
+         }
++
+         if (field.domain !== null) {
+           colDef.sortable = false;
+         }
+@@ -262,6 +278,8 @@ export class ModuleReportComponent implements OnInit {
+       }
+       colDefs.push(colDef);
+     });
++
++    // TEXT OLAN TOPLAM MALİYET FİELDINDA FİLTER YAPILMASI İÇİN
+     if (moduleFormData !== undefined && moduleFormData.value === 14) {
+       // if (moduleFormData !== undefined && moduleFormData.value === 13) {
+       const malAlimiMaliyetIndex = colDefs.findIndex(columnDef => columnDef.colId === 'i_karar_no');
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 9b38d277a55b705a6c335c16be1f0a657d94868d..5151e6b354fdb97d012fd89bbdaaecfe240989f3 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -216,7 +216,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     const formData = this.findFormData(formControlName);
+ 
+-    if (this.moduleData.value === 14 || this.moduleData.value === 11) {
++    if (this.moduleData.value === 14 || formData.name === 'ucret') {
+       // Kamulaştırma Teklifdeki kamulaştırma bedeli için de dotmethod eklenecek
+       // if (this.moduleData.value === 13) {
+       if (formElement.name === 'talep_eden_kurum') {
+@@ -445,7 +445,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           }
+ 
+           if (index === 0) {
+-            operand1 = Number(formControl.value);
++            if (calculateControl === 'ucret') {
++              const valWithoutDot = formControl.value.replaceAll('.', '');
++              operand1 = Number(valWithoutDot);
++            } else {
++              operand1 = Number(formControl.value);
++            }
+           } else {
+             operand2 = Number(formControl.value);
+           }
+@@ -973,7 +978,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+   initalizeWithFormData(formData: Array<FormData>, recentFormValues?: Object) {
+     let value: any;
+     let formControlValue: any;
++
++
+     formData.forEach(formControl => {
++      let tbaDotMethodUygulamaState = false;
++      let ucretFieldDotMethodUygState = false;
++
+       const formControlName = formControl.name;
+       const required = formControl.required;
+       if (formControl.type === 'domain') {
+@@ -1037,19 +1047,18 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       //     foundFormObject.domain_values = this.getAtolyeTuruDomains();
+       //   }
+       // }
+-
+-      if (recentFormValues !== undefined && this.moduleData.value === 14
+-        && (formControlName === 'esas_no' || formControlName === 'karar_no')) {
+-        if (this.processState === 0 && value !== null) {
+-          const commaValue = value.replace('.', ',');
+-          value = this.dotMethod(commaValue);
++      if (recentFormValues !== undefined) {
++        if (this.moduleData.value === 14 && (formControlName === 'esas_no' || formControlName === 'karar_no')) {
++          tbaDotMethodUygulamaState = true;
+         }
+-      }
+-      if (recentFormValues !== undefined && this.moduleData.value === 11
+-        && (formControlName === 'ucret')) {
+-        if (this.processState === 0 && value !== null) {
+-          const commaValue = value.replace('.', ',');
+-          value = this.dotMethod(commaValue);
++        if (formControlName === 'ucret') {
++          ucretFieldDotMethodUygState = true;
++        }
++        if (tbaDotMethodUygulamaState || ucretFieldDotMethodUygState) {
++          if (this.processState === 0 && value !== null) {
++            const commaValue = value.replace('.', ',');
++            value = this.dotMethod(commaValue);
++          }
+         }
+       }
+ 
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index d2c6797dfd9721e76219f0792e87c0cdb3bf9706..970af7ad4d272d377b5fba5bb8caaf2494b50c70 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -333,6 +333,9 @@ export class MovementCreateComponent implements OnInit {
+       // if (this.movementData.type === 13 && formElement.name === 'aciklama' && formObject['durumu'] ===  26) {
+       formObject['aciklama'] = this.dotMethod(formElement.value);
+     }
++    if (formElement.name === 'ucret') {  // UCRET FIELDI ARTIK TEXT OLDU BURAYA DA DOT METHOD EKLENİYOR
++      formObject['ucret'] = this.dotMethod(formElement.value);
++    }
+     const formControlName = formElement.name;
+     const formGroupControl = formGroup.controls[formControlName];
+ 
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index 0403576b3677b34e0a10b576a255f87d89d93a67..205c1d0669f1f7ff709dd3bce64d04f3e9ded609 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -277,7 +277,7 @@
+           {
+             "alias": "İrtifak Bedeli",
+             "name": "ucret",
+-            "type": "number",
++            "type": "text",
+             "required": true
+           },
+           {
+@@ -455,7 +455,7 @@
+           {
+             "alias": "Kiraya Alma Bedeli(aylık)",
+             "name": "ucret",
+-            "type": "number",
++            "type": "text",
+             "required": true
+           },
+           {
+@@ -639,7 +639,7 @@
+           {
+             "alias": "Kiraya Verme Bedeli(aylık)",
+             "name": "ucret",
+-            "type": "number",
++            "type": "text",
+             "required": true
+           },
+           {
+@@ -1547,7 +1547,7 @@
+         "fields": [{
+             "alias": "Tamamlanan Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "text",
+             "required": true
+           },
+           {
+@@ -2072,7 +2072,7 @@
+         "fields": [{
+             "alias": "Tamamlanan Tutar",
+             "name": "ucret",
+-            "type": "number",
++            "type": "text",
+             "required": true
+           },
+           {
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 769283ba3f0fe1e0fb0c02b6e2e4bfc908645fbe..5771895730529ab86d9e0461d34f25edb9353902 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -3410,7 +3410,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3519,7 +3519,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3677,7 +3677,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3872,7 +3872,7 @@
+         {
+           "alias": "Kamulaştırma Bedeli (₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4589,7 +4589,7 @@
+         {
+           "alias": "Dava Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5043,7 +5043,7 @@
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5168,7 +5168,7 @@
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5293,7 +5293,7 @@
+         {
+           "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5499,7 +5499,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": false,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5602,7 +5602,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5713,7 +5713,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5824,7 +5824,7 @@
+         {
+           "alias": "Proje Bedeli",
+           "name": "ucret",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5853,7 +5853,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Gelen Sayı",
++          "alias": "Sayı",
+           "name": "sayi",
+           "type": "number",
+           "required": true,
+@@ -5884,7 +5884,7 @@
+           "alias": "Tahmini Maaliyet(₺)",
+           "name": "ucret",
+           "required": "true",
+-          "type": "number",
++          "type": "text",
+           "domain_values": [],
+           "chosen_values": []
+         },
