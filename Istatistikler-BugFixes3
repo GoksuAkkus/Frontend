@@ -1,0 +1,35 @@
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+index df791fcf754768a89edfb077b36ea67580fe8be3..b00ede49de910502b46f52911d58a21f885e0086 100644
+--- a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+@@ -233,9 +233,6 @@ export class ModuleReportStatisticsComponent implements OnInit {
+   }
+ 
+   onClickPlanPersonel() {
+-    if (this.lastSelectValue !== -1) {
+-      this.onClickIslemTalep();
+-    }
+     this.tabState = 'plan_personel';
+     this.setSelectValue();
+     this.setTabDataActivity();
+@@ -247,6 +244,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planIlTableBodyState = false;
+     this.islemAnalizTableHeadState = false;
+     this.islemAnalizTableBodyState = false;
++    if (this.lastSelectValue !== '-1') {
++      this.onClickIslemTalep();
++    }
+   }
+ 
+   onClickPlanIl() {
+@@ -261,7 +261,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planPersonelTableBodyState = false;
+     this.islemAnalizTableHeadState = false;
+     this.islemAnalizTableBodyState = false;
+-    this.onClickIslemTalep();
++    if (this.lastSelectValue !== '-1') {
++      this.onClickIslemTalep();
++    }
+   }
+ 
+   setDates() {
