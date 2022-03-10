@@ -1,0 +1,119 @@
+diff --git a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+index aa60731c454bb9fe6f2e5b3dc75ba8dfdd6728e8..2f8883862ee218e8a4127b15443b40a192d12eb8 100644
+--- a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
++++ b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+@@ -13,7 +13,7 @@ export class IslemTalepCodeValue {
+     };
+     genel_imar = {
+         value: 2,
+-        isIslemTuru: true,
++        isIslemTuru: false,
+         name: 'Genel İmar',
+         code: 6
+     };
+diff --git a/src/app/module-report/module-report-statistics/interfaces/tabdata.ts b/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
+index 02632ebae6ef73d0330464b7c1522aa4d47e25f1..4110c24356798da42b9cf4bd29b38fc735630c40 100644
+--- a/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
++++ b/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
+@@ -1,20 +1,14 @@
++export class TabDetail {
++   isActive = false;
++   isFull = false;
++   previousFirstDate = '';
++   previousSecondDate = '';
++   currentFirstDate = '';
++   currentSecondDate = '';
++}
+ export class Tabdata {
+    islem_analiz = new TabDetail();
+-   plan_personel = new TabDetail() ;
++   plan_personel = new TabDetail();
+    plan_il = new TabDetail();
+ }
+-export class TabDetail {
+-    isActive = false;
+-    isFull = false;
+-    previousFirstDate = '';
+-    previousSecondDate = '';
+-    currentFirstDate = '';
+-    currentSecondDate = '';
+-}
+-
+-export class ActivityOfTabs {
+-   islem_analiz = false;
+-   plan_personel = false;
+-   plan_il = false;
+-}
+ 
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+index d7cbefa1d5fb0c61bc406da914452016132df57e..eed06ea11b851e9dfb9e4b11fd2efd73998a1ca6 100644
+--- a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+@@ -17,7 +17,7 @@ import {
+ import { environment } from 'src/environments/environment';
+ import { loadModules } from 'esri-loader';
+ import { OperationsService } from './services/operations.service';
+-import { Tabdata, ActivityOfTabs } from './interfaces/tabdata';
++import { Tabdata } from './interfaces/tabdata';
+ import { AuthService } from 'src/app/services/auth.service';
+ @Component({
+   selector: 'app-module-report-statistics',
+@@ -208,7 +208,6 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planPersonelTableBodyState = false;
+     this.planIlTableHeadState = false;
+     this.planIlTableBodyState = false;
+-    this.dateState = true;
+   }
+ 
+   setSelectValue() {
+@@ -234,6 +233,9 @@ export class ModuleReportStatisticsComponent implements OnInit {
+   }
+ 
+   onClickPlanPersonel() {
++    if (this.lastSelectValue !== -1) {
++      this.onClickIslemTalep();
++    }
+     this.tabState = 'plan_personel';
+     this.setSelectValue();
+     this.setTabDataActivity();
+@@ -245,7 +247,6 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planIlTableBodyState = false;
+     this.islemAnalizTableHeadState = false;
+     this.islemAnalizTableBodyState = false;
+-    this.dateState = true;
+   }
+ 
+   onClickPlanIl() {
+@@ -260,7 +261,6 @@ export class ModuleReportStatisticsComponent implements OnInit {
+     this.planPersonelTableBodyState = false;
+     this.islemAnalizTableHeadState = false;
+     this.islemAnalizTableBodyState = false;
+-    this.dateState = true;
+     this.onClickIslemTalep();
+   }
+ 
+@@ -330,6 +330,7 @@ export class ModuleReportStatisticsComponent implements OnInit {
+ 
+   onClickIslemTalep(event?: Event) {
+     if (event) {
++      this.resetOtherTabs();
+       const foundIslem = this.getIslemTalepValue(event);
+       this.lastFoundIslem = foundIslem;
+       const code = foundIslem[1]['code'];
+@@ -339,8 +340,14 @@ export class ModuleReportStatisticsComponent implements OnInit {
+         this.createPlanIlTable(foundIslem, code);
+       }
+     } else {
+-      if (this.lastFoundIslem !== undefined) {
+-        this.createPlanIlTable(this.lastFoundIslem, this.lastFoundIslem[1]['code']);
++      if (this.tabState === 'plan_il') {
++        if (this.lastFoundIslem !== undefined) {
++          this.createPlanIlTable(this.lastFoundIslem, this.lastFoundIslem[1]['code']);
++        }
++      } else if (this.tabState === 'plan-personel') {
++        if (this.lastFoundIslem !== undefined) {
++          this.createPlanPersonelTable(this.lastFoundIslem, this.lastFoundIslem[1]['code']);
++        }
+       }
+     }
+   }
