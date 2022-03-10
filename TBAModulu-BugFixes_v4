@@ -1,0 +1,622 @@
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index 0d81b9c797340759adcf1ddc795687180b2de2db..62d8460bc3fc614b7968dce97ff78af44347ed0e 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -1229,6 +1229,9 @@ export class EsriMapComponent implements OnInit {
+         case 'Ozel Alan Kampus':
+           url = environment.arcgisOzelOkulServiceURL + 'FeatureServer/' + 4;
+           break;
++        case 'Ozel Egitim Alani':
++          url = environment.arcgisOzelOkulServiceURL + 'FeatureServer/' + 5;
++          break;
+       }
+     } else {
+       url = environment.arcgisMEBURL + 'FeatureServer/' + layer.id;
+diff --git a/src/app/info/diff-info/diff-info.component.ts b/src/app/info/diff-info/diff-info.component.ts
+index c5ed17d76d2b482a3044efbb70b7b038b433f7d0..35129325620e62e1971d1939de445c5020874905 100644
+--- a/src/app/info/diff-info/diff-info.component.ts
++++ b/src/app/info/diff-info/diff-info.component.ts
+@@ -633,12 +633,20 @@ export class DiffInfoComponent implements OnInit {
+         });
+       } else if (field.name === 'plan_refid' || (field.name === 'refid' &&
+         (featureLayer.title === 'Eğitim Alanı' || featureLayer.title === 'Eğitim Dışı Alan'
+-          || featureLayer.title === 'Yüksek Öğretim Alanı') || featureLayer.title === 'Özel Eğitim Alanı')) {
++          || featureLayer.title === 'Yüksek Öğretim Alanı' || featureLayer.title === 'Özel Okul Eğitim Alanı')
++          || featureLayer.title === 'Özel Eğitim Alanı')) {
+         isDisabled = true;
+         this.addFieldControl(field, editFeature, formGroup, isDisabled);
+-        this.generateID(3, field.name, 'Eğitim Alanı').then(generateID => {
+-          this.checkGeneratedId('Eğitim Alanı', editFeature, generateID, field, formGroup);
+-        });
++        if (featureLayer.title === 'Özel Okul Eğitim Alanı') {
++          this.generateID(3, field.name, 'Özel Okul Eğitim Alanı').then(generateID => {
++            this.checkGeneratedId('Özel Okul Eğitim Alanı', editFeature, generateID, field, formGroup);
++          });
++        } else {
++          this.generateID(3, field.name, 'Eğitim Alanı').then(generateID => {
++            this.checkGeneratedId('Eğitim Alanı', editFeature, generateID, field, formGroup);
++          });
++        }
++
+       } else if (field.name === 'bina_refid' || (field.name === 'refid' && (featureLayer.title === 'Yapılar' ||
+         featureLayer.title === 'Yapılar Diğer' || featureLayer.title === 'Özel Okul Yapılar'))) {
+         isDisabled = true;
+diff --git a/src/app/info/generic-info/generic-info.component.html b/src/app/info/generic-info/generic-info.component.html
+index 3555c8e8f698383f6cdf63ab16910b60a0da511b..cc652f8ab430f5a22ed3b1f2066ea3b0048ceb84 100644
+--- a/src/app/info/generic-info/generic-info.component.html
++++ b/src/app/info/generic-info/generic-info.component.html
+@@ -95,19 +95,19 @@
+         <input *ngIf="feature.getAttribute('tasinmaz_id') !== undefined" class="additional-buttons" type="button"
+           value="TKGM Şerh Beyan - Malik Bilgileri" (click)="onOpenSerhBeyanMalik($event)">
+         <input
+-          *ngIf="(feature.layer.get('gEdit') === true || feature.layer.get('wEdit') === true) && _isEditable === true"
++          *ngIf="(feature.layer.get('gEdit') === true || feature.layer.get('wEdit') === true) && _isEditable === true && _isServiceUp"
+           type="button" class="additional-buttons" value="Düzenle" (click)="onEditData($event)">
+-        <input *ngIf="(feature.layer.get('gEdit') === true) && _isEditable === true" type="button"
++        <input *ngIf="(feature.layer.get('gEdit') === true) && _isEditable === true && _isServiceUp" type="button"
+           class="additional-buttons" value="Sil" (click)="onDeleteData($event)">
+         <input
+           *ngIf="(feature.get('attachmentData') !== undefined && feature.get('attachmentData').length >= 0) && _isEditable === true &&
+           (feature.layer.get('gEdit') === true || feature.layer.get('wEdit') === true)"
+           type="button" class="additional-buttons" value="Dosya Ekle Düzenle" (click)="onUpdateAttachment()">
+-        <p *ngIf="_isEditable === false && _tabData !== undefined && historyData.length >= 1"
++        <p *ngIf="_isEditable === false && _tabData !== undefined && !_isHistoryItemTab"
+           style="padding: .572rem;color: #f44336;">
+           Bu Veri Değiştirildi, Onay Beklenmektedir
+         </p>
+-        <input type="button" class="additional-buttons" value="Veriyi Sisteme Ekle" (click)="onClickAddSystem()">
++        <input *ngIf="_isServiceUp" type="button" class="additional-buttons" value="Veriyi Sisteme Ekle" (click)="onClickAddSystem()">
+         <!-- <input *ngIf="_tabData.features[0].layer['originalTitle'] === 'Bina Kurum' || _tabData.features[0].layer['originalTitle'] === 'Bina Diğer'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()"> -->
+         <div *ngIf="historyData.length > 1" style="display: flex;align-items: center;">
+           <svg (click)="onFirstClick()" style="padding-right: 5px" xmlns="http://www.w3.org/2000/svg" width="12.448"
+@@ -200,11 +200,11 @@
+           <input *ngIf="_foundModuleData !== undefined" class="additional-buttons" type="button" value="İşlemler"
+             (click)="onOpenModules($event)">
+           <input
+-            *ngIf="(feature.layer.get('gEdit') === true || feature.layer.get('wEdit') === true) && _isEditable === true"
++            *ngIf="(feature.layer.get('gEdit') === true || feature.layer.get('wEdit') === true) && _isEditable === true && _isServiceUp"
+             type="button" class="additional-buttons" value="Düzenle" (click)="onEditData($event)">
+-          <input *ngIf="(feature.layer.get('gEdit') === true) && _isEditable === true" type="button"
++          <input *ngIf="(feature.layer.get('gEdit') === true) && _isEditable === true && _isServiceUp" type="button"
+             class="additional-buttons" value="Sil" (click)="onDeleteData($event)">
+-          <p *ngIf="_isEditable === false && _tabData !== undefined" style="padding: .572rem;color: #f44336;">
++          <p *ngIf="_isEditable === false && _tabData !== undefined && !_isHistoryItemTab" style="padding: .572rem;color: #f44336;">
+             Bu Veri Değiştirildi, Onay Beklenmektedir
+           </p>
+         </div>
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index fcb6d8e7b716d3f0f748ecb97d44e2523c1168c9..e1f15dfc4dda064904392796ef48d904ab598ff6 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -44,6 +44,8 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   _mapView: esri.MapView;
+   _malikSerhRef: DialogRef;
+   _isEditable = false;
++  _isServiceUp = true;
++  _isHistoryItemTab = false;
+   _userPerm: UserPermission;
+   _editMode = false;
+   _editFeature: esri.Graphic;
+@@ -1042,6 +1044,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+     const feature = this.tabData.features[0];
+     if (feature.get('history') === true) {
+       this._isEditable = false;
++      this._isHistoryItemTab = true;
+       return;
+     }
+     const featureLayer = <esri.FeatureLayer>feature.layer;
+@@ -1060,6 +1063,11 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+     }).pipe(map(countObject => countObject['count'])).subscribe(count => {
+       if (count === 0) {
+         this._isEditable = true;
++        this._isServiceUp = true;
++      } else if (count === undefined) {
++        this.notify.open('Sistemde sorun oldugu icin duzenleme yapilamiyor daha sonra tekrar deneyiniz', 'danger', 7);
++        this._isEditable = true;
++        this._isServiceUp = false;
+       }
+     });
+   }
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index f2e3482a80f5db69827e9a8bc3d56ec367716d4a..22453a82abd2c2f0d2d29af5e0aa72e5e4ff2bc1 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -608,7 +608,7 @@ export class MainComponent implements OnInit {
+           const errorResult = editResults.find(editResult => editResult.error !== null);
+           if (errorResult === undefined) {
+             this.notify.open('Düzenleme İşlemi Onaya Gönderildi', 'success', 10);
+-            description = `${feature.getAttribute('globalid_r')} ID'li ${action} onaya düşerek tamamlandı`;
++            description = `${feature.layer.title} katmanında ${feature.getAttribute('globalid_r')} ID'li ${action} onaya gönderildi`;
+             this.auth.createLog(description, action);
+           } else {
+             this.notify.open('Düzenleme İşlemi Onaya Gönderilemedi', 'danger', 10);
+@@ -772,7 +772,7 @@ export class MainComponent implements OnInit {
+                 this.notify.open('Düzenleme İşlemi Sırasında Hata Oluştu', 'danger', 10);
+               }
+ 
+-              description = `${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
++              description = `${layer.title} katmanında ${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
+               this.auth.createLog(description, action);
+             });
+           });
+@@ -794,7 +794,7 @@ export class MainComponent implements OnInit {
+             this.notify.open('Düzenleme İşlemi Sırasında Hata Oluştu', 'danger', 10);
+           }
+ 
+-          description = `${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
++          description = `${layer.title} katmanında ${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
+           this.auth.createLog(description, action);
+         });
+ 
+@@ -817,7 +817,7 @@ export class MainComponent implements OnInit {
+           this.notify.open('Düzenleme İşlemi Sırasında Hata Oluştu', 'danger', 10);
+         }
+ 
+-        description = `${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
++        description = `${layer.title} katmanında ${editResults[0].objectId} ID'li veri onaya düşmeden tamamlandı`;
+         this.auth.createLog(description, action);
+       });
+     }
+@@ -966,7 +966,8 @@ export class MainComponent implements OnInit {
+         this.deletePendingLayerFeature(layerID, originalFeature, dialog, currentLayer, 'INSERT', isDelete);
+ 
+         const action = 'Veri Düzenleme Red';
+-        const description = `${originalFeature.attributes['objectid']} ID'li veri düzenleme işlemi reddedildi`;
++        // tslint:disable-next-line: max-line-length
++        const description = `${originalFeature.layer.title} katmanında ${originalFeature.attributes['objectid']} ID'li veri düzenleme işlemi reddedildi`;
+         this.auth.createLog(description, action);
+       } else {
+         const layers = this.mapView.map.layers;
+@@ -989,6 +990,10 @@ export class MainComponent implements OnInit {
+               const kampusLayer = <esri.FeatureLayer>layers.find((layer: esri.FeatureLayer) => layer.title === 'Özel Okul Kullanım Alanı');
+               originalFeature.layer = kampusLayer;
+               break;
++            case 5:
++              const planLayer = <esri.FeatureLayer>layers.find((layer: esri.FeatureLayer) => layer.title === 'Özel Okul Eğitim Alanı');
++              originalFeature.layer = planLayer;
++              break;
+           }
+         } else {
+           const dataLayer = <esri.FeatureLayer>layers.find((layer: esri.FeatureLayer) => layer.layerId === layerID
+@@ -1004,7 +1009,8 @@ export class MainComponent implements OnInit {
+         this.deletePendingLayerFeature(layerID, pendingFeature, dialog, currentLayer, operation, isDelete);
+ 
+         const action = 'Veri Düzenleme Red';
+-        const description = `${originalFeature.attributes['objectid']} ID'li veri düzenleme işlemi reddedildi`;
++        // tslint:disable-next-line: max-line-length
++        const description = `${originalFeature.layer.title} katmanında ${originalFeature.attributes['objectid']} ID'li veri düzenleme işlemi reddedildi`;
+         this.auth.createLog(description, action);
+       } else {
+         if (operation === 'UPDATE') {
+@@ -1027,7 +1033,7 @@ export class MainComponent implements OnInit {
+             }
+ 
+             const action = 'Veri Düzenleme Onay';
+-            const description = `${editResults[0].objectId} ID'li veri düzenleme işlemi onaylandı`;
++            const description = `${layer.title} katmanında ${editResults[0].objectId} ID'li veri düzenleme işlemi onaylandı`;
+             this.auth.createLog(description, action);
+           });
+         } else {
+@@ -1229,7 +1235,7 @@ export class MainComponent implements OnInit {
+       }
+ 
+       const action = 'Veri Düzenleme Onay';
+-      const description = `${editResults[0].objectId} ID'li veri düzenleme işlemi onaylandı`;
++      const description = `${layer.title} katmanında ${editResults[0].objectId} ID'li veri düzenleme işlemi onaylandı`;
+       this.auth.createLog(description, action);
+     }, (error) => {
+       this.notify.open('Bir Hata Oluştu, Onay Yapılamadı', 'danger', 10);
+diff --git a/src/app/mapUtils/layer-utils.service.ts b/src/app/mapUtils/layer-utils.service.ts
+index ffb7d4f6c6309f58d0001556ca529178c32f34ae..9a8cbfc2403169f675e34ebc4f8a31d2c200e79d 100644
+--- a/src/app/mapUtils/layer-utils.service.ts
++++ b/src/app/mapUtils/layer-utils.service.ts
+@@ -938,6 +938,21 @@ export class LayerUtilsService {
+               }
+             },
+           },
++          {
++            layerName: 'Özel Okul Eğitim Alanı',
++            definitionName: 'Ozel Egitim Alani',
++            outFields: ['objectid', 'globalid'],
++            definitionExpression: '',
++            layerOrder: 33,
++            visible: false,
++            authorized: true,
++            isActive: true,
++            isPrivateSchoolLayer: true,
++            closedFields: [],
++            requiredFields: [],
++            id: 11,
++
++          },
+         ]
+       },
+     ];
+diff --git a/src/app/models/ArcgisService/layer-info-design.ts b/src/app/models/ArcgisService/layer-info-design.ts
+index d1f6fd43f96bea46066c1f01d1efbe0a0776435f..cc284cb66065f1d8a1ac6b6993e94b1e9132f95b 100644
+--- a/src/app/models/ArcgisService/layer-info-design.ts
++++ b/src/app/models/ArcgisService/layer-info-design.ts
+@@ -27,6 +27,7 @@ export class OpenLayerInfoDesign {
+     'Özel Okul Kurumlar': LayerInfoDesign;
+     'Özel Okul Yapılar': LayerInfoDesign;
+     'Özel Okul Sosyal Alanlar': LayerInfoDesign;
++    'Özel Okul Eğitim Alanı': LayerInfoDesign;
+     constructor() {
+         this['İl'] = new LayerInfoDesign();
+         this['İl'].tabs = ['Okullar'];
+@@ -83,6 +84,9 @@ export class OpenLayerInfoDesign {
+ 
+         this['Özel Okul Sosyal Alanlar'] = new LayerInfoDesign();
+         this['Özel Okul Sosyal Alanlar'].header = 'Özel Okul Sosyal Alan Bilgileri';
++
++        this['Özel Okul Eğitim Alanı'] = new LayerInfoDesign();
++        this['Özel Okul Eğitim Alanı'].header = 'Özel Okul Eğitim Alanı Bilgileri';
+     }
+ }
+ 
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 957ddcec7ed906e13b940e54ceaa20ac6f7ba657..9ea1e8952606f99fb420775de596c02631dfd6cb 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -63,9 +63,12 @@ export class ModuleReportComponent implements OnInit {
+   onRowClicked(rowClickedEvent: RowClickedEvent) {
+     let status = 0;
+     let search_id = rowClickedEvent.data.i_bina_id;
++    let ada_no, parsel_no;
+     if (search_id === null || search_id === undefined) {
+       status = 1;
+       search_id = rowClickedEvent.data.i_parsel_id;
++      ada_no = rowClickedEvent.data.ada_no;
++      parsel_no = rowClickedEvent.data.parsel_no;
+     }
+ 
+     const map = this.mapView.map;
+@@ -88,7 +91,7 @@ export class ModuleReportComponent implements OnInit {
+     } else {
+       const queryLayer = <esri.FeatureLayer>map.layers.find(layer => layer.title === 'Kadastro Parselleri');
+       const queryProperties = <esri.QueryProperties>{
+-        where: 'tasinmaz_id=' + search_id,
++        where: `tasinmaz_id=${search_id} and ada_no='${ada_no}' and parsel_no='${parsel_no}'`,
+         returnGeometry: true,
+         outFields: ['*']
+       };
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 9ae42a46c0a7023a156bbae2099c53083289111e..c5d193873ec4834ffb56893f9cb3cecb707ad9a3 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -716,70 +716,75 @@ export class MovementCreateComponent implements OnInit {
+ 
+     this.addOrEditMovement(url).subscribe(res => {
+ 
+-      if (formValues.hasOwnProperty('durumu')) {
+-        const kadastroParselLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.allLayers.find(layer =>
+-          layer.title === 'Kadastro Parselleri');
+-
+-        const moduleData = this.moduleData;
+-        const islem_turu = moduleData['islem_turu'];
+-        const durumu = formValues['durumu'];
+-        const tasinmaz_id = moduleData['parsel_id'];
+-        // TODO islem turu yatirim teklif ise
+-        if (islem_turu === 12) {
+-
+-          // TODO hareket durum reddedildi ve plana alindi degil ise
+-          if (durumu !== 15 && durumu !== 25) {
+-            this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'mevcut_kullanim', 5);
+-          }
++      if (Object.keys(res).length === 0) {
++        this.notify.open('Bir Hata Oluştu Hareket Kaydedilemedi', 'danger', 10);
++        dialog.close();
++      } else {
++        if (formValues.hasOwnProperty('durumu')) {
++          const kadastroParselLayer: esri.FeatureLayer = <esri.FeatureLayer>this.mapView.map.allLayers.find(layer =>
++            layer.title === 'Kadastro Parselleri');
++
++          const moduleData = this.moduleData;
++          const islem_turu = moduleData['islem_turu'];
++          const durumu = formValues['durumu'];
++          const tasinmaz_id = moduleData['parsel_id'];
++          // TODO islem turu yatirim teklif ise
++          if (islem_turu === 12) {
++
++            // TODO hareket durum reddedildi ve plana alindi degil ise
++            if (durumu !== 15 && durumu !== 25) {
++              this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'mevcut_kullanim', 5);
++            }
+ 
+-        } else if (islem_turu === 11 && tasinmaz_id !== null) { // TODO islem turu kamulastirma teklifi
+-          const islem_edinim_sekli = moduleData['edinim_sekli'];
++          } else if (islem_turu === 11 && tasinmaz_id !== null) { // TODO islem turu kamulastirma teklifi
++            const islem_edinim_sekli = moduleData['edinim_sekli'];
+ 
+-          if (islem_edinim_sekli === 3) {
+-            // TODO kabul edildi veya ertelendi
+-            if (durumu === 22 || durumu === 24) {
+-              this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 9);
+-            } else if (durumu === 23) { // TODO durum reddedildi
+-              this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 11);
++            if (islem_edinim_sekli === 3) {
++              // TODO kabul edildi veya ertelendi
++              if (durumu === 22 || durumu === 24) {
++                this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 9);
++              } else if (durumu === 23) { // TODO durum reddedildi
++                this.updateParselProperty(kadastroParselLayer, tasinmaz_id, 'kadastro_parsel_tip', 11);
++              }
+             }
+           }
+         }
+-      }
+ 
+-      let resultValue = 'addResults';
+-      if (this.editMode === true) {
+-        resultValue = 'updateResults';
+-      }
+-      const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+-
+-      // tslint:disable-next-line:triple-equals
+-      if (this.movementData.type === 14 && formValues['durumu'] == 26) {
+-        // if (this.movementData.type === 13 && formValues['durumu'] === 26) {
+-        const objectid = results[0].objectId;
+-        formValues['proje_no'] = objectid;
+-        formValues['objectid'] = objectid;
++        let resultValue = 'addResults';
++        if (this.editMode === true) {
++          resultValue = 'updateResults';
++        }
++        const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+ 
+-        this.updateProjeNo(formValues);
+-      }
++        // tslint:disable-next-line:triple-equals
++        if (this.movementData.type === 14 && formValues['durumu'] == 26) {
++          // if (this.movementData.type === 13 && formValues['durumu'] === 26) {
++          const objectid = results[0].objectId;
++          formValues['proje_no'] = objectid;
++          formValues['objectid'] = objectid;
+ 
+-      if (formValues.attachment !== undefined) {
+-        if (this.updateMode) {
+-          this.updateAttachments(formValues, dialog, results);
+-          this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
+-        }
+-        if (this.createMode) {
+-          this.addAttachment(formValues, dialog, results);
+-          this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++          this.updateProjeNo(formValues);
+         }
+-      } else {
+-        if (this.updateMode === true) {
+-          this.removeIfHasAttachment(dialog);
+-          this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
+-        }
+-        if (this.createMode) {
+-          this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
+-          dialog.close();
+-          this.dialog.close(true);
++
++        if (formValues.attachment !== undefined) {
++          if (this.updateMode) {
++            this.updateAttachments(formValues, dialog, results);
++            this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++          }
++          if (this.createMode) {
++            this.addAttachment(formValues, dialog, results);
++            this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++          }
++        } else {
++          if (this.updateMode === true) {
++            this.removeIfHasAttachment(dialog);
++            this.notify.open('Hareket Düzenleme Tamamlandı', 'success', 5);
++          }
++          if (this.createMode) {
++            this.notify.open('Hareket Ekleme Tamamlandı', 'success', 5);
++            dialog.close();
++            this.dialog.close(true);
++          }
+         }
+       }
+     }, error => {
+diff --git a/src/app/pending-table/pending-table.component.ts b/src/app/pending-table/pending-table.component.ts
+index 7adaf8fa5c7a5a2ff0e7cca67a0765562424f8b4..b0a40dfab2fbb2225be2e99a492effb58e3c5e48 100644
+--- a/src/app/pending-table/pending-table.component.ts
++++ b/src/app/pending-table/pending-table.component.ts
+@@ -40,7 +40,8 @@ export class PendingTableComponent implements OnInit {
+     const permUsers = userPerm.permUsers;
+     // Change If Layer Count Increase
+     const layerCount = 10;
+-    const privateSchoolLayerCount = 5;
++    // Change If Layer Count Increase
++    const privateSchoolLayerCount = 6;
+     const outFields = ['objectid,operation,globalid_r,touch_by,touch_date'];
+     let where = 'touch_by IN (';
+     permUsers.forEach(username => {
+@@ -112,6 +113,9 @@ export class PendingTableComponent implements OnInit {
+             case 4:
+               feature.attributes['layer'] = 'Özel Okul Kullanım Alanı';
+               break;
++            case 5:
++              feature.attributes['layer'] = 'Özel Okul Eğitim Alanı';
++              break;
+           }
+ 
+           feature.attributes['id'] = layer.id;
+diff --git a/src/app/search/search-box/search-box.component.ts b/src/app/search/search-box/search-box.component.ts
+index b89aa508f1bfc127005a63049dfa78f930da9674..a355bb874e1c9ee82f92568390fc1bb76052de17 100644
+--- a/src/app/search/search-box/search-box.component.ts
++++ b/src/app/search/search-box/search-box.component.ts
+@@ -14,7 +14,7 @@ export class SearchBoxComponent implements OnInit {
+   }
+ 
+   dispatchSearchKey(event: Event) {
+-    let searchKey = '';
++    let searchKey;
+ 
+     const targetElement: HTMLElement = <HTMLElement>event.target;
+ 
+diff --git a/src/app/search/search.component.html b/src/app/search/search.component.html
+index f342ca27b097f69bb044e714b5418ee3954f3803..e988c3a2d4a5be4861378e2f4fb5ef79006cda34 100644
+--- a/src/app/search/search.component.html
++++ b/src/app/search/search.component.html
+@@ -9,28 +9,28 @@
+      </svg>
+ 
+    </div>
+-   <div *ngIf="guiPermissions[1] === true" class="search-box">
++   <div *ngIf="this.showElement && guiPermissions[1] === true" class="search-box">
+      <app-search-box (searchKurum)="searchKurumEvent($event)"></app-search-box>
+    </div>
+-   <div *ngIf="guiPermissions[0] === true" class="meb-tapu-search search-form-parent">
++   <div *ngIf="this.showElement && guiPermissions[0] === true" class="meb-tapu-search search-form-parent">
+      <app-meb-tapu [mapView]="mapView" (mebTapuSearchClicked)="openSearchFormEvent($event)"
+        (searchMebParcelInfo)="searchMebParcelInfoEvent($event)"
+        (showParcelsOnDatatable)="showMebParcelsOnDatatableEvent($event)"></app-meb-tapu>
+    </div>
+-   <div *ngIf="guiPermissions[3] === true" class="tkgm-tapu-search search-form-parent">
++   <div *ngIf="this.showElement && guiPermissions[3] === true" class="tkgm-tapu-search search-form-parent">
+      <app-tkgm-tapu (searchTKGMParcelInfo)="searchTKGMParcelInfoEvent($event)"
+        (tkgmTapuSearchClicked)="openSearchFormEvent($event)" (gotoSelectedObject)="gotoSelectedObjectEvent($event)"
+        (tkgmPassiveParcelInfo)="searchTKGMPassiveParcelEvent($event)" [mapView]="this._mapView">
+      </app-tkgm-tapu>
+    </div>
+-   <div *ngIf="guiPermissions[4] === true || guiPermissions[6] == true" class="person-search search-form-parent">
++   <div *ngIf="this.showElement && (guiPermissions[4] === true || guiPermissions[6] == true)" class="person-search search-form-parent">
+      <app-person-search (personSearchClicked)="openSearchFormEvent($event)"
+        (getGercekKisiBtnClicked)="getGercekKisiEvent($event)" (getTuzelKisiBtnClicked)="getTuzelKisiEvent($event)"
+        [guiPermissions]="this.guiPermissions">
+      </app-person-search>
+    </div>
+ 
+-   <div *ngIf="guiPermissions[5] === true" class="person-search search-form-parent">
++   <div *ngIf="this.showElement && guiPermissions[5] === true" class="person-search search-form-parent">
+      <app-nvi-search (nviSearchClicked)="openSearchFormEvent($event)" (searchNVI)="searchNVIEvent($event)">
+      </app-nvi-search>
+    </div>
+@@ -50,7 +50,7 @@
+        </svg>
+      </div>
+    </div>
+-   <div *ngIf="guiPermissions[7] === true" class="detailed-search">
++   <div *ngIf="this.showElement && guiPermissions[7] === true" class="detailed-search">
+      <div class="header" (click)="dispatchOpenDynamicSearch()">
+        <h3>Dinamik Ara</h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22.986" height="23" viewBox="0 0 22.986 23">
+diff --git a/src/app/search/search.component.ts b/src/app/search/search.component.ts
+index 3fa6a1fa773b598219bcea3dda55526b8c0f456d..d44abd3ed9718e32529cbfe189f54b6ab11a1576 100644
+--- a/src/app/search/search.component.ts
++++ b/src/app/search/search.component.ts
+@@ -36,7 +36,7 @@ export class SearchComponent implements OnInit {
+ 
+   openedForm: HTMLElement;
+   guiPermissions: Array<boolean> = [];
+-
++  showElement = false;
+   @Input()
+   set mapView(mapView) {
+     this._mapView = mapView;
+@@ -70,6 +70,7 @@ export class SearchComponent implements OnInit {
+ 
+     const kadastroParcel = map.layers.find(layer => layer.get('originalTitle') === 'Kadastro Parseli');
+     if (kadastroParcel !== undefined && kadastroParcel.get('authorized')) {
++      // Meb Parsel Arama Izni
+       if (this.userPerm === undefined) {
+         this.guiPermissions[0] = true;
+       } else if (this.isAuthorized(0)) {
+@@ -79,43 +80,44 @@ export class SearchComponent implements OnInit {
+ 
+     const kurumLayer = map.layers.find(layer => layer.get('originalTitle') === 'Nokta Kurum');
+     if (kurumLayer !== undefined && kurumLayer.get('authorized')) {
++      // Okul Arama Izni
+       if (this.userPerm === undefined) {
+         this.guiPermissions[1] = true;
+       } else if (this.isAuthorized(1)) {
+         this.guiPermissions[1] = true;
+       }
+     }
+-
++    // Parsel Arama Izni
+     if (this.userPerm === undefined) {
+       this.guiPermissions[2] = true;
+     } else if (this.isAuthorized(2)) {
+       this.guiPermissions[2] = true;
+     }
+-
++    // TKGM Parsel Arama Izni
+     if (this.userPerm === undefined) {
+       this.guiPermissions[3] = true;
+     } else if (this.isAuthorized(3)) {
+       this.guiPermissions[3] = true;
+     }
+-
++    // MEB Kisi Sorgulama Izni
+     if (this.userPerm === undefined) {
+       this.guiPermissions[4] = true;
+     } else if (this.isAuthorized(4)) {
+       this.guiPermissions[4] = true;
+     }
+-
++    // Adres Sorgulama Izni
+     if (this.userPerm === undefined) {
+       this.guiPermissions[5] = true;
+     } else if (this.isAuthorized(5)) {
+       this.guiPermissions[5] = true;
+     }
+-
++    // TKGM Kisi Sorgulama Izni
+     if (this.userPerm === undefined) {
+       this.guiPermissions[6] = true;
+     } else if (this.isAuthorized(6)) {
+       this.guiPermissions[6] = true;
+     }
+-
++    // Dinamik Arama Izni
+     if (this.userPerm === undefined) {
+       this.guiPermissions[7] = true;
+     } else if (this.isAuthorized(7)) {
+@@ -127,6 +129,7 @@ export class SearchComponent implements OnInit {
+     const flattenPermItems = this.userPerm.flattenPermGUI[0];
+     if (flattenPermItems !== undefined) {
+       if (flattenPermItems.items.includes(id)) {
++        this.showElement = true;
+         return true;
+       } else {
+         return false;
+@@ -152,8 +155,7 @@ export class SearchComponent implements OnInit {
+       where = `(LOWER(kurum_adi) LIKE '%${searchKey.toLocaleLowerCase()}%' or UPPER(kurum_adi)
+       LIKE '%${searchKey.toLocaleUpperCase()}%') and kurum_durum <> 2`;
+     } else {
+-      where = `(CAST(kurum_kodu AS varchar(10)) LIKE '%${Number(searchKey)}%' or
+-      CAST(bagli_kurum_kodu AS varchar(10)) LIKE '%${Number(searchKey)}%') and kurum_durum <> 2`;
++      where = `(kurum_kodu=${Number(searchKey)} or bagli_kurum_kodu=${Number(searchKey)}) and kurum_durum <> 2`;
+     }
+ 
+     this._searchKurumQuery = this.searchKurumQuery(where).subscribe(searchResult => {
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index a7b069c94d04d1f2d431ade3b500d984d736326c..055d6935e40d9c8dacf970c2a780d0083949b408 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -4345,7 +4345,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Tahmini Kamulaştırma Bedeli",
++          "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "ucret",
+           "type": "number",
+           "required": true,
+@@ -4439,7 +4439,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Tahmini Kamulaştırma Bedeli",
++          "alias": "Tahmini Kamulaştırma Bedeli(₺)",
+           "name": "ucret",
+           "type": "number",
+           "required": true,
+@@ -4985,7 +4985,7 @@
+           "chosen_values": []
+         },
+         {
+-          "alias": "Tahmini Maaliyet",
++          "alias": "Tahmini Maaliyet(₺)",
+           "name": "ucret",
+           "required": "true",
+           "type": "number",
