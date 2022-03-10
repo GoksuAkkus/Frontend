@@ -1,0 +1,590 @@
+diff --git a/src/app/deneme/deneme.component.ts b/src/app/deneme/deneme.component.ts
+index 4e54581caefb8384ba1a8368a53b8fa7f7ecd28e..6245af1deaff29123feaf4c61916afa226a14ad7 100644
+--- a/src/app/deneme/deneme.component.ts
++++ b/src/app/deneme/deneme.component.ts
+@@ -29,8 +29,8 @@ export class DenemeComponent implements OnInit {
+   onClickDeneme() {
+     const selectedLayer = <esri.FeatureLayer>this._mapView.map.layers.find(layer => layer.title === 'Yapılar');
+     const queryProperties: esri.QueryProperties = {
+-      // where: `objectid= 6328`,
+-      where: `objectid= 181683`,
++      where: `objectid= 6328`,
++      // where: `objectid= 181683`,
+       outFields: ['*'],
+       returnGeometry: true
+     };
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 0955bb9eb0fea1e6605da9769123c03b5657f1a9..db8580efcfb9da259faaa9d8fc3415e9b7fa1861 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -224,8 +224,8 @@ export class ModuleReportComponent implements OnInit {
+       }
+       colDefs.push(colDef);
+     });
+-    // if( moduleFormData !== undefined && moduleFormData.value === 14) {
+-    if (moduleFormData !== undefined && moduleFormData.value === 13) {
++    if (moduleFormData !== undefined && moduleFormData.value === 14) {
++      // if (moduleFormData !== undefined && moduleFormData.value === 13) {
+       const malAlimiMaliyetIndex = colDefs.findIndex(columnDef => columnDef.colId === 'i_karar_no');
+       const colDef: ColDef = {
+         headerName: 'Toplam Maliyet',
+@@ -247,7 +247,7 @@ export class ModuleReportComponent implements OnInit {
+             malAlimiMaliyetString = malAlimiMaliyetString.replace(/,/g, '.');
+             toplamMaliyet += Number(malAlimiMaliyetString);
+ 
+-            let toplamMaliyetStringData = toplamMaliyet.toString();
++            let toplamMaliyetStringData = toplamMaliyet.toFixed(2);
+             toplamMaliyetStringData = toplamMaliyetStringData.replace('.', ',');
+             const toplamMaliyetString = this.dotMethod(toplamMaliyetStringData);
+             return toplamMaliyetString;
+@@ -260,7 +260,10 @@ export class ModuleReportComponent implements OnInit {
+       colDefs = [].concat(firstPart, colDef, secondPart);
+     }
+ 
+-    this.agGrid.api.setColumnDefs(colDefs);
++    this.agGrid.api.setColumnDefs(null);
++    setTimeout(() => {
++      this.agGrid.api.setColumnDefs(colDefs);
++    });
+   }
+ 
+   onGridReady() {
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index dc4d8221876976a9ab87f3d787289bec3ca81547..de6c900d3be6dd539064e275673e8bd1946f9e3f 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -213,8 +213,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const formControlName = formElement.name;
+ 
+     const formData = this.findFormData(formControlName);
+-    // if (this.moduleData.value === 14) {
+-    if (this.moduleData.value === 13) {
++    if (this.moduleData.value === 14) {
++      // if (this.moduleData.value === 13) {
+       if (formElement.name === 'talep_eden_kurum') {
+         formObject['detay'] = -1;
+         formObject['yatirim_ad'] = -1;
+@@ -224,8 +224,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         this.formGroup.controls[formElement.name].setValue(formElement.value);
+       }
+     }
+-    // if (this.moduleData.value === 14) {
+-    if (this.moduleData.value === 13) {
++    if (this.moduleData.value === 14) {
++      // if (this.moduleData.value === 13) {
+       const tadilatMaliyetControl = this.formGroup.controls['esas_no'];
+       const malAlimiMaliyetControl = this.formGroup.controls['karar_no'];
+ 
+@@ -248,8 +248,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         }
+       }
+     }
+-    // if (this.moduleData.value === 14 && formElement.name === 'talep_amaci') {
+-    if (this.moduleData.value === 13 && formElement.name === 'talep_amaci') {
++    if (this.moduleData.value === 14 && formElement.name === 'talep_amaci') {
++      // if (this.moduleData.value === 13 && formElement.name === 'talep_amaci') {
+       if (formElement.value === '-1') {
+         if (!this.formGroup.controls['esas_no'].disabled) {
+           this.formGroup.controls['esas_no'].setValue('');
+@@ -281,16 +281,16 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         } else {
+           this.resetFormData(moduleData, formObject);
+         }
+-        // } else if (moduleData.value === 14 && formControlName === 'detay' && formElementValue !== undefined && formElementValue !== '-1') {
+-      } else if (moduleData.value === 13 && formControlName === 'detay' && formElementValue !== undefined && formElementValue !== '-1') {
++      } else if (moduleData.value === 14 && formControlName === 'detay' && formElementValue !== undefined && formElementValue !== '-1') {
++        // } else if (moduleData.value === 13 && formControlName === 'detay' && formElementValue !== undefined && formElementValue !== '-1') {
+         if (formElementValue.includes('Lise')) {
+           const lead = this.recursiveFormLead(this.moduleFormData, 0);
+           const leadingFormData = moduleData.formData[lead];
+           const foundFormObject = leadingFormData.find(formDataElement => formDataElement.name === 'yatirim_ad');
+ 
+           foundFormObject.domain_values = [{ name: 'Bilim ve Kültür Sanat Atölyesi', value: 'Bilim ve Kültür Sanat Atölyesi' }];
+-          // } else if (moduleData.value === 14 && formControlName === 'detay' && !formElementValue.includes('Lise')) {
+-        } else if (moduleData.value === 13 && formControlName === 'detay' && !formElementValue.includes('Lise')) {
++        } else if (moduleData.value === 14 && formControlName === 'detay' && !formElementValue.includes('Lise')) {
++          // } else if (moduleData.value === 13 && formControlName === 'detay' && !formElementValue.includes('Lise')) {
+           const lead = this.recursiveFormLead(this.moduleFormData, 0);
+           const leadingFormData = moduleData.formData[lead];
+           const foundFormObject = leadingFormData.find(formDataElement => formDataElement.name === 'yatirim_ad');
+@@ -496,8 +496,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         formControl.enable();
+       }
+     }
+-    // if (this.moduleData.value === 14) {
+-    if (this.moduleData.value === 13) {
++    if (this.moduleData.value === 14) {
++      // if (this.moduleData.value === 13) {
+       const atolyeIslemValue = this.formGroup.controls['talep_amaci'].value;
+       if (atolyeIslemValue.includes('Sadece')) {
+         this.formGroup.controls['esas_no'].disable();
+@@ -631,8 +631,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       //   this.notify.open('Malik Seçilmedi', 'danger', 10);
+       //   return;
+       // }
+-      // if (this.moduleData.value === 14) {
+-      if (this.moduleData.value === 13 && this.processState === -1) {
++      if (this.moduleData.value === 14 && this.processState === -1) {
++        // if (this.moduleData.value === 13 && this.processState === -1) {
+         const binaSiraNo = this.feature.attributes['refid'];
+         this.binaSiraNo = binaSiraNo;
+ 
+@@ -989,8 +989,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+         });
+       }
+ 
+-      // if (recentFormValues !== undefined && this.moduleData.value === 14 && formControlName === 'detay'
+-      if (recentFormValues !== undefined && this.moduleData.value === 13 && formControlName === 'detay'
++      // if (recentFormValues !== undefined && this.moduleData.value === 13 && formControlName === 'detay'
++      if (recentFormValues !== undefined && this.moduleData.value === 14 && formControlName === 'detay'
+         && recentFormValues['detay'] !== -1) {
+         if (recentFormValues['detay'].includes('Lise')) {
+           const lead = this.recursiveFormLead(this.moduleFormData, 0);
+@@ -1010,8 +1010,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       const createdFormControl = this.createFormControl(formControlName, formControl.type, required, value);
+ 
+-      // if (this.moduleData.value === 14 && recentFormValues !== undefined && formControlName === 'esas_no') {
+-      if (this.moduleData.value === 13 && recentFormValues !== undefined && formControlName === 'esas_no') {
++      if (this.moduleData.value === 14 && recentFormValues !== undefined && formControlName === 'esas_no') {
++        // if (this.moduleData.value === 13 && recentFormValues !== undefined && formControlName === 'esas_no') {
+         const atolyeIslemValue = recentFormValues['talep_amaci'];
+         if (atolyeIslemValue !== -1) {
+           if (atolyeIslemValue.includes('Sadece')) {
+@@ -1024,8 +1024,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       if (recentFormValues !== undefined) {
+         const atolyeIslemValue = recentFormValues['talep_amaci'];
+-        // if (this.moduleData.value === 14 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
+-        if (this.moduleData.value === 13 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
++        if (this.moduleData.value === 14 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
++          // if (this.moduleData.value === 13 && (atolyeIslemValue === '-1' || atolyeIslemValue === -1)) {
+           if (formControlName === 'esas_no' && !this.formGroup.controls['esas_no'].disabled) {
+             this.formGroup.controls['esas_no'].setValue('');
+             this.formGroup.controls['esas_no'].disable();
+@@ -1036,8 +1036,8 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+           }
+         }
+       } else if (recentFormValues === undefined) {
+-        if (this.moduleData.value === 13) {
+-          // if (this.moduleData.value === 14) {
++        // if (this.moduleData.value === 13) {
++        if (this.moduleData.value === 14) {
+           if (formControlName === 'esas_no' && !this.formGroup.controls['esas_no'].disabled) {
+             this.formGroup.controls['esas_no'].setValue('');
+             this.formGroup.controls['esas_no'].disable();
+diff --git a/src/app/movements/movement-create/movement-create.component.ts b/src/app/movements/movement-create/movement-create.component.ts
+index 00107320f02522b2b63a76ed31c704fee713edb2..19f09797518647a3890fd809fe2f55426af86bd2 100644
+--- a/src/app/movements/movement-create/movement-create.component.ts
++++ b/src/app/movements/movement-create/movement-create.component.ts
+@@ -236,8 +236,9 @@ export class MovementCreateComponent implements OnInit {
+         this.formGroup.controls[formElement.name].patchValue(Number(formValue));
+       }
+     }
+-    // if ( this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] === 26) {
+-    if (this.movementData.type === 13 && formElement.name === 'aciklama' && formObject['durumu'] === 26) {
++    // tslint:disable-next-line:triple-equals
++    if (this.movementData.type === 14 && formElement.name === 'aciklama' && formObject['durumu'] == 26) {
++      // if (this.movementData.type === 13 && formElement.name === 'aciklama' && formObject['durumu'] == 26) {
+       formObject['aciklama'] = this.dotMethod(formElement.value);
+     }
+     const formControlName = formElement.name;
+@@ -248,12 +249,13 @@ export class MovementCreateComponent implements OnInit {
+     } else {
+       formElement.classList.add('error');
+     }
+-    // if (this.movementData.type === 14 && formObject['durumu'] === 26) {
+-      if (this.movementData.type === 13 && formObject['durumu'] === 26) {
+-        if (this.formGroup.controls['proje_no'] !== undefined) {
+-          formObject['proje_no'] = this.formGroup.controls['proje_no'].value;
+-        }
++    // tslint:disable-next-line:triple-equals
++    if (this.movementData.type === 14 && formObject['durumu'] == 26) {
++      // if (this.movementData.type === 13 && formObject['durumu'] === 26) {
++      if (this.formGroup.controls['proje_no'] !== undefined) {
++        formObject['proje_no'] = this.formGroup.controls['proje_no'].value;
+       }
++    }
+     this.initalizeWithFormData(this.movementData, formObject);
+   }
+ 
+@@ -282,8 +284,8 @@ export class MovementCreateComponent implements OnInit {
+     const movementDataType = this.movementData.type;
+     let atolyeIslemAttribute = '';
+ 
+-    // if( movementDataType === 14){
+-    if (movementDataType === 13) {
++    if (movementDataType === 14) {
++      // if (movementDataType === 13) {
+       atolyeIslemAttribute = this.moduleData['talep_amaci'];
+     }
+ 
+@@ -294,7 +296,8 @@ export class MovementCreateComponent implements OnInit {
+       const lastFeature = features[0];
+ 
+       const lastValue = <number>lastFeature.attributes['durumu'];
+-      if (movementDataType === 13) {
++      if (movementDataType === 14) {
++        // if (movementDataType === 13) {
+         if (lastValue === 26 && atolyeIslemAttribute === 'Sadece Mal Alımı') {
+           movementData = this.setDefaultFieldDomains(movementData, -2);
+         } else {
+@@ -304,8 +307,8 @@ export class MovementCreateComponent implements OnInit {
+         movementData = this.setDefaultFieldDomains(movementData, lastValue);
+       }
+     } else {
+-      // if( movementDataType === 14) {
+-      if (movementDataType === 13) {
++      if (movementDataType === 14) {
++        // if (movementDataType === 13) {
+         movementData.allowedStates.pop();
+         movementData = this.setDefaultFieldDomains(movementData, -1);
+       }
+@@ -386,8 +389,9 @@ export class MovementCreateComponent implements OnInit {
+           const createdFormControl = this.createFormControl(formControlName, formControlType, isRequired, formDataValue);
+ 
+           this.formGroup.addControl(formControlName, createdFormControl);
+-          // if (this.movementData.type === 14 && formObject['durumu'] === 26 && formControlName === 'proje_no') {
+-          if (this.movementData.type === 13 && formControlName === 'proje_no' && formObject['durumu'] === 26) {
++          // tslint:disable-next-line:triple-equals
++          if (this.movementData.type === 14 && formObject['durumu'] == 26 && formControlName === 'proje_no') {
++            // if (this.movementData.type === 13 && formControlName === 'proje_no' && formObject['durumu'] === 26) {
+             this.formGroup.controls['proje_no'].disable();
+           }
+         }
+@@ -717,8 +721,9 @@ export class MovementCreateComponent implements OnInit {
+       }
+       const results = <Array<{ success: boolean, objectId: number }>>res[resultValue];
+ 
+-      // if (this.movementData.type === 14 && formValues['durumu'] === 26) {
+-      if (this.movementData.type === 13 && formValues['durumu'] === 26) {
++      // tslint:disable-next-line:triple-equals
++      if (this.movementData.type === 14 && formValues['durumu'] == 26) {
++        // if (this.movementData.type === 13 && formValues['durumu'] === 26) {
+         const objectid = results[0].objectId;
+         formValues['proje_no'] = objectid;
+         formValues['objectid'] = objectid;
+diff --git a/src/assets/Modules.json b/src/assets/Modules.json
+index 9a93c7e790f617c8d39ac2fd48e09c9b740aaf28..3ed56bc342f849bbae5b48a94592f6eda8437af5 100644
+--- a/src/assets/Modules.json
++++ b/src/assets/Modules.json
+@@ -31,6 +31,11 @@
+       "item": 12,
+       "islem_turu": 13,
+       "title": "Bina Değişiklik"
++    },
++    {
++      "item": 13,
++      "islem_turu": 14,
++      "title": "Tasarım ve Beceri Atölyeleri"
+     }
+   ]
+ }, {
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index d5407cdbc557794bc01270dc9766b2de16385e10..bdf1570d39ba228ee4044867e956c6bd704fb28e 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -2450,6 +2450,161 @@
+   },
+   {
+     "type": 13,
++    "field": {
++      "alias": "Durumu",
++      "name": "durumu",
++      "type": "domain",
++      "required": true,
++      "domain_values": [{
++          "value": 1,
++          "name": ""
++        },
++        {
++          "value": 2,
++          "name": ""
++        },
++        {
++          "value": 3,
++          "name": ""
++        },
++        {
++          "value": 4,
++          "name": ""
++        },
++        {
++          "value": 5,
++          "name": ""
++        },
++        {
++          "value": 6,
++          "name": ""
++        },
++        {
++          "value": 7,
++          "name": ""
++        }
++      ],
++      "chosen_values": []
++    },
++    "defaultField": "durumu",
++    "allowedStates": [{
++        "state": 1,
++        "values": [2, 3, 4, 6, 7]
++      },
++      {
++        "state": 2,
++        "values": [5, 6, 7]
++      },
++      {
++        "state": 3,
++        "values": [7]
++      },
++      {
++        "state": 4,
++        "values": [2, 3, 6, 7]
++      },
++      {
++        "state": 5,
++        "values": [7]
++      },
++      {
++        "state": 6,
++        "values": [7]
++      },
++      {
++        "state": 7,
++        "values": [1, 2, 3, 4, 5, 6, 7]
++      }
++    ],
++    "formData": [{
++        "states": [
++          1,
++          5
++        ],
++        "fields": [{
++          "alias": "Açıklama",
++          "name": "aciklama",
++          "type": "text",
++          "required": false
++        }]
++      },
++      {
++        "states": [
++          3,
++          4
++        ],
++        "fields": [{
++            "alias": "Giden Tarih",
++            "name": "giden_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Giden Sayı",
++            "name": "giden_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
++      },
++      {
++        "states": [
++          2, 6
++        ],
++        "fields": [{
++            "alias": "Gelen Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Gelen Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Belge",
++            "name": "attachment",
++            "type": "file",
++            "required": true
++          }
++        ]
++      },
++      {
++        "states": [
++          7
++        ],
++        "fields": [{
++            "alias": "Gelen Tarih",
++            "name": "gelen_tarih",
++            "type": "date",
++            "required": true
++          },
++          {
++            "alias": "Gelen Sayı",
++            "name": "gelen_sayi",
++            "type": "number",
++            "required": true
++          },
++          {
++            "alias": "Açıklama",
++            "name": "aciklama",
++            "type": "text",
++            "required": false
++          }
++        ]
++      }
++    ]
++  },
++  {
++    "type": 14,
+     "field": {
+       "alias": "Durumu",
+       "name": "durumu",
+@@ -2487,10 +2642,9 @@
+       "chosen_values": []
+     },
+     "defaultField": "durumu",
+-    "allowedStates": [
+-      {
++    "allowedStates": [{
+         "state": -1,
+-        "values": [15,25,26,28,30,34]
++        "values": [15, 25, 26, 28, 30, 34]
+       },
+       {
+         "state": -2,
+@@ -2506,11 +2660,11 @@
+       },
+       {
+         "state": 26,
+-        "values": [28,30,34]
++        "values": [28, 30, 34]
+       },
+       {
+         "state": 28,
+-        "values": [30,34]
++        "values": [30, 34]
+       },
+       {
+         "state": 30,
+@@ -2525,8 +2679,7 @@
+         "values": [15, 25, 26, 28, 30, 34]
+       }
+     ],
+-    "formData": [
+-      {
++    "formData": [{
+         "states": [
+           26
+         ],
+@@ -2534,7 +2687,7 @@
+             "alias": "Proje No",
+             "name": "proje_no",
+             "type": "number",
+-            "required": true
++            "required": false
+           },
+           {
+             "alias": "Gönderilecek Para Miktarı",
+@@ -2572,8 +2725,7 @@
+         "states": [
+           30
+         ],
+-        "fields": [
+-          {
++        "fields": [{
+             "alias": "Açıklama",
+             "name": "aciklama",
+             "type": "text",
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index a0dce146735e1042434927945e57021556632258..fa918b9b19d4b8735ba969eb7d3482f7a877f733 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -1,6 +1,6 @@
+ [{
+-    "type": "Bina Değişiklik",
+-    "value": 13,
++    "type": "Tasarım ve Beceri Atölyeleri",
++    "value": 14,
+     "formData": [
+       [
+         {
+@@ -4950,5 +4950,72 @@
+         }
+       ]
+     ]
++  },
++  {
++    "type": "Bina Değişiklik",
++    "value": 13,
++    "formData": [
++      [{
++          "alias": "Tarih",
++          "name": "islem_tarihi",
++          "type": "date",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Gelen Sayı",
++          "name": "sayi",
++          "type": "number",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Talep Türü",
++          "name": "talep_turu",
++          "required": true,
++          "type": "domain",
++          "domain_values": [{
++              "value": 16,
++              "name": ""
++            },
++            {
++              "value": 17,
++              "name": ""
++            },
++            {
++              "value": 18,
++              "name": ""
++            }
++          ],
++          "chosen_values": []
++        },
++        {
++          "alias": "Tahmini Maaliyet",
++          "name": "ucret",
++          "required": "true",
++          "type": "number",
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bina Yapım Yılı",
++          "name": "teklif_yili",
++          "required": true,
++          "type": "number",
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "YIKIM/ONARIM/ GÜÇLENDİRME NEDENİ",
++          "name": "aciklama",
++          "required": true,
++          "type": "text",
++          "domain_values": [],
++          "chosen_values": []
++        }
++      ]
++    ]
+   }
+ ]
