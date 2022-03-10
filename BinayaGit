@@ -1,0 +1,118 @@
+diff --git a/MebCbsAnka/Controllers/CbsController.cs b/MebCbsAnka/Controllers/CbsController.cs
+index c3bf455f27cb1acd0203f6c9eeaa1dd62ddbb601..4bd7f82d234def4cd3883a50967acc40804b1030 100644
+--- a/MebCbsAnka/Controllers/CbsController.cs
++++ b/MebCbsAnka/Controllers/CbsController.cs
+@@ -1125,6 +1125,40 @@ namespace MebCbsAnka.Controllers
+             //BİNA/ADRES KODU SORGULA DEDİKLERİ ZAMAN BİNA KODUNU BURADAN DISKAPI NUMARASINA GÖRE ALACAK. ADRES KODUNU AŞAĞIDAKİ MAKSADRESKODUSORGULA DAN ALACAK.
+         }
+ 
++
++        public async Task<XmlDocument> GetMaksNumaratajGeometry(int kimlikNo)
++        {
++            var url = "http://mernis.meb.gov.tr/WFSService/wfs.asmx/Get?SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=maks:Numarataj&username=mebcbs&password=9UFdAy7x&FILTER=%3CFilter%20xmlns=%22http://www.opengis.net/ogc%22%20xmlns:gml=%22http://www.opengis.net/gml%22%3E%3CPropertyIsEqualTo%3E%3CPropertyName%3EkimlikNo%3C/PropertyName%3E%3CLiteral%3E" + kimlikNo + "%3C/Literal%3E%3C/PropertyIsEqualTo%3E%3C/Filter%3E";
++
++            var httpClient = new HttpClient();
++
++            var response = await httpClient.GetAsync(url);
++
++            var content = await response.Content.ReadAsStringAsync();
++
++            XmlDocument doc = new XmlDocument();
++
++            doc.LoadXml(content);
++
++            return doc;
++        }
++
++        [HttpGet("deneme")]
++        public async Task<List<List<double[]>>> deneme(int kimlikNo)
++        {
++            var response = await GetMaksNumaratajGeometry(kimlikNo);
++            List<List<double[]>> geomForNoComma = null;
++            if (response != null)
++            {
++                var featureAttributes = response.LastChild.ChildNodes[0].FirstChild;
++                var maksGeom = featureAttributes["maks:geometri"] != null ? featureAttributes["maks:geometri"].InnerText : "";
++                geomForNoComma = createRingsForNoComma(maksGeom);
++
++                return geomForNoComma;
++            }
++
++            return geomForNoComma;
++        }
+         //BİR BİNA KODU İÇİN BİRDEN FAZLA BAĞIMSIZ BÖLÜM GELEBİLİR. BU DURUMDA HANGİ BAGIMSIZ BÖLÜMÜN ADRES KODUNU YAZDIRACAĞIMIZI BİLMEDİĞİMİZDEN ADRES KODU SORGULA KALDIRIYORUZ.
+ 
+         //[HttpGet("MaksAdresKoduSorgula")]
+@@ -3392,7 +3426,7 @@ namespace MebCbsAnka.Controllers
+         {
+             string path = @"C:/alankampus.txt";
+             string type = "";
+- 
++
+             var mebIEDBServiceUrl = _configuration.GetSection("ArcgisRefererURL:MebIEDBArcgisUrl").Value;
+             ArcgisTokenDto arcgisTokenDto = await getToken();
+ 
+@@ -3421,16 +3455,49 @@ namespace MebCbsAnka.Controllers
+                     var digerYapi = featureAttributes["maks:digerYapiKimlikNo"];
+                     var yapi = featureAttributes["maks:yapiKimlikNo"];
+ 
+-                    if (digerYapi == null)
++                    if (digerYapi == null && yapi == null)
+                     {
+-                        type = "yapi";
++                        using (StreamWriter sw = System.IO.File.AppendText(path))
++                        {
++                            sw.WriteLine("KampusID: {0} Olan Verinin YapiKimlikNo ve DiğerYapiKimlikNolarının İkisi de NULL", kampusId);
++                        }
++
++                        Console.WriteLine("KampusID: {0} Olan Verinin YapiKimlikNo ve DiğerYapiKimlikNo'larının İkisi de NULL", kampusId);
++
++                        type = "null";
+                     }
+-                    else if (yapi == null)
++                    else
+                     {
+-                        type = "digerYapi";
++                        if (digerYapi == null)
++                        {
++                            type = "yapi";
++                        }
++                        else if (yapi == null)
++                        {
++                            type = "digerYapi";
++                        }
+                     }
+ 
+-                    if (type == "yapi")
++                    if (type == "null")
++                    {
++                        var attributes = maksYapiInfoFeatures.attributes;
++
++                        var numaratajNo = featureAttributes["maks:kimlikNo"].InnerText != null ? long.Parse(featureAttributes["maks:kimlikNo"].InnerText) : 0;
++
++                        attributes.dy_kimlik_no = 0;
++                        attributes.numarataj_no = numaratajNo;
++                        attributes.y_kimlik_no = 0;
++                        binaKodu = await GetMernisBinaKoduFromKimlikNo(numaratajNo);
++                        if (binaKodu == "")
++                        {
++                            attributes.bina_kod = 0;
++                        }
++                        else
++                        {
++                            attributes.bina_kod = long.Parse(binaKodu);
++                        }
++                    }
++                    else if (type == "yapi")
+                     {
+                         var attributes = maksYapiInfoFeatures.attributes;
+                         var yKimlikNo = featureAttributes["maks:yapiKimlikNo"].InnerText != null ? long.Parse(featureAttributes["maks:yapiKimlikNo"].InnerText) : 0;
+@@ -3449,7 +3516,7 @@ namespace MebCbsAnka.Controllers
+                             attributes.bina_kod = long.Parse(binaKodu);
+                         }
+                     }
+-                    else
++                    else if (type == "digerYapi")
+                     {
+                         var attributes = maksYapiInfoFeatures.attributes;
+                         var dyKimlikNo = featureAttributes["maks:digerYapiKimlikNo"].InnerText != null ? long.Parse(featureAttributes["maks:digerYapiKimlikNo"].InnerText) : 0;
