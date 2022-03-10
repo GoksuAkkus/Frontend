@@ -1,0 +1,98 @@
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 1a1440b03338fe222e86f0d85e0f88031f680075..d14870147dc966b3b78aae57ab1e580e62fe88ad 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -127,11 +127,11 @@ export class MainComponent implements OnInit, OnDestroy {
+     private webMapService: WebMapService,
+     private notificationService: NotificationService
+   ) {
+-  // constructor(private projectionService: ProjectionService, public mapService: MapService,
+-  //   public measureService: MeasureService, private dialogService: DialogService, public auth: AuthService,
+-  //   private webDataService: WebDataService, private notify: NotificationService, private editService: EditService,
+-  //   private drawEditService: DrawEditService, private searchService: SearchService, private http: HttpClient,
+-  //   public manageMapService: ManageMapService, private notificationService: NotificationService) {
++    // constructor(private projectionService: ProjectionService, public mapService: MapService,
++    //   public measureService: MeasureService, private dialogService: DialogService, public auth: AuthService,
++    //   private webDataService: WebDataService, private notify: NotificationService, private editService: EditService,
++    //   private drawEditService: DrawEditService, private searchService: SearchService, private http: HttpClient,
++    //   public manageMapService: ManageMapService, private notificationService: NotificationService) {
+     this.geojsonGraphicsLayerImportSubject = new Subject();
+     this.multiSelectFeatureSubject = new Subject();
+ 
+@@ -761,13 +761,17 @@ export class MainComponent implements OnInit, OnDestroy {
+       feature.setAttribute('touch_by', touch_by);
+       feature.setAttribute('touch_date', new Date().getTime());
+ 
+-      // if (geometricFeature !== undefined) {
+-      //   feature.geometry = geometricFeature.geometry;
++      // GAGA
++      // GEOMETRİDE EDİTLEME İŞLEMİ ŞUAN İÇİN SADECE EĞİTİM BÖLGELERİ İÇİN AÇIK OLACAK
++      // DİĞER KATMANLARA AÇILMASI DURUMUNDAKİ HATALARA BAKILACAK
++      // if (geometricFeature !== undefined ) {
++      if (geometricFeature !== undefined && feature.layer['originalTitle'] === 'iedb.sde.agitim_alan') {
++        feature.geometry = geometricFeature.geometry;
+ 
+-      //   this.measureService.getGeometricArea(<esri.Polygon>feature.geometry).then(area => {
+-      //     feature.setAttribute('yuzey_alan', area);
+-      //   });
+-      // }
++        this.measureService.getGeometricArea(<esri.Polygon>feature.geometry).then(area => {
++          feature.setAttribute('yuzey_alan', area);
++        });
++      }
+       // Delete Opration
+     } else if (operation === 2) {
+       action = 'Veri Silme İşlemi';
+@@ -791,6 +795,7 @@ export class MainComponent implements OnInit, OnDestroy {
+       feature.setAttribute('touch_by', touch_by);
+       feature.setAttribute('touch_date', new Date().getTime());
+     }
++
+     const dialog = this.dialogService.openUnClosable(ProgressInfoComponent, 'İşlem Yapılıyor', false, { data: {} }, false, 'light');
+     if (this.auth.user.isModerator === 'True' || this.auth.user.moderatorRequired === 'False') {
+       this.authorizedChange(feature, operation, <esri.FeatureLayer>feature.layer, dialog);
+@@ -1182,7 +1187,7 @@ export class MainComponent implements OnInit, OnDestroy {
+     requests.push(this.deleteSerhBeyanMalikRequest(serhTableURL, where));
+ 
+     forkJoin(requests).subscribe(
+-      (removeResponses) => {},
++      (removeResponses) => { },
+       (error) => {
+         this.notify.open('Malik şbi silinirken hata oluştu', 'danger', 10);
+       }
+@@ -1755,17 +1760,17 @@ export class MainComponent implements OnInit, OnDestroy {
+         }
+ 
+ 
+-          this.auth.getPendingRequests();
+-          this.onCloseInfo();
+-          dialog.close();
++        this.auth.getPendingRequests();
++        this.onCloseInfo();
++        dialog.close();
+ 
+-          if (this.pendingTableDialogRef !== undefined) {
+-            this.pendingTableDialogRef.close();
+-            this.openPendingRequestsEvent();
+-          }
++        if (this.pendingTableDialogRef !== undefined) {
++          this.pendingTableDialogRef.close();
++          this.openPendingRequestsEvent();
++        }
+ 
+-          return true;
+-        },
++        return true;
++      },
+         (error) => {
+           this.notify.open('Pending Servisinden Veri Silme Hatalı Sonuçlandı', 'danger', 10);
+           this.onCloseInfo();
+@@ -2768,7 +2773,7 @@ export class MainComponent implements OnInit, OnDestroy {
+     this.drawEditService.closeDrawEditMode();
+     this.drawMode = false;
+   }
+-  onDispatchOtherLayerView() {}
++  onDispatchOtherLayerView() { }
+ 
+   openTasimali() {
+     if (document.getElementsByClassName('panel-tasimali').length > 0) {
