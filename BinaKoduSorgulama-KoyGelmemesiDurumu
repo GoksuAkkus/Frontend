@@ -1,0 +1,15 @@
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+index b4761dc91c49e2db79b8fa54545608bcbd3f130a..03a4c9db016aeabecb36673597ce8ae579106056 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.ts
+@@ -274,7 +274,9 @@ export class MaksAdresbinakoduComponent implements OnInit, OnDestroy {
+         inputArray[1] = kod;
+         dataService.getMahallelerFromMAKS(inputArray[1]).subscribe(res => {
+           this.dataArray[0].mahalleler = res['mahalleler'];
+-          this.setKoyMahalleleri(res['bucaklar']);
++          if (res['bucaklar'] !== null) {
++            this.setKoyMahalleleri(res['bucaklar']);
++          }
+           this.filterArray[0].mahalleler = res['mahalleler'];
+         });
+         this.emptyArrays(selectName);
