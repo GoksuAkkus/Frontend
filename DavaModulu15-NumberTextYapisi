@@ -1,0 +1,190 @@
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 62edb7911ce8c103f1df2063d0c66224b6440202..9312da2ac614d8b6d9cee5e3765bcbfe739bcc4a 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -2033,7 +2033,7 @@
+         {
+           "alias": "Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "chosen_values": [],
+           "domain_values": []
+@@ -2706,7 +2706,7 @@
+         {
+           "alias": "Yüz Ölçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -2847,7 +2847,7 @@
+         {
+           "alias": "Yüz Ölçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -2980,7 +2980,7 @@
+         {
+           "alias": "Yüz Ölçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3113,7 +3113,7 @@
+         {
+           "alias": "Yüz Ölçüm",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3548,7 +3548,7 @@
+         {
+           "alias": "Kamulaştırılacak Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3707,7 +3707,7 @@
+         {
+           "alias": "Kamulaştırılacak Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -3903,7 +3903,7 @@
+         {
+           "alias": "Kamulaştırılacak Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -4296,7 +4296,7 @@
+           "alias": "Avukat Adı",
+           "name": "avukat_adi",
+           "type": "text",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         },
+@@ -4412,14 +4412,6 @@
+           "domain_values": [],
+           "chosen_values": []
+         },
+-        {
+-          "alias": "Karar No",
+-          "name": "karar_no",
+-          "type": "text",
+-          "required": false,
+-          "domain_values": [],
+-          "chosen_values": []
+-        },
+         {
+           "alias": "Depo Bedeli",
+           "name": "depo_bedeli",
+@@ -4540,14 +4532,6 @@
+           "domain_values": [],
+           "chosen_values": []
+         },
+-        {
+-          "alias": "Karar No",
+-          "name": "karar_no",
+-          "type": "text",
+-          "required": false,
+-          "domain_values": [],
+-          "chosen_values": []
+-        },
+         {
+           "alias": "Malik Seçimi",
+           "name": "?",
+@@ -4710,14 +4694,6 @@
+           "domain_values": [],
+           "chosen_values": []
+         },
+-        {
+-          "alias": "Karar No",
+-          "name": "karar_no",
+-          "type": "text",
+-          "required": false,
+-          "domain_values": [],
+-          "chosen_values": []
+-        },
+         {
+           "alias": "Dava Bedeli",
+           "name": "ucret",
+@@ -4905,14 +4881,6 @@
+           "domain_values": [],
+           "chosen_values": []
+         },
+-        {
+-          "alias": "Karar No",
+-          "name": "karar_no",
+-          "type": "text",
+-          "required": false,
+-          "domain_values": [],
+-          "chosen_values": []
+-        },
+         {
+           "alias": "Karar Türü",
+           "name": "karar_turu",
+@@ -5156,7 +5124,7 @@
+         {
+           "alias": "Birim Esası",
+           "name": "esas_no",
+-          "type": "number",
++          "type": "text",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5205,7 +5173,7 @@
+           "alias": "Avukat Adı",
+           "name": "avukat_adi",
+           "type": "text",
+-          "required": true,
++          "required": false,
+           "domain_values": [],
+           "chosen_values": []
+         },
+@@ -5315,7 +5283,7 @@
+         {
+           "alias": "Kamulaştırılacak Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5440,7 +5408,7 @@
+         {
+           "alias": "Kamulaştırılacak Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
+@@ -5565,7 +5533,7 @@
+         {
+           "alias": "Kamulaştırılacak Alan",
+           "name": "alan",
+-          "type": "number",
++          "type": "numberText",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
