@@ -1,0 +1,217 @@
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 0b17c5d475f0e98b8ef0d8160eebff20ed5520ff..06562db8535cfcada6657a5b464d1bffc5fdf7ea 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -1061,33 +1061,42 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       const uniqueFieldName = uniqueField.name;
+       const uniqueID = event.data[uniqueFieldName];
+ 
+-      if (selectedLayer.visible === true) {
+-        this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
+-      } else if (selectedLayer.visible === false && (selectedLayerTitle === 'Malik' ||
+-        selectedLayerTitle === 'Şerh-Beyan-İrtifak')) {
++      // Anaokul ise title ı Eğitim Bölgeleri Yapıyorum Onun Dışındakileri Eklemiyor. O yüzden Title hep Eğitim Bölgeleri Olarak Gelecek.
++      // Ve Gelen Katman her zaman bölge_tipi = 1 defExp iyle tanımlanacak. Dolayısıyla datatableda Anaokul Harici bir satıra tıklandığında
++      // hep anaokul katmanı gibi algılayacak. Doğru Katmanın seçimini attibutesden bolge_tipine bakarak maps içerisinden seçeceğiz.
++      // queryFeatureDataForEgitimBolgeleri metodunda bölge tiplerine göre mapviewdan default olan Anaokulu katmanı yerine bölge_tipi
++      // neyse o katman set ediliyor.
++      if (selectedLayerTitle === 'Eğitim Bölgeleri') {
++        this.queryFeatureDataForEgitimBolgeleri(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
++      } else {
++        if (selectedLayer.visible === true) {
++          this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
++        } else if (selectedLayer.visible === false && (selectedLayerTitle === 'Malik' ||
++          selectedLayerTitle === 'Şerh-Beyan-İrtifak')) {
+ 
+-        const tasinmazid = selectedLayerTitle === 'Malik' ? event.data['mebcbs2023.sde.malik.tasinmazid'] :
+-          event.data['mebcbs2023.sde.serh_beyan.tasinmazid'];
++          const tasinmazid = selectedLayerTitle === 'Malik' ? event.data['mebcbs2023.sde.malik.tasinmazid'] :
++            event.data['mebcbs2023.sde.serh_beyan.tasinmazid'];
+ 
+-        const parselLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Kadastro Parselleri');
+-        const queryProperties: esri.QueryProperties = {
+-          where: `tasinmaz_id=${tasinmazid}`,
+-          outFields: ['tasinmazid']
+-        };
++          const parselLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Kadastro Parselleri');
++          const queryProperties: esri.QueryProperties = {
++            where: `tasinmaz_id=${tasinmazid}`,
++            outFields: ['tasinmazid']
++          };
+ 
+-        parselLayer.queryFeatures(queryProperties).then(result => {
+-          const feature = result.features[0];
+-          const tasinmazID = feature.getAttribute('tasinmaz_id');
++          parselLayer.queryFeatures(queryProperties).then(result => {
++            const feature = result.features[0];
++            const tasinmazID = feature.getAttribute('tasinmaz_id');
+ 
+-          this.queryFeatureData(authorizedFields, 'tasinmaz_id', tasinmazID, parselLayer);
+-        });
+-      } else if (selectedLayer.visible === false && selectedLayer.title === 'Yapısal Durum') {
+-        this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
+-      } else {
+-        if (selectedLayer.title === 'Kadastro Parselleri' || selectedLayerTitle === 'Eğitim Bölgeleri') {
++            this.queryFeatureData(authorizedFields, 'tasinmaz_id', tasinmazID, parselLayer);
++          });
++        } else if (selectedLayer.visible === false && selectedLayer.title === 'Yapısal Durum') {
+           this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
+         } else {
+-          console.error('Bilgiye gidebilmek için katman açık olması gerekmektedir');
++          if (selectedLayer.title === 'Kadastro Parselleri') {
++            this.queryFeatureData(authorizedFields, uniqueFieldName, uniqueID, selectedLayer);
++          } else {
++            console.error('Bilgiye gidebilmek için katman açık olması gerekmektedir');
++          }
+         }
+       }
+     } else {
+@@ -1095,6 +1104,28 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     }
+   }
+ 
++  queryFeatureDataForEgitimBolgeleri(authorizedFields: Array<esri.Field>, uniqueFieldName: string,
++    uniqueID: number, selectedLayer: esri.FeatureLayer) {
++    const outFields = authorizedFields.map(authorizedField => authorizedField.name);
++    const where = `${uniqueFieldName} = ${uniqueID}`;
++
++    const queryParams: esri.QueryProperties = {
++      where: where,
++      outFields: outFields,
++      returnGeometry: true,
++    };
++
++    const layerQuery = selectedLayer.queryFeatures(queryParams).then(responseObject => {
++      const attributes = responseObject.features[0].attributes;
++      const definitionExp = attributes['bolge_tipi'];
++
++      // tslint:disable-next-line:max-line-length
++      const foundLayer = this.mapView.map.layers.find(layer => layer['definitionExpression'] === `bolge_tipi=${definitionExp}`) as esri.FeatureLayer;
++      responseObject.features[0].layer = foundLayer;
++      this.dialogRef.emit(responseObject);
++    });
++  }
++
+   queryFeatureData(authorizedFields: Array<esri.Field>, uniqueFieldName: string, uniqueID: number, selectedLayer: esri.FeatureLayer) {
+     const outFields = authorizedFields.map(authorizedField => authorizedField.name);
+     const where = `${uniqueFieldName} = ${uniqueID}`;
+@@ -1116,7 +1147,6 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       } else {
+         this.dialogRef.emit(responseObject);
+       }
+-
+     });
+   }
+ 
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index 754d37cf07b8b65f0862c7bce2e1fda6de623bca..d13947f5e3059f005a58d0e64a52cee29ce22759 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -15,8 +15,6 @@ import { loadModules } from 'esri-loader';
+ import { StationInfoComponent } from './station_info/station_info.component';
+ import { DiffInfoComponent } from './diff-info/diff-info.component';
+ import { EmitObject } from '../models/emitObject';
+-import { ProjectionService } from '../mapUtils/projection.service';
+-import { MeasureService } from '../mapUtils/measure.service';
+ 
+ @Component({
+   selector: 'app-info',
+@@ -69,8 +67,6 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+   _generalInstutationAnalyze: boolean;
+   _user: LoginResponse;
+ 
+-  polygonModule: esri.PolygonConstructor;
+-
+   @Input()
+   set emitObject(emitObject) {
+     this._emitObject = emitObject;
+@@ -179,7 +175,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     return this._generalInstutationAnalyze;
+   }
+ 
+-  constructor(private projectionService: ProjectionService, public measureService: MeasureService) { }
++  constructor() { }
+ 
+   ngOnInit() {
+   }
+@@ -478,31 +474,8 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     if (!isGeneral) {
+       result = this._hitTestResultResults.find(hitTestResult => hitTestResult.graphic.layer.get('infoTitle') === value);
+       infoModel.mainGraphic = result.graphic;
+-      const graphic = result.graphic;
+-      const graphicLayerTitle = result.graphic.layer.title;
+-      let geometry = result.graphic.geometry;
+-
+-      if (graphicLayerTitle === 'Eğitim Bölgeleri') {
+-        loadModules(['esri/geometry/Polygon']).then(([Polygon]) => {
+-          this.polygonModule = Polygon;
+-          const polygonProperties: esri.PolygonProperties = {
+-            rings: geometry['rings'][0],
+-            spatialReference: this.mapView.spatialReference
+-          };
+-          const polygon: esri.Polygon = new this.polygonModule(polygonProperties);
+-          this.projectionService.convertWgs84PolygonGeomTo3857(polygon);
+-          geometry = polygon;
+-          graphic.geometry = geometry;
+-          this.measureService.getBufferGeometry(geometry, -2, 'meters').then(bufferGeometry => {
+-            // graphic.set('bufferGeometry', bufferGeometry);
+-            graphic.geometry = bufferGeometry;
+-            this.highlightGraphic(graphic);
+-          });
+ 
+-        });
+-      } else {
+-        this.highlightGraphic(result.graphic);
+-      }
++      this.highlightGraphic(result.graphic);
+ 
+       const mapViewGoToOption: esri.MapViewBaseGoToOptions = {
+         duration: 1000,
+diff --git a/src/app/main/main.component.ts b/src/app/main/main.component.ts
+index 278a95e8bd7b8e1e5be826b652564211d5eacb9d..3d6603ec183cfe121c6166fc2b8e1adcd4f0aba0 100644
+--- a/src/app/main/main.component.ts
++++ b/src/app/main/main.component.ts
+@@ -32,7 +32,7 @@ import { Subject, forkJoin } from 'rxjs';
+ import { HttpClient } from '@angular/common/http';
+ import { NviDialogComponent } from '../nvi-dialog/nvi-dialog.component';
+ import { TasimaliComponent } from '../tasimali/tasimali.component';
+-import { ModelData, InfoData } from '../yapi-info';
++import { ModelData } from '../yapi-info';
+ import { DynamicDataTableComponent } from '../dynamic-data-table/dynamic-data-table.component';
+ import { TkgmparcellistDatatableComponent } from '../search/tkgmparcellist-datatable/tkgmparcellist-datatable.component';
+ import { TKGMFeatureSet } from '../models/TKGM/parcel-object';
+@@ -99,7 +99,7 @@ export class MainComponent implements OnInit {
+     public measureService: MeasureService, private dialogService: DialogService, public auth: AuthService,
+     private webDataService: WebDataService, private notify: NotificationService, private editService: EditService,
+     private drawEditService: DrawEditService, private searchService: SearchService, private http: HttpClient,
+-    public manageMapService: ManageMapService) {
++    public manageMapService: ManageMapService, private notificationService: NotificationService) {
+     this.geojsonGraphicsLayerImportSubject = new Subject();
+     this.multiSelectFeatureSubject = new Subject();
+   }
+@@ -2330,6 +2330,14 @@ export class MainComponent implements OnInit {
+         hitTestResultModel.results.push({ graphic: feature, mapPoint: undefined });
+       }
+ 
++      const bolgeTipi = featureSet.features[0].attributes['bolge_tipi'];
++
++      if (bolgeTipi === null) {
++        this.hitTestResult = [];
++        this.notificationService.open('BÖLGE TİPİ GİRİLMEDİĞİ İÇİN VERİYE GİDİLEMEZ!', 'danger', 1.5);
++        return;
++      }
++
+       this.hitTestResult = this.mapService.prepareHitTestLayers(hitTestResultModel.results);
+ 
+       this.hitTestResult.forEach(hitTestResult => {
+@@ -2338,9 +2346,7 @@ export class MainComponent implements OnInit {
+ 
+         if (graphic.layer.title !== 'İlçe') {
+           this.measureService.getBufferGeometry(geometry, -2, 'meters').then(bufferGeometry => {
+-            if (graphic.layer['infoTitle'] !== 'Eğitim Bölgeleri') {
+-              graphic.set('bufferGeometry', bufferGeometry);
+-            }
++            graphic.set('bufferGeometry', bufferGeometry);
+           });
+         }
+       });
