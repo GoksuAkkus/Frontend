@@ -1,0 +1,81 @@
+diff --git a/src/assets/ProcessData.json b/src/assets/ProcessData.json
+index c43efd057e5327a2b421baf8961449d682038545..aec58c8bccc64a75bbc3f21daced152455d4f514 100644
+--- a/src/assets/ProcessData.json
++++ b/src/assets/ProcessData.json
+@@ -32,6 +32,10 @@
+         {
+           "value": 7,
+           "name": ""
++        },
++        {
++          "value": 37,
++          "name": ""
+         }
+       ],
+       "chosen_values": []
+@@ -39,31 +43,31 @@
+     "defaultField": "durumu",
+     "allowedStates": [{
+         "state": 1,
+-        "values": [2, 3, 4, 6, 7]
++        "values": [2, 3, 4, 6, 7, 37]
+       },
+       {
+         "state": 2,
+-        "values": [5, 6, 7]
++        "values": [5, 6, 7, 37]
+       },
+       {
+         "state": 3,
+-        "values": [7]
++        "values": [7, 37]
+       },
+       {
+         "state": 4,
+-        "values": [2, 3, 6, 7]
++        "values": [2, 3, 6, 7, 37]
+       },
+       {
+         "state": 5,
+-        "values": [7]
++        "values": [7, 37]
+       },
+       {
+         "state": 6,
+-        "values": [7]
++        "values": [7, 37]
+       },
+       {
+         "state": 7,
+-        "values": [1, 2, 3, 4, 5, 6, 7]
++        "values": [1, 2, 3, 4, 5, 6, 7, 37]
+       }
+     ],
+     "formData": [{
+@@ -1100,7 +1104,7 @@
+       },
+       {
+         "state": 7,
+-        "values": [1, 2, 3, 4, 5, 6, 9, 37]
++        "values": [1, 2, 3, 4, 5, 6, 7, 9, 37]
+       },
+       {
+         "state": 9,
+@@ -1991,7 +1995,7 @@
+           {
+             "alias": "Karar No",
+             "name": "karar_no",
+-            "type": "number",
++            "type": "text",
+             "required": true
+           },
+           {
+@@ -2237,7 +2241,7 @@
+             "required": true
+           },
+           {
+-            "alias": "Ödenen Tutar",
++            "alias": "Gönderilen Tutar",
+             "name": "ucret",
+             "type": "number",
+             "required": true
