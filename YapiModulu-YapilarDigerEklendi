@@ -1,0 +1,67 @@
+diff --git a/src/app/data-table/data-table.component.ts b/src/app/data-table/data-table.component.ts
+index 0f13492bd72a0bc6a61c152b35c3ae6b669fee31..6bd3e5f126621f748b9b7ee5ef0f7bc7e03bd641 100644
+--- a/src/app/data-table/data-table.component.ts
++++ b/src/app/data-table/data-table.component.ts
+@@ -583,20 +583,23 @@ export class DataTableComponent implements OnInit, OnDestroy {
+       }
+     }
+   }
+-
++  onRowClickedEventForYapi(event: RowClickedEvent, selectedLayer: esri.FeatureLayer) {
++      selectedLayer = <esri.FeatureLayer>this.mapView.map.layers.find( layer => layer.title === 'Yapılar' );
++      const yapiAuthorizedFields = selectedLayer.fields.filter(field => field.get('rAuthorized') === true);
++      const yapiUniqueFieldName = 'refid';
++      const yapiUniqueID = event.data['bina_sira_no'];
++      this.queryFeatureData(yapiAuthorizedFields, yapiUniqueFieldName, yapiUniqueID, selectedLayer);
++  }
+   onRowClickedEvent(event: RowClickedEvent) {
+     if (this.infoData !== undefined) {
+       this.infoData = undefined;
+     }
+ 
+-    let selectedLayer = this.selectedLayer;
++    const selectedLayer = this.selectedLayer;
+     const selectedLayerTitle = selectedLayer.title;
++
+     if( selectedLayerTitle === 'Yapısal Durum' || selectedLayerTitle === 'Yapısal Bilgi' || selectedLayerTitle === 'Yapı Enerji' ) {
+-      selectedLayer = <esri.FeatureLayer>this.mapView.map.layers.find( layer => layer.title === 'Yapılar');
+-      const yapiAuthorizedFields = selectedLayer.fields.filter(field => field.get('rAuthorized') === true);
+-      const yapiUniqueFieldName = 'refid';
+-      const yapiUniqueID = event.data['bina_sira_no'];
+-      this.queryFeatureData(yapiAuthorizedFields, yapiUniqueFieldName, yapiUniqueID, selectedLayer);
++      this.onRowClickedEventForYapi(event, selectedLayer);
+       return;
+     }
+ 
+@@ -646,7 +649,17 @@ export class DataTableComponent implements OnInit, OnDestroy {
+     };
+ 
+     const layerQuery = selectedLayer.queryFeatures(queryParams).then(responseObject => {
+-      this.dialogRef.emit(responseObject);
++
++      if(responseObject.fields === null) {
++        selectedLayer = <esri.FeatureLayer>this.mapView.map.layers.find( layer => layer.title === 'Yapılar Diğer' );
++        selectedLayer.queryFeatures(queryParams).then(responseYapiDiger => {
++          this.dialogRef.emit(responseYapiDiger);
++        });
++        return;
++      } else {
++        this.dialogRef.emit(responseObject);;
++      }
++     
+     });
+   }
+ 
+diff --git a/src/app/info/generic-info/generic-info.component.html b/src/app/info/generic-info/generic-info.component.html
+index ebfdfabb61347fece1aac7d16bd6f7c2a52d254b..7443d94cd88cf23fc1a692f93f1b91f0e8a00ee7 100644
+--- a/src/app/info/generic-info/generic-info.component.html
++++ b/src/app/info/generic-info/generic-info.component.html
+@@ -98,7 +98,7 @@
+ 
+ 
+ 
+-        <input *ngIf="_tabData.features[0].layer['originalTitle'] === 'Bina Kurum'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()">
++        <input *ngIf="_tabData.features[0].layer['originalTitle'] === 'Bina Kurum' || _tabData.features[0].layer['originalTitle'] === 'Bina Diğer'" type="button" class="additional-buttons" value="Yapı Bilgileri" (click)="onClickYapiBilgileri()">
+ 
+ 
+ 
