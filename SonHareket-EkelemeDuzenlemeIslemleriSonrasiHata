@@ -1,0 +1,108 @@
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index d48e6a960a3da1eb66340e6e5b98620df0dab239..abc32073f2f16c42c5097fd49a188f401b40c2c8 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -43,6 +43,12 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+   rowsInfoArray: Array<EmitObjectForLastMovement> = [];
+   allRows: Array<any> = [];
+ 
++  lastMovFeatureData: any;
++  layerWhereField: string;
++  whereField: string;
++  showFields = [];
++  requiredFields: any;
++
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient) { }
+ 
+@@ -61,16 +67,20 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     const layerWhereField = moduleData.layerField;
+     const whereField = moduleData.moduleField;
+ 
++    this.setForLastMovement(featureData, layerWhereField, whereField);
++
+     this.initializeLastMovement(whereField, layerWhereField, featureData);
+     this.initalizeAGGrid();
+ 
+     setTimeout(() => {
+       this.getRequiredFields(featureData, layerWhereField).then(feature => {
++        this.requiredFields = feature;
+         const whereValue = feature.getAttribute(layerWhereField);
+         this.getLayerFields().subscribe(fields => {
+           this.fields = fields;
+           const showFields = ['objectid', 'islem_turu', 'islem_tarihi', 'sayi',
+             'talep_turu', 'alt_konu', 'touch_by', 'touch_date', 'create_date'];
++          this.showFields = showFields;
+ 
+           let colDefs = this.createColumnDefinitions(fields, showFields);
+           colDefs = this.createModuleDefs(colDefs);
+@@ -156,6 +166,7 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+   }
+ 
+   initializeLastMovement(whereField: string, layerWhereField: string, featureData: any) {
++    this.rowsInfoArray = [];
+     const movementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'Hareket');
+     const processMovementLayer = <esri.FeatureLayer>this.mapView.map.layers.find(layer => layer.title === 'İslem_Hareket');
+     const durumuField = movementLayer.fields.find(field => (field.name === 'durumu' || field.name === 'h_durumu'));
+@@ -163,7 +174,6 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       this.hDurumuDomains = durumuField.domain['codedValues'];
+     }
+ 
+-
+     const value = featureData['attributes'][`${layerWhereField}`];
+     const queryProp: esri.QueryProperties = {
+       where: `i_${whereField}=${value}`,
+@@ -351,7 +361,11 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         if (params.data !== undefined) {
+           const objectid = params.data['objectid'];
+           const foundRow = this.rowsInfoArray.find(row => row['objectId'] === objectid);
+-          return foundRow.lastMovement;
++          if (foundRow === undefined) {
++            return '';
++          } else {
++            return foundRow.lastMovement;
++          }
+         }
+       }
+     };
+@@ -449,11 +463,6 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+     this.closeAllDialogRefs();
+ 
+-    if (this.movementListRef !== undefined) {
+-      this.movementListRef.close();
+-      this.movementListRef = undefined;
+-    }
+-
+     this.movementListRef = this.dialogService.open(MovementListComponent, 'Hareketler', true, {
+       data: {
+         moduleData: params.data,
+@@ -461,6 +470,15 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         mapView: this.mapView
+       }
+     }, false, 'light');
++
++    this.movementListRef.afterClosed.subscribe(res => {
++      this.initializeLastMovement(this.whereField, this.layerWhereField, this.lastMovFeatureData);
++
++      setTimeout(() => {
++        const whereValue = this.requiredFields.getAttribute(this.layerWhereField);
++        this.setDataSourceOfGrid(this.whereField, whereValue);
++      }, 1000);
++    });
+   }
+ 
+   checkIfAuthorized(params: any) {
+@@ -618,6 +636,12 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     return formData;
+   }
+ 
++  setForLastMovement(featureData: any, layerWhereField: string, whereField: string) {
++    this.lastMovFeatureData = featureData;
++    this.layerWhereField = layerWhereField;
++    this.whereField = whereField;
++  }
++
+   closeAllDialogRefs() {
+     if (this.moduleCreateRef !== undefined) {
+       this.moduleCreateRef.close();
