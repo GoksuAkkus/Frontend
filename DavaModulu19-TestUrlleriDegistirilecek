@@ -1,0 +1,88 @@
+diff --git a/src/app/movements/movement-list/movement-list.component.ts b/src/app/movements/movement-list/movement-list.component.ts
+index 70a713e31d97b2c9900c2388c9ebc70f98370665..ffdf12e8dcf9eecf6546303afa383bca1e0399b4 100644
+--- a/src/app/movements/movement-list/movement-list.component.ts
++++ b/src/app/movements/movement-list/movement-list.component.ts
+@@ -63,7 +63,9 @@ export class MovementListComponent implements OnInit, OnDestroy {
+ 
+     this.getMovementData().subscribe(movementData => {
+       const foundMovement = movementData.find(movement => movement.type === moduleType);
+-      this.getLayerFields().subscribe(fields => {
++      // GAGA BURASI AÇILACAK
++      // this.getLayerFields().subscribe(fields => {
++      this.getTestLayerFields().subscribe(fields => {
+         const listFields = this.createListFields(foundMovement, fields);
+         const colDefs = this.createColumnDefinitions(listFields);
+ 
+@@ -189,7 +191,9 @@ export class MovementListComponent implements OnInit, OnDestroy {
+       num: 1,
+       outFields: ['*']
+     };
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
+ 
+     return this.getFeatures(url, queryProperties).pipe(map(response => response.features));
+   }
+@@ -199,7 +203,9 @@ export class MovementListComponent implements OnInit, OnDestroy {
+       whereValue = `'${whereValue}'`;
+     }
+ 
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
+     const queryProperties = <esri.QueryProperties>{
+       outFields: outFields,
+       where: `${whereField} = ${whereValue}`,
+@@ -243,6 +249,10 @@ export class MovementListComponent implements OnInit, OnDestroy {
+         const foundField = listFields.find(field => field.name === formDataField.name);
+         const originalField = fields.find(layerField => layerField.name === formDataField.name);
+ 
++        if (formDataField.type === 'malik') {
++          return;
++        }
++
+         if (foundField === undefined && formDataField.type !== 'file') {
+           originalField.alias = formDataField.alias;
+           listFields.push(originalField);
+@@ -397,7 +407,9 @@ export class MovementListComponent implements OnInit, OnDestroy {
+ 
+   openMovementDetail(data: any) {
+     const objectid = data.objectid;
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
+ 
+     const queryProperties = <esri.QueryProperties>{
+       outFields: ['*'],
+@@ -429,6 +441,16 @@ export class MovementListComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
++  // GAGA BURASI SİLENECEK
++  getTestLayerFields() {
++    return this.http.get<Array<esri.Field>>('https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2', {
++      params: {
++        token: sessionStorage.getItem('CBSArcToken'),
++        f: 'pjson',
++      }
++    }).pipe(map(response => response['fields']));
++  }
++
+   getLayerFields() {
+     return this.http.get<Array<esri.Field>>(environment.arcgisMEBURL + 'FeatureServer/' + 13, {
+       params: {
+@@ -485,7 +507,10 @@ export class MovementListComponent implements OnInit, OnDestroy {
+   getPreviousNextMovement(data: any) {
+     const dataId = data.objectid;
+ 
+-    const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    // GAGA BURASI AÇILACAK
++    // const url = environment.arcgisMEBURL + 'FeatureServer/' + 13 + '/query';
++    const url = 'https://cbs.meb.gov.tr/server/rest/services/Modul2023/modul/FeatureServer/2/query';
++
+     const previousQueryProperties = <esri.QueryProperties>{
+       num: 1,
+       where: `objectid < ${dataId} and islem_refid = ${this.moduleRefId}`,
