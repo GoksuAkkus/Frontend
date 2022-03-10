@@ -1,0 +1,18 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index e9b7089725c19f0dad29fe884ba5991699f0285a..0257147da22f78f55a5b65007939d6c6b9016e2c 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -1577,11 +1577,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+               selectionData.maliye_area = Number(maliye_area.toFixed(2));
+               selectionData.other_area = Number(other_area.toFixed(2));
+             });
++          } else {
++            this.agGrid.api.setRowData([]);
+           }
+         });
+       });
+     }
+-
+     this.agGrid.context = { componentParent: this };
+   }
+ 
