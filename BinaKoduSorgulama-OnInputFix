@@ -1,0 +1,16 @@
+diff --git a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+index 4dcf45cf2836cea268ecfe80a523e210d73a55f3..d6eedaf019d41a4262d8707e32fc5012e8e5f82e 100644
+--- a/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
++++ b/src/app/search/maks-adresbinakodu/maks-adresbinakodu.component.html
+@@ -78,9 +78,9 @@
+           <div class="info-container" >
+             <label class="info" >Bina Kodu: </label>
+             <label class="info"
+-              *ngIf="selectedDiskapiNoIndex != '' && filterArray[0].binalar[selectedDiskapiNoIndex].kod !== undefined ">{{filterArray[0].binalar[selectedDiskapiNoIndex].kod}}</label>
++              *ngIf="selectedDiskapiNoIndex != '' && dataArray[0].binalar[selectedDiskapiNoIndex].kod !== undefined ">{{dataArray[0].binalar[selectedDiskapiNoIndex].kod}}</label>
+           </div>
+-          <button class="btn" (click)="onClickBinayaGit(filterArray[0].binalar)" type="button">Binaya Git</button>
++          <button class="btn" (click)="onClickBinayaGit(dataArray[0].binalar)" type="button">Binaya Git</button>
+         </div>
+         <label class= "notification" *ngIf="this.notificationMessage !== ''">{{notificationMessage}}</label>
+       </div>    
