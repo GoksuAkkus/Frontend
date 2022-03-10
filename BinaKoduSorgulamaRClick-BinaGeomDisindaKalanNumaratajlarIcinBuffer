@@ -1,0 +1,206 @@
+diff --git a/src/app/dialog-info/dialog-info.component.ts b/src/app/dialog-info/dialog-info.component.ts
+index 4b22411678b9a4d5e9475e11afbe1e3d6d4b36e1..77a2ed863f9d9c25468a613ec15309397a123f0a 100644
+--- a/src/app/dialog-info/dialog-info.component.ts
++++ b/src/app/dialog-info/dialog-info.component.ts
+@@ -1,8 +1,12 @@
+ import { Component, OnInit } from '@angular/core';
+ import { loadModules } from 'esri-loader';
++import Geometry from 'esri/geometry/Geometry';
+ import { DialogConfig } from '../dialog/dialog-config';
+ import { DialogRef } from '../dialog/dialog-ref';
+ import { DialogService } from '../dialog/dialog.service';
++import { DrawPointService } from '../mapUtils/draw-point.service';
++import { MeasureService } from '../mapUtils/measure.service';
++import { ProjectionService } from '../mapUtils/projection.service';
+ import { UserPermission } from '../models/Login/user-permission';
+ import { MaksBinaKodu } from '../models/MaksBinaKodu';
+ import { AuthService } from '../services/auth.service';
+@@ -30,16 +34,28 @@ export class DialogInfoComponent implements OnInit {
+   ilceAttributes;
+   ilceProperties;
+   pointModule: esri.PointConstructor;
++  polygonModule: esri.PolygonConstructor;
++  graphicModule: esri.GraphicConstructor;
+   isPermitted;
+   isPermittedForAllCities = false;
++  geometry: Array<Array<number[]>>;
+ 
+   constructor(public dialogConfig: DialogConfig, public dialog: DialogRef, private dialogService: DialogService,
+-    private webDataService: WebDataService, private auth: AuthService) { }
++    private webDataService: WebDataService, private auth: AuthService, public measureService: MeasureService,
++    public drawPointService: DrawPointService, public projectionService: ProjectionService) { }
+ 
+   ngOnInit() {
+     this.notificationMessage = '';
+-    this.getModules().then(moduleRes => {
+-      this.pointModule = moduleRes;
++
++    loadModules([
++      'esri/geometry/Point',
++      'esri/geometry/Polygon',
++      'esri/Graphic'
++    ]).then(([Point, Polygon, Graphic]) => {
++      this.pointModule = Point;
++      this.polygonModule = Polygon;
++      this.graphicModule = Graphic;
++
+       this.userPerm = this.auth.userPerm;
+       const data = this.dialogConfig.data;
+       this.mapView = data.mapView;
+@@ -62,7 +78,7 @@ export class DialogInfoComponent implements OnInit {
+           this.isPermitted = 1;
+         }
+         if (this.isPermitted === 1) {
+-          this.getAllNumaratajFromBina(this.lat, this.lon);
++          this.getGeometryFromMaks(this.lat, this.lon);
+         } else {
+           this.notificationMessage = 'Sorgulama Yapılmak İstenen Bölge Yetki Dahilinde Değildir.';
+           console.log('YOU ARE NOT PERMITTED IN');
+@@ -71,11 +87,6 @@ export class DialogInfoComponent implements OnInit {
+     });
+   }
+ 
+-  async getModules() {
+-    const [Point] = await loadModules(['esri/geometry/Point']);
+-    return Point;
+-  }
+-
+   async queryIlceLayer() {
+     return this.ilceLayer.queryFeatures(this.ilceProperties).then(ilceRes => {
+       return ilceRes;
+@@ -145,15 +156,45 @@ export class DialogInfoComponent implements OnInit {
+     });
+   }
+ 
+-  getAllNumaratajFromBina(lat: string, lon: string) {
+-    this.webDataService.getAllNumaratajFromBina(lat, lon).subscribe(res => {
++  async getGeometryFromMaks(lat: string, lon: string) {
++    this.webDataService.getGeometryFromMaks(lat, lon).subscribe(res => {
+       if (res !== null && res !== undefined) {
+-        this.binaList = res;
+-        this.maksBinaKoduSorgulaState = this.dialogConfig.data['maksBinaKoduSorgulaState'];
+-      } else {
+-        this.maksBinaKoduSorgulaState = false;
+-        this.notificationMessage = 'Maks:Yapi ve Maks:DigerYapida Veri Bulunamadı.';
++        this.geometry = res;
++
++        const polygon: esri.Polygon = this.createPolygonWithGeometry(this.geometry);
++        this.projectionService.convertWgs84PolygonGeomTo3857(polygon);
++        this.measureService.getBufferGeometry(polygon, 1.5, 'meters').then(geom => {
++          polygon.rings = geom['rings'][0];
++          this.projectionService.convertEPSG3857PolygonGeomToWGS84(polygon);
++          const stringGeom: string = polygon.rings.toString();
++          const splittedGeom = stringGeom.split(',');
++          let finalGeom = '';
++          for (let i = 0; i < splittedGeom.length; i++) {
++            finalGeom += splittedGeom[i] + ' ';
++          }
++          finalGeom = finalGeom.slice(0, finalGeom.length - 1);
++
++          this.webDataService.getAllNumaratajFromBina(finalGeom).subscribe(binaList => {
++            if (binaList !== null && binaList !== undefined) {
++              this.binaList = binaList;
++              this.maksBinaKoduSorgulaState = this.dialogConfig.data['maksBinaKoduSorgulaState'];
++            } else {
++              this.maksBinaKoduSorgulaState = false;
++              this.notificationMessage = 'Maks:Yapi ve Maks:DigerYapida Veri Bulunamadı';
++            }
++          });
++        });
+       }
+     });
+   }
++
++  createPolygonWithGeometry(geometry: Array<Array<number[]>>) {
++    const polygonProperties: esri.PolygonProperties = {
++      rings: geometry,
++      spatialReference: this.mapView.spatialReference
++    };
++
++    const polygon: esri.Polygon = new this.polygonModule(polygonProperties);
++    return polygon;
++  }
+ }
+diff --git a/src/app/mapUtils/projection.service.ts b/src/app/mapUtils/projection.service.ts
+index 88ab257b1fb18974025db585ec4f280f98c982c8..974e4e983566c22232842e70a7e2c7454fa198c8 100644
+--- a/src/app/mapUtils/projection.service.ts
++++ b/src/app/mapUtils/projection.service.ts
+@@ -98,6 +98,11 @@ export class ProjectionService {
+     return pointData;
+   }
+ 
++  to3857PointArray(x: number, y: number) {
++    const pointData = proj4('EPSG:4326', 'EPSG:3857', [x, y]);
++    return pointData;
++  }
++
+   convertEPSG3857PolygonGeomToWGS84(geometry: esri.Polygon) {
+     const geometryRings = geometry.get('rings');
+ 
+@@ -112,4 +117,19 @@ export class ProjectionService {
+ 
+     geometry.set('rings', [convertedWGS84Rings]);
+   }
++
++  convertWgs84PolygonGeomTo3857(geometry: esri.Polygon) {
++    const geometryRings = geometry.get('rings');
++
++    const converted3857Rings = [];
++
++    geometryRings[0].forEach(ring => {
++
++      const convertedRing = this.to3857PointArray(ring[0], ring[1]);
++
++      converted3857Rings.push(convertedRing);
++    });
++
++    geometry.set('rings', [converted3857Rings]);
++  }
+ }
+diff --git a/src/app/models/MaksBinaKodu.ts b/src/app/models/MaksBinaKodu.ts
+index 8c91c3e0d3555d22f657df99819234e7d4a23f92..d434517848c6ada10984b00a70fbba0511148c7e 100644
+--- a/src/app/models/MaksBinaKodu.ts
++++ b/src/app/models/MaksBinaKodu.ts
+@@ -3,3 +3,7 @@ export class MaksBinaKodu {
+     kimlikNo: number;
+     binaKodu: string;
+ }
++
++export interface MaksPostBody {
++    bufferGeom: string;
++}
+diff --git a/src/app/services/web-data.service.ts b/src/app/services/web-data.service.ts
+index 8941028bc287c4685f52819994abd70b880a6675..afab0ad484b11dd9d74262914583bc952c3bcde2 100644
+--- a/src/app/services/web-data.service.ts
++++ b/src/app/services/web-data.service.ts
+@@ -49,8 +49,8 @@ import { NVIObject } from '../models/NVI/nviobject';
+ import { ModelData } from '../yapi-info';
+ import { Observable } from 'rxjs/internal/Observable';
+ import esri = __esri;
+-import { MaksData, Il } from '../models/MAKSData';
+-import { MaksBinaKodu } from '../models/MaksBinaKodu';
++import { MaksData} from '../models/MAKSData';
++import { MaksBinaKodu, MaksPostBody } from '../models/MaksBinaKodu';
+ 
+ 
+ @Injectable({
+@@ -98,8 +98,17 @@ export class WebDataService {
+       { headers: this.auth.createHeader() });
+   }
+ 
+-  getAllNumaratajFromBina(lat: string, lon: string) {
+-    return this.http.get<Array<MaksBinaKodu>>(this.maksURL + 'getAllNumaratajFromBina?lat=' + lat + '&lon=' + lon,
++  getGeometryFromMaks(lat: string, lon: string) {
++    return this.http.get<Array<Array<number[]>>>(this.maksURL + 'getGeometryFromMaks?lat=' + lat + '&lon=' + lon,
++      { headers: this.auth.createHeader() });
++  }
++
++  getAllNumaratajFromBina(bufferGeom: string) {
++    const body: MaksPostBody = {
++      bufferGeom: bufferGeom
++    };
++
++    return this.http.post<Array<MaksBinaKodu>>(this.maksURL + 'getAllNumaratajFromBina', body,
+       { headers: this.auth.createHeader() });
+   }
+ 
