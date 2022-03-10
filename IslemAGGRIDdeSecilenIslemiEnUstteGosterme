@@ -1,0 +1,132 @@
+diff --git a/src/app/info/generic-info/generic-info.component.ts b/src/app/info/generic-info/generic-info.component.ts
+index 3c3d81407bc3e6aefe74f6bf7d939b125dc0f14f..ac81804bee6e231f704aa1b26228ca18b96267cd 100644
+--- a/src/app/info/generic-info/generic-info.component.ts
++++ b/src/app/info/generic-info/generic-info.component.ts
+@@ -62,6 +62,7 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+   historyData: Array<esri.Graphic> = [];
+   currentCount = 0;
+   _highlightLayer: any;
++  _selectedObjectIdInIslemler: string;
+ 
+   attachmentIndex = 0;
+   @Input()
+@@ -353,7 +354,8 @@ export class GenericInfoComponent implements OnInit, OnDestroy {
+         moduleData: this._foundModuleData,
+         featureData: feature,
+         userPerm: this._userPerm,
+-        mapView: this._mapView
++        mapView: this._mapView,
++        selectedObjectIdInIslemler: this._selectedObjectIdInIslemler
+       }
+     }, true, 'blue');
+   }
+diff --git a/src/app/info/info.component.ts b/src/app/info/info.component.ts
+index 1a16c0ce1c2483b8a066031f35bca1e34af2b5ee..af26d37715dea327e53ed75c4566f648761003b6 100644
+--- a/src/app/info/info.component.ts
++++ b/src/app/info/info.component.ts
+@@ -13,6 +13,7 @@ import { environment } from 'src/environments/environment';
+ import { loadModules } from 'esri-loader';
+ import { StationInfoComponent } from './station_info/station_info.component';
+ import { DiffInfoComponent } from './diff-info/diff-info.component';
++import { EmitObject } from '../models/emitObject';
+ 
+ @Component({
+   selector: 'app-info',
+@@ -820,7 +821,7 @@ export class InfoComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
+     this.genericInfoComponent.showStatus = true;
+     this.genericInfoComponent.mapView = this._mapView;
+     this.genericInfoComponent._highlightLayer = this._highlightLayer;
+-    // TODO: OBJECTID GENERİCE GÖNDERİLECEK 
++    this.genericInfoComponent._selectedObjectIdInIslemler = this.selectedObjectIdInIslemler;
+     if (header !== undefined) {
+       this.genericInfoComponent.header = header;
+     }
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index eeb853ef081911488e96a453a51590e440f98c61..4b4a752edfcbc6807f0bf386ed09bfe0e7297ff5 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -1,6 +1,6 @@
+ import { Component, OnInit, ViewChild, OnDestroy } from '@angular/core';
+ import { AgGridNg2 } from 'ag-grid-angular';
+-import { ColDef, IDatasource, IGetRowsParams } from 'ag-grid-community';
++import { ColDef, GridOptions, IDatasource, IGetRowsParams } from 'ag-grid-community';
+ import { HttpClient } from '@angular/common/http';
+ import { environment } from 'src/environments/environment';
+ import { map } from 'rxjs/operators';
+@@ -17,6 +17,8 @@ import { QueryConstructor } from 'src/app/models/AGGrid/query-constructor';
+ import { MovementListComponent } from 'src/app/movements/movement-list/movement-list.component';
+ import esri = __esri;
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
++import { style } from '@angular/animations';
++import { SetSelectedParams } from 'ag-grid-community/dist/lib/entities/rowNode';
+ @Component({
+   selector: 'app-module-list',
+   templateUrl: './module-list.component.html',
+@@ -34,12 +36,19 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+   fields: Array<esri.Field> = [];
+   mapView: esri.MapView;
+ 
++  selectedObjectIdInIslemler: string;
++
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef,
+     private dialogService: DialogService, private http: HttpClient) { }
+ 
+   ngOnInit() {
+     const dialogData = this.dialogConfig.data;
+     const moduleData = <ModulesModel>dialogData.moduleData;
++
++    if (dialogData !== undefined && dialogData['selectedObjectIdInIslemler']) {
++      this.selectedObjectIdInIslemler = dialogData['selectedObjectIdInIslemler'];
++    }
++
+     this.mapView = dialogData.mapView;
+ 
+     const featureData = dialogData.featureData;
+@@ -59,7 +68,6 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+         colDefs = this.createModuleDefs(colDefs);
+ 
+         this.agGrid.api.setColumnDefs(colDefs);
+-
+         this.setDataSourceOfGrid(whereField, whereValue);
+       });
+       this.featureData = feature;
+@@ -164,9 +172,17 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+ 
+         this.getFeatureCount(url, filteredParams).subscribe(filterCount => {
+           this.getFeatures(url, filteredParams).subscribe(res => {
+-            const objectModel = res.features.map(feature => feature.attributes);
++            let objectModel = res.features.map(feature => feature.attributes);
++            const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.selectedObjectIdInIslemler));
++
++            const firstPart = objectModel[selectedRowIndex];
++            objectModel.splice(selectedRowIndex, 1);
++
++            objectModel = [].concat(firstPart, objectModel);
+ 
+             params.successCallback(objectModel, filterCount);
++
++            this.colorYellowSelectedRow();
+           });
+         });
+       }
+@@ -174,6 +190,20 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+     this.agGrid.api.setDatasource(dataSource);
+   }
+ 
++  colorYellowSelectedRow() {
++    const rows = document.querySelectorAll('[row-id="0"]');
++    let selectedRow: HTMLElement;
++    for (let i = 0; i < rows.length; i++) {
++      const clientWidth = rows[i].clientWidth;
++      const noFocusClass = rows[i].classList.contains('ag-row-no-focus');
++      if (clientWidth !== 0 && noFocusClass) {
++        selectedRow = rows[i] as HTMLElement;
++      }
++    }
++
++    selectedRow.style.backgroundColor = 'yellow';
++  }
++
+   createColumnDefinitions(fields: Array<esri.Field>, showFields: Array<string>): Array<ColDef> {
+     const colDefs: Array<ColDef> = [];
+     fields.forEach(field => {
