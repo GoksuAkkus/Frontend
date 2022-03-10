@@ -1,0 +1,2271 @@
+diff --git a/src/app/app.module.ts b/src/app/app.module.ts
+index d12b0028907df0431f04ffe3e05d7380a099c16d..a5a007aa5eda30f13c3a9f46fb87f9f553832bd0 100644
+--- a/src/app/app.module.ts
++++ b/src/app/app.module.ts
+@@ -80,6 +80,8 @@ import { ReportTableComponent } from './report-table/report-table.component';
+ import { DynamicDataTableComponent } from './dynamic-data-table/dynamic-data-table.component';
+ import { TkgmparcellistDatatableComponent } from './search/tkgmparcellist-datatable/tkgmparcellist-datatable.component';
+ import { CreateQuadComponent } from './drawing-tools/create-quad/create-quad.component';
++import { ModuleReportStatisticsComponent } from './module-report/module-report-statistics/module-report-statistics.component';
++import { ProgressComponent } from './module-report/module-report-statistics/progress/progress.component';
+ @NgModule({
+   declarations: [
+     AppComponent,
+@@ -156,6 +158,8 @@ import { CreateQuadComponent } from './drawing-tools/create-quad/create-quad.com
+     DynamicDataTableComponent,
+     TkgmparcellistDatatableComponent,
+     CreateQuadComponent,
++    ModuleReportStatisticsComponent,
++    ProgressComponent
+   ],
+   imports: [
+     BrowserAnimationsModule,
+@@ -177,7 +181,7 @@ import { CreateQuadComponent } from './drawing-tools/create-quad/create-quad.com
+     MalikSerhComponent, AcceptDialogComponent, PendingTableComponent, MessageDialogComponent,
+     KisiTasinmazSearchComponent, ModuleReportComponent, SayistayReportComponent, MultiModuleListComponent,
+     HisseSerhComponent, NviDialogComponent, AttachmentEditorComponent, ReportTableComponent, DynamicDataTableComponent,
+-    TkgmparcellistDatatableComponent, CreateQuadComponent],
++    TkgmparcellistDatatableComponent, CreateQuadComponent, ModuleReportStatisticsComponent],
+   providers: [],
+   bootstrap: [AppComponent]
+ })
+diff --git a/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ef0c38e2f2631af1bdc7a89b0067fd50db7d0dd5
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/interfaces/islem-analiz.ts
+@@ -0,0 +1,184 @@
++export interface DateObject {
++    dateName: string;
++}
++
++export class DateWhereObject {
++    dateOther: string; // Hareket ve İşlem katmanları için
++    dateMovementProcessLayer: string; // Hareket_İşlem katmanı için
++    dateForDegerlendirme: string;
++}
++
++export interface Outfields {
++    il: number;
++    islem_turu: number;
++    talep_turu: number;
++    talep_eden_kurum: string;
++    create_date: string;
++    touch_date: string;
++    touch_by: string;
++}
++
++export class IlGruplari {
++    ankara = [6, 4, 75, 13, 19, 70, 71, 43, 46, 33, 49, 53, 65]; // antalyaya yazmış
++    istanbul = [3, 72, 17, 22, 28, 29, 34, 37, 39, 50, 80, 73, 77];
++    antalya = [7, 10, 74, 81, 24, 30, 31, 44, 40, 52, 56, 58, 67]; // konyaya yazmış
++    konya = [2, 9, 12, 15, 21, 26, 76, 32, 78, 42, 54, 55, 61, 62];
++    bursa = [68, 11, 16, 23, 25, 27, 36, 79, 41, 45, 48, 57, 64, 66];
++    izmir = [1, 5, 8, 69, 14, 18, 20, 35, 38, 47, 51, 63, 59, 60];
++
++}
++
++const ilGruplari = new IlGruplari();
++
++export class TalepTurleri {
++    plan_yapim_revizyon = {
++        code: 3,
++        name: ''
++    };
++    ozel_okul = {
++        code: 4,
++        name: ''
++    };
++    genel_imar = {
++        code: 6,
++        name: ''
++    };
++    kamu_yarari = {
++        code: 5,
++        name: ''
++    };
++    on_tahsis = {
++        code: 7,
++        name: ''
++    };
++    kesin_tahsis = {
++        code: 8,
++        name: ''
++    };
++    tahsis_kaldirma = {
++        code: 9,
++        name: ''
++    };
++}
++
++const talepTurleri = new TalepTurleri();
++
++export class IslemTurleri {
++    irtifak_hakki = {
++        code: 2,
++        name: ''
++    };
++    kiralama = {
++        code: 3,
++        name: ''
++    };
++    kamulastirma = {
++        code: 8,
++        name: ''
++    };
++    kamulastirma_davalari = {
++        code: 10,
++        name: ''
++    };
++    tahsis = {
++        code: 7,
++        name: ''
++    };
++    protokol = {
++        code: 6,
++        name: ''
++    };
++    kiraya_verme = {
++        code: 4,
++        name: ''
++    };
++    imar_davalari = {
++        code: 9,
++        name: ''
++    };
++    gecici_kullanim = {
++        code: 1,
++        name: ''
++    };
++}
++
++const islemTurleri = new IslemTurleri();
++
++export interface IslemTuru {
++    name: string;
++    code: number;
++}
++
++export interface TalepTuru {
++    name: string;
++    code: number;
++}
++
++export interface ColumnData {
++    ilData: Array<number>;
++    count: number;
++    durumu?: number;
++}
++
++function createColumnData(ilData: Array<number>, durumu?: number) {
++    const columnData: ColumnData = {
++        ilData: ilData,
++        count: 0,
++    };
++
++    if (durumu) {
++        columnData.durumu = durumu;
++    }
++    return columnData;
++}
++
++export class RowData {
++    isIslemTuru: boolean;
++    turData: IslemTuru | TalepTuru;
++    columnData: Array<ColumnData> = [];
++    constructor(isIslemTuru: boolean, turData: IslemTuru | TalepTuru) {
++        this.isIslemTuru = isIslemTuru;
++        this.turData = turData;
++
++        this.columnData[0] = createColumnData(ilGruplari.istanbul, 7);
++        this.columnData[1] = createColumnData(ilGruplari.istanbul);
++
++        this.columnData[2] = createColumnData(ilGruplari.antalya, 7);
++        this.columnData[3] = createColumnData(ilGruplari.antalya);
++
++        this.columnData[4] = createColumnData(ilGruplari.konya, 7);
++        this.columnData[5] = createColumnData(ilGruplari.konya);
++
++        this.columnData[6] = createColumnData(ilGruplari.ankara, 7);
++        this.columnData[7] = createColumnData(ilGruplari.ankara);
++
++        this.columnData[8] = createColumnData(ilGruplari.bursa, 7);
++        this.columnData[9] = createColumnData(ilGruplari.bursa);
++
++        this.columnData[10] = createColumnData(ilGruplari.izmir, 7);
++        this.columnData[11] = createColumnData(ilGruplari.izmir);
++
++        this.columnData[12] = createColumnData([], 7);
++        this.columnData[13] = createColumnData([]);
++    }
++}
++
++const planYapimRevizyon = new RowData(false, talepTurleri.plan_yapim_revizyon);
++const ozelOkul = new RowData(false, talepTurleri.ozel_okul);
++const genelImar = new RowData(false, talepTurleri.genel_imar);
++const kamuYarari = new RowData(false, talepTurleri.kamu_yarari);
++const irtifakHakki = new RowData(true, islemTurleri.irtifak_hakki);
++const kiralama = new RowData(true, islemTurleri.kiralama);
++const kamulastirma = new RowData(true, islemTurleri.kamulastirma);
++const kamulastirmaDavalari = new RowData(true, islemTurleri.kamulastirma_davalari);
++const tahsis = new RowData(true, islemTurleri.tahsis);
++const onKesinIzin = new RowData(false, talepTurleri.on_tahsis); // ÖN TAHSİS İLE KESİN TAHSİS TOPLAMI OLACAK
++const tahsisKaldirma = new RowData(false, talepTurleri.tahsis_kaldirma);
++const protokol = new RowData(true, islemTurleri.protokol);
++const kirayaVerme = new RowData(true, islemTurleri.kiraya_verme);
++const imarDavalari = new RowData(true, islemTurleri.imar_davalari);
++const geciciKullanim = new RowData(true, islemTurleri.gecici_kullanim);
++
++export const islemAnalizRows = [planYapimRevizyon, ozelOkul, genelImar, kamuYarari,
++    irtifakHakki, kiralama, kamulastirma, kamulastirmaDavalari, tahsis,
++    onKesinIzin, tahsisKaldirma, protokol, kirayaVerme, imarDavalari, geciciKullanim];
+diff --git a/src/app/module-report/module-report-statistics/interfaces/plan-table.ts b/src/app/module-report/module-report-statistics/interfaces/plan-table.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4c962aefaeeedfd1cc977cf6e500575f6dfcfc2a
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/interfaces/plan-table.ts
+@@ -0,0 +1,377 @@
++export class PlanColumnData {
++    touch_by = '';
++    gelenAdet = 0;
++    gidenAdet = 0;
++    onaydaAdet = 0;
++    sureAdet = 0;
++    degerlendirilenAdet = 0;
++    cevaplanmayacakAdet = 0;
++}
++export interface IlCode {
++    name: string;
++    code: number;
++}
++
++export class PlanPersonelDegerlendirilenler {
++    touch_by = '';
++    degerlendirilenAdet = 0;
++    create_date = '';
++    count = 0;
++}
++
++export class PlanIlDegerlendirilenler {
++    il = '';
++    degerlendirilenAdet = 0;
++    create_date = '';
++    count = 0;
++}
++
++export class PlanIlData {
++    ilName = '';
++    ilCode = 0;
++    cols: PlanColumnData;
++}
++export class Iller {
++    ilArray: Array<IlCode> = [
++        {
++            'name': 'Adana',
++            'code': 1
++        },
++        {
++            'name': 'Adıyaman',
++            'code': 2
++        },
++        {
++            'name': 'Afyonkarahisar',
++            'code': 3
++        },
++        {
++            'name': 'Ağrı',
++            'code': 4
++        },
++        {
++            'name': 'Amasya',
++            'code': 5
++        },
++        {
++            'name': 'Ankara',
++            'code': 6
++        },
++        {
++            'name': 'Antalya',
++            'code': 7
++        },
++        {
++            'name': 'Artvin',
++            'code': 8
++        },
++        {
++            'name': 'Aydın',
++            'code': 9
++        },
++        {
++            'name': 'Balıkesir',
++            'code': 10
++        },
++        {
++            'name': 'Bilecik',
++            'code': 11
++        },
++        {
++            'name': 'Bingöl',
++            'code': 12
++        },
++        {
++            'name': 'Bitlis',
++            'code': 13
++        },
++        {
++            'name': 'Bolu',
++            'code': 14
++        },
++        {
++            'name': 'Burdur',
++            'code': 15
++        },
++        {
++            'name': 'Bursa',
++            'code': 16
++        },
++        {
++            'name': 'Çanakkale',
++            'code': 17
++        },
++        {
++            'name': 'Çankırı',
++            'code': 18
++        },
++        {
++            'name': 'Çorum',
++            'code': 19
++        },
++        {
++            'name': 'Denizli',
++            'code': 20
++        },
++        {
++            'name': 'Diyarbakır',
++            'code': 21
++        },
++        {
++            'name': 'Edirne',
++            'code': 22
++        },
++        {
++            'name': 'Elazığ',
++            'code': 23
++        },
++        {
++            'name': 'Erzincan',
++            'code': 24
++        },
++        {
++            'name': 'Erzurum',
++            'code': 25
++        },
++        {
++            'name': 'Eskişehir',
++            'code': 26
++        },
++        {
++            'name': 'Gaziantep',
++            'code': 27
++        },
++        {
++            'name': 'Giresun',
++            'code': 28
++        },
++        {
++            'name': 'Gümüşhane',
++            'code': 29
++        },
++        {
++            'name': 'Hakkari',
++            'code': 30
++        },
++        {
++            'name': 'Hatay',
++            'code': 31
++        },
++        {
++            'name': 'Isparta',
++            'code': 32
++        },
++        {
++            'name': 'Mersin',
++            'code': 33
++        },
++        {
++            'name': 'İstanbul',
++            'code': 34
++        },
++        {
++            'name': 'İzmir',
++            'code': 35
++        },
++        {
++            'name': 'Kars',
++            'code': 36
++        },
++        {
++            'name': 'Kastamonu',
++            'code': 37
++        },
++        {
++            'name': 'Kayseri',
++            'code': 38
++        },
++        {
++            'name': 'Kırklareli',
++            'code': 39
++        },
++        {
++            'name': 'Kırşehir',
++            'code': 40
++        },
++        {
++            'name': 'Kocaeli',
++            'code': 41
++        },
++        {
++            'name': 'Konya',
++            'code': 42
++        },
++        {
++            'name': 'Kütahya',
++            'code': 43
++        },
++        {
++            'name': 'Malatya',
++            'code': 44
++        },
++        {
++            'name': 'Manisa',
++            'code': 45
++        },
++        {
++            'name': 'Kahramanmaraş',
++            'code': 46
++        },
++        {
++            'name': 'Mardin',
++            'code': 47
++        },
++        {
++            'name': 'Muğla',
++            'code': 48
++        },
++        {
++            'name': 'Muş',
++            'code': 49
++        },
++        {
++            'name': 'Nevşehir',
++            'code': 50
++        },
++        {
++            'name': 'Niğde',
++            'code': 51
++        },
++        {
++            'name': 'Ordu',
++            'code': 52
++        },
++        {
++            'name': 'Rize',
++            'code': 53
++        },
++        {
++            'name': 'Sakarya',
++            'code': 54
++        },
++        {
++            'name': 'Samsun',
++            'code': 55
++        },
++        {
++            'name': 'Siirt',
++            'code': 56
++        },
++        {
++            'name': 'Sinop',
++            'code': 57
++        },
++        {
++            'name': 'Sivas',
++            'code': 58
++        },
++        {
++            'name': 'Tekirdağ',
++            'code': 59
++        },
++        {
++            'name': 'Tokat',
++            'code': 60
++        },
++        {
++            'name': 'Trabzon',
++            'code': 61
++        },
++        {
++            'name': 'Tunceli',
++            'code': 62
++        },
++        {
++            'name': 'Şanlıurfa',
++            'code': 63
++        },
++        {
++            'name': 'Uşak',
++            'code': 64
++        },
++        {
++            'name': 'Van',
++            'code': 65
++        },
++        {
++            'name': 'Yozgat',
++            'code': 66
++        },
++        {
++            'name': 'Zonguldak',
++            'code': 67
++        },
++        {
++            'name': 'Aksaray',
++            'code': 68
++        },
++        {
++            'name': 'Bayburt',
++            'code': 69
++        },
++        {
++            'name': 'Karaman',
++            'code': 70
++        },
++        {
++            'name': 'Kırıkkale',
++            'code': 71
++        },
++        {
++            'name': 'Batman',
++            'code': 72
++        },
++        {
++            'name': 'Şırnak',
++            'code': 73
++        },
++        {
++            'name': 'Bartın',
++            'code': 74
++        },
++        {
++            'name': 'Ardahan',
++            'code': 75
++        },
++        {
++            'name': 'Iğdır',
++            'code': 76
++        },
++        {
++            'name': 'Yalova',
++            'code': 77
++        },
++        {
++            'name': 'Karabük',
++            'code': 78
++        },
++        {
++            'name': 'Kilis',
++            'code': 79
++        },
++        {
++            'name': 'Osmaniye',
++            'code': 80
++        },
++        {
++            'name': 'Düzce',
++            'code': 81
++        }
++    ];
++}
++const iller = new Iller();
++export let rows = [];
++export class PlanIlRowData {
++    constructor() {
++        rows = [];
++        iller.ilArray.forEach(il => {
++            const row = new PlanIlData();
++            row.ilCode = il.code;
++            row.ilName = il.name;
++            row.cols = new PlanColumnData();
++            rows.push(row);
++        });
++    }
++}
++
++
+diff --git a/src/app/module-report/module-report-statistics/interfaces/tabdata.ts b/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..35780c88a4eeedebd8dc701f8b21095b6ef8ba03
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/interfaces/tabdata.ts
+@@ -0,0 +1,13 @@
++export class Tabdata {
++   islem_analiz = new TabDetail();
++   plan_personel = new TabDetail() ;
++   plan_il = new TabDetail();
++}
++export class TabDetail {
++    isFull = false;
++    previousFirstDate = '';
++    previousSecondDate = '';
++    currentFirstDate = '';
++    currentSecondDate = '';
++}
++
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.html b/src/app/module-report/module-report-statistics/module-report-statistics.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..b21523c794569aa5fb93ba67bd4a745a4eb999f9
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.html
+@@ -0,0 +1,113 @@
++
++<div class="container">
++
++  <div class="button-container">
++    <button (click)="onClickIslemAnaliz()">İşlem Analiz</button>
++    <button (click)="onClickPlanPersonel()">Plan-Personel</button>
++    <button (click)="onClickPlanIl()">Plan-İl</button>
++  </div>
++
++  <div class="date-container" *ngIf="dateState === true">
++    <label>Lütfen Tarih Aralığı Giriniz: </label>
++    <div *ngIf="tabState === 'islem_analiz'">
++      <input id="islem_analiz_1" [value]="tabData[tabState]['currentFirstDate']" type="date"> - <input
++        id="islem_analiz_2" [value]="tabData[tabState]['currentSecondDate']" type="date">
++    </div>
++    <div *ngIf="tabState === 'plan_personel'">
++      <input id="plan_personel_1" [value]="tabData[tabState]['currentFirstDate']" type="date"> - <input
++        id="plan_personel_2" [value]="tabData[tabState]['currentSecondDate']" type="date">
++    </div>
++    <div *ngIf="tabState === 'plan_il'">
++      <input id="plan_il_1" [value]="tabData[tabState]['currentFirstDate']" type="date"> - <input id="plan_il_2"
++        [value]="tabData[tabState]['currentSecondDate']" type="date">
++    </div>
++    <button (click)="onClickSearch($event)"> Ara </button>
++  </div>
++
++  <div class="progress" *ngIf="progressState === true">
++    <app-progress style="width:-webkit-fill-available;"></app-progress>
++  </div>
++
++  <div class="table-container">
++    <table>
++      <thead *ngIf="islemAnalizTableHeadState === true">
++        <th></th>
++        <th colspan="2" *ngFor="let item of ilGrupArray "> {{item}} </th>
++      </thead>
++      <thead *ngIf="islemAnalizTableHeadState === true">
++        <th>KONU</th>
++        <th colspan="2" *ngFor="let item of gelenGidenArray"> {{item}} </th>
++        <th>GELEN TOPLAMI</th>
++        <th>GİDEN TOPLAMI</th>
++      </thead>
++      <tbody *ngIf="islemAnalizTableBodyState === true && islemAnalizRows[0] !== undefined">
++        <tr *ngFor="let item of konuArray;let i = index">
++          <td> {{item}} </td>
++          <td *ngFor="let column of islemAnalizRows[i].columnData">
++            {{column.count}}
++          </td>
++        </tr>
++        <tr>
++          <td>TOPLAM</td>
++          <td *ngFor="let count of islemAnalizToplamRowData">
++            {{count}}
++          </td>
++        </tr>
++      </tbody>
++    </table>
++
++    <table *ngIf="planPersonelTableHeadState === true">
++      <thead>
++        <th style="position: sticky; top: -12px" *ngFor="let item of planPersonelColArray">{{item}}</th>
++      </thead>
++      <tbody *ngIf="planPersonelTableBodyState === true">
++        <tr *ngFor="let item of planPersonelFeatures">
++          <td>{{item.touch_by}}</td>
++          <td>{{item.gelenAdet}}</td>
++          <td>{{item.gidenAdet}}</td>
++          <td>{{item.onaydaAdet}}</td>
++          <td>{{item.degerlendirilenAdet}}</td>
++          <td>{{item.sureAdet}}</td>
++          <td>{{item.cevaplanmayacakAdet}}</td>
++        </tr>
++        <tr *ngIf="planPersonelToplamColData !== undefined">
++          <td>TOPLAM</td>
++          <td>{{planPersonelToplamColData.gelenAdet}}</td>
++          <td>{{planPersonelToplamColData.gidenAdet}}</td>
++          <td>{{planPersonelToplamColData.onaydaAdet}}</td>
++          <td>{{planPersonelToplamColData.degerlendirilenAdet}}</td>
++          <td>{{planPersonelToplamColData.sureAdet}}</td>
++          <td>{{planPersonelToplamColData.cevaplanmayacakAdet}}</td>
++        </tr>
++      </tbody>
++    </table>
++
++    <table *ngIf="planIlTableHeadState === true">
++      <thead>
++        <th style="position: sticky; top: -12px" *ngFor="let item of planIlColArray">{{item}}</th>
++      </thead>
++      <tbody *ngIf="planIlRows !== undefined && planIlTableBodyState === true">
++        <tr *ngFor="let il of planIlRows">
++          <td>{{il.ilName}}</td>
++          <td>{{il.ilCode}}</td>
++          <td>{{il.cols.gelenAdet}}</td>
++          <td>{{il.cols.gidenAdet}}</td>
++          <td>{{il.cols.onaydaAdet}}</td>
++          <td>{{il.cols.degerlendirilenAdet}}</td>
++          <td>{{il.cols.sureAdet}}</td>
++          <td>{{il.cols.cevaplanmayacakAdet}}</td>
++        </tr>
++        <tr *ngIf="planIlToplamColData !== undefined">
++          <td>TOPLAM</td>
++          <td></td>
++          <td>{{planIlToplamColData.gelenAdet}}</td>
++          <td>{{planIlToplamColData.gidenAdet}}</td>
++          <td>{{planIlToplamColData.onaydaAdet}}</td>
++          <td>{{planIlToplamColData.degerlendirilenAdet}}</td>
++          <td>{{planIlToplamColData.sureAdet}}</td>
++          <td>{{planIlToplamColData.cevaplanmayacakAdet}}</td>
++        </tr>
++      </tbody>
++    </table>
++  </div>
++</div>
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.scss b/src/app/module-report/module-report-statistics/module-report-statistics.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..542f1362fd05cca3e504db8959949f21ac3aa587
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.scss
+@@ -0,0 +1,121 @@
++@import '../../../global.scss';
++
++.container {
++  -webkit-user-select: none;
++  -khtml-user-select: none;
++  -moz-user-select: none;
++  -ms-user-select: none;
++  -o-user-select: none;
++  user-select: none;
++  min-width: 960px;
++
++  .progress {
++    display: flex;
++    justify-content: center;
++    height: 10px;
++  }
++
++  button {
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    width: 200px;
++    color: white;
++    border-radius: 4px;
++    background-color: $primaryColor;
++    padding: 6px 8px;
++    outline: none;
++    border: none;
++    font-weight: 600;
++    font-size: 16px;
++    transition: background-color .3s ease-out;
++    cursor: pointer;
++    margin-left: 10px;
++
++    &:hover {
++      background-color: lighten($primaryColor, 8);
++    }
++
++    &:active {
++      background-color: lighten($primaryColor, 20);
++    }
++
++    &.active {
++      background-color: lighten($primaryColor, 20);
++    }
++
++    &:focus {
++      background-color: lighten($primaryColor, 20);
++    }
++
++  }
++
++  >.button-container {
++    display: flex;
++    flex-direction: row;
++    justify-content: space-evenly;
++    margin: 10px;
++  }
++
++  >.date-container {
++    margin-left: 20px;
++    display: flex;
++    align-items: center;
++
++    input {
++      border-style: solid;
++      border-color: black;
++      border-width: thin;
++    }
++
++    input:nth-child(odd) {
++      margin-left: 15px;
++    }
++
++    button {
++      display: initial;
++      padding: 3px;
++      width: 60px;
++    }
++  }
++}
++
++.table-container {
++  padding: 10px;
++  overflow: auto;
++  max-height: 500px;
++  margin: 10px;
++
++  th {
++    text-align: left;
++    background-color: $primaryColor;
++    color: white;
++  }
++
++  tr {
++    background-color: white;
++
++    &:nth-child(even) {
++      background-color: #f2f2f2;
++    }
++
++    &:hover {
++      background-color: #ddd;
++    }
++  }
++}
++
++table,
++th,
++td {
++  font-size: 13px;
++  border: 1px solid #ddd;
++  padding: 8px;
++  border-collapse: collapse;
++}
++
++th,
++td {
++  padding: 5px;
++  text-align: left;
++}
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.spec.ts b/src/app/module-report/module-report-statistics/module-report-statistics.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ea17451e119b710f21ad2f758b23f6be182f4d3e
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { ModuleReportStatisticsComponent } from './module-report-statistics.component';
++
++describe('ModuleReportStatisticsComponent', () => {
++  let component: ModuleReportStatisticsComponent;
++  let fixture: ComponentFixture<ModuleReportStatisticsComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ ModuleReportStatisticsComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(ModuleReportStatisticsComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/module-report/module-report-statistics/module-report-statistics.component.ts b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b8e85c032d206c40e6123293eff7c6c5ccfb4d13
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/module-report-statistics.component.ts
+@@ -0,0 +1,618 @@
++import { Component, OnInit } from '@angular/core';
++import { DialogService } from 'src/app/dialog/dialog.service';
++import { HttpClient } from '@angular/common/http';
++import { DialogConfig } from 'src/app/dialog/dialog-config';
++import esri = __esri;
++import { Outfields, IlGruplari, TalepTurleri, IslemTurleri, islemAnalizRows, RowData } from './interfaces/islem-analiz';
++import { PlanColumnData, PlanIlRowData, rows, PlanIlData } from './interfaces/plan-table';
++import { PlanPersonelDegerlendirilenler, PlanIlDegerlendirilenler } from './interfaces/plan-table';
++import { environment } from 'src/environments/environment';
++import { loadModules } from 'esri-loader';
++import { OperationsService } from './services/operations.service';
++import { LayerOperationsService } from './services/layer-operations.service';
++import { Tabdata } from './interfaces/tabdata';
++@Component({
++  selector: 'app-module-report-statistics',
++  templateUrl: './module-report-statistics.component.html',
++  styleUrls: ['./module-report-statistics.component.scss']
++})
++export class ModuleReportStatisticsComponent implements OnInit {
++  ilGrupArray: Array<string> = ['İSTANBUL', 'ANTALYA', 'KONYA', 'ANKARA', 'BURSA', 'İZMİR'];
++  konuArray: Array<string> = ['PLAN YAPIM REVİZYON', 'ÖZEL OKUL', 'GENEL İMAR', 'KAMU YARARI',
++    'İRTİFAK HAKKI', 'KİRALAMA', 'KAMULAŞTIRMA', 'DAVA', 'TAHSİS', 'ÖN-KESİN İZİN', 'TAHSİS KALDIRMA',
++    'PROTOKOL', 'KİRAYA VERME', 'İMAR DAVALARI', 'GEÇİCİ KULLANIM'];
++  gelenGidenArray: Array<string> = ['Gelen/Giden', 'Gelen/Giden', 'Gelen/Giden', 'Gelen/Giden', 'Gelen/Giden', 'Gelen/Giden'];
++  planPersonelColArray: Array<string> = ['Personel', 'Gelen Evrak Adet', 'Giden Evrak Adet', 'Onayda', 'Değerlendirilen',
++    'Değerlendirmedeki Yazılardan Süresi 14 Günden Fazla Olanların Sayısı', 'Cevaplanmayacak'];
++  planIlColArray: Array<string> = ['İl', 'İl Kod', 'Gelen Evrak Adet', 'Giden Evrak Adet', 'Onayda', 'Değerlendirilen',
++    'Değerlendirmedeki Yazılardan Süresi 14 Günden Fazla Olanların Sayısı', 'Cevaplanmayacak'];
++
++  islemAnalizTableHeadState = false;
++  islemAnalizTableBodyState = false;
++  planPersonelTableHeadState = false;
++  planPersonelTableBodyState = false;
++  planIlTableHeadState = false;
++  planIlTableBodyState = false;
++  dateState = false;
++  progressState = false;
++  tabState = '';
++  tabData = new Tabdata();
++
++  processLayer: esri.FeatureLayer;
++  movementLayer: esri.FeatureLayer;
++  movementProcessLayer: esri.FeatureLayer;
++
++  outfields: Array<Outfields> = [];
++
++  ilGruplari = new IlGruplari();
++
++  talepTurleri = new TalepTurleri();
++  islemTurleri = new IslemTurleri();
++
++  islemAnalizRows: Array<RowData> = [];
++  planIlRows: Array<PlanIlData> = [];
++  islemAnalizToplamRowData: Array<number> = [];
++
++  planPersonelFeatures: Array<PlanColumnData> = [];
++  planPersonelDegerlendirilenler: Array<PlanPersonelDegerlendirilenler> = [];
++  planIlDegerlendirilenler: Array<PlanIlDegerlendirilenler> = [];
++
++  planPersonelToplamColData: PlanColumnData;
++  planIlToplamColData: PlanColumnData;
++
++  planPersonelProcessLength = 0;
++  planPersonelMovementLength = 0;
++  planPersonelGidenLength = 0;
++  islemAnalizGidenLength = 0;
++  degerlendirilenLength = 0;
++  mapView: esri.MapView;
++
++  constructor(private dialogService: DialogService, private http: HttpClient, public dialogConfig: DialogConfig,
++    private operationsService: OperationsService, private layerOperationsService: LayerOperationsService) {
++
++  }
++
++  async loadFeatureLayer() {
++    const [FeatureLayer] = await loadModules([
++      'esri/layers/FeatureLayer',
++    ]);
++    const featureLayerConstructor = <esri.FeatureLayerConstructor>FeatureLayer;
++    const movementProcessLayerProperties = <esri.FeatureLayerProperties>{
++      title: 'Hareket_İslem',
++      url: environment.arcgisSQL + '/MapServer/5',
++      visible: false
++    };
++    this.movementProcessLayer = new featureLayerConstructor(movementProcessLayerProperties);
++  }
++
++  ngOnInit() {
++    this.loadFeatureLayer();
++    const data = this.dialogConfig.data;
++    const mapView = data.mapView as esri.MapView;
++    this.mapView = mapView;
++    this.processLayer = <esri.FeatureLayer>mapView.map.layers.find(layer => layer.title === 'İslem');
++    this.movementLayer = <esri.FeatureLayer>mapView.map.layers.find(layer => layer.title === 'Hareket');
++
++  }
++
++  onClickIslemAnaliz() {
++    // this.resetAllArray();,
++    this.tabState = 'islem_analiz';
++    this.islemAnalizTableHeadState = true;
++    this.islemAnalizTableBodyState = true;
++
++    this.planPersonelTableHeadState = false;
++    this.planPersonelTableBodyState = false;
++    this.planIlTableHeadState = false;
++    this.planIlTableBodyState = false;
++    this.dateState = true;
++    // if (this.islemAnalizTableHeadState === false) {
++    //   this.islemAnalizTableHeadState = true;
++    //   this.islemAnalizTableBodyState = false;
++    //   this.planPersonelTableHeadState = false;
++    //   this.planPersonelTableBodyState = false;
++    //   this.planIlTableHeadState = false;
++    //   this.planIlTableBodyState = false;
++    //   this.dateState = true;
++    // }
++  }
++
++  onClickPlanPersonel() {
++    // this.resetAllArray();
++    this.tabState = 'plan_personel';
++    this.planPersonelTableHeadState = true;
++    this.planPersonelTableBodyState = true;
++    this.planIlTableHeadState = false;
++    this.planIlTableBodyState = false;
++    this.islemAnalizTableHeadState = false;
++    this.islemAnalizTableBodyState = false;
++    this.dateState = true;
++    // her sekme değişmesinde her şey sıfırlanıyor
++    // if (this.planPersonelTableHeadState === false) {
++    //   this.islemAnalizTableHeadState = false;
++    //   this.islemAnalizTableBodyState = false;
++    //   this.planPersonelTableHeadState = true;
++    //   this.planPersonelTableBodyState = false;
++    //   this.planIlTableHeadState = false;
++    //   this.planIlTableBodyState = false;
++    //   this.dateState = true;
++    // }
++  }
++
++  onClickPlanIl() {
++    // this.resetAllArray();
++    this.tabState = 'plan_il';
++    this.planIlTableHeadState = true;
++    this.planIlTableBodyState = true;
++    this.planPersonelTableHeadState = false;
++    this.planPersonelTableBodyState = false;
++    this.islemAnalizTableHeadState = false;
++    this.islemAnalizTableBodyState = false;
++    this.dateState = true;
++    // if (this.planIlTableHeadState === false) {
++    //   this.islemAnalizTableHeadState = false;
++    //   this.islemAnalizTableBodyState = false;
++    //   this.planPersonelTableHeadState = false;
++    //   this.planPersonelTableBodyState = false;
++    //   this.planIlTableHeadState = true;
++    //   this.planIlTableBodyState = false;
++    //   this.dateState = true;
++    // }
++  }
++
++  onClickSearch(event: Event) {
++    if (this.progressState !== true) {
++      this.progressState = true;
++    }
++
++    this.operationsService.setTabData(this.tabState, this.tabData);
++
++    const checkIfDateIsBad = this.operationsService.checkIfDateIsBad();
++    if (checkIfDateIsBad) {
++      this.progressState = false;
++      this.operationsService.setInputDateValues();
++      // bu durumda previouslar setlenmemeli ve tarih valuesunda otomatik bir önceki veri gösterilsin
++      return;
++    } else {
++      const checkDateValues = this.operationsService.setDateWhereObject(event);
++      // setDateWhereObjectten sonra tabdatanın previousları setlendiği için servisten yeni tabdata alınarak buradaki güncellenmeli
++      this.tabData = this.operationsService.getTabData();
++      // eğer arama yaptığı sekmeye tekrar geri dönüp aynı tarihle arama yapmaya çalışırsa da istek atmasın. Yani burdan da true dönerse
++      // arama yapıp data doldurduğu tabloya geri döndüğünde ayı tarihle tekrar arama yapamasın.
++      const checkTabData = this.operationsService.checkTabData(this.tabState, this.tabData);
++      // sadece date ve tabın bir öncekilerle aynı olması durumunda yani ikisinin de false olması durumunda istek atmasın.
++
++        if (!checkDateValues && checkTabData) {
++          this.progressState = false;
++          return;
++        } else { // diğer 3 durumda istek atabilir (date farklı tab farklı), (date farklı tab aynı), (date aynı tab farklı) durumları
++          if (this.islemAnalizTableHeadState === true) {
++            this.islemAnalizTableBodyState = true;
++            this.resetIslemAnaliz();
++            this.createIslemAnalizTable();
++          } else if (this.planPersonelTableHeadState === true) {
++            this.planPersonelTableBodyState = false;
++            this.resetPlanPersonel();
++            this.createPlanPersonelTable();
++          } else if (this.planIlTableHeadState === true) {
++            this.planIlTableBodyState = false;
++            this.resetPlanIl();
++            this.createPlanIlTable();
++          }
++        }
++      }
++
++
++    }
++
++
++    islemAnalizMovementProcessRecursiveForGiden(start: number) {
++      const islemAnalizPropertiesOfGiden = this.layerOperationsService.islemAnalizPropertiesOfGiden(start);
++
++      this.movementProcessLayer.queryFeatures(islemAnalizPropertiesOfGiden).then(movementProcessResponse => {
++        const features = movementProcessResponse.features;
++        this.islemAnalizGidenLength = features.length;
++        features.forEach(feature => {
++          this.islemAnalizRows.forEach(islemAnalizRow => {
++            if (islemAnalizRow.isIslemTuru) { // islem türü ise
++              if (feature.attributes['i_islem_turu'] === islemAnalizRow.turData.code) {
++                islemAnalizRow.columnData.forEach(column => {
++                  if (column.ilData.includes(feature.attributes['i_il']) && !column.durumu) {
++                    column.count += feature.attributes['islem_turu_count'];
++                  }
++                });
++              }
++            } else if (islemAnalizRow.isIslemTuru === false) {
++              if (feature.attributes['i_talep_turu'] === islemAnalizRow.turData.code) {
++                islemAnalizRow.columnData.forEach(column => {
++                  if (column.ilData.includes(feature.attributes['i_il']) && !column.durumu) {
++                    column.count += feature.attributes['talep_turu_count'];
++                  }
++                });
++              }
++            }
++          });
++        });
++      });
++
++      if (this.islemAnalizGidenLength === 1000) {
++        this.islemAnalizMovementProcessRecursiveForGiden(start + 1000);
++      } else {
++        this.islemAnalizGidenLength = 0;
++      }
++    }
++
++    createIslemAnalizTable() {
++      this.islemAnalizRows = JSON.parse(JSON.stringify(islemAnalizRows));
++
++      const processLayerProperties = this.layerOperationsService.islemAnalizPropertiesOfProcessLayer();
++
++      this.processLayer.queryFeatures(processLayerProperties).then(processResponse => {
++        const processFeatures = processResponse.features;
++
++        for (let i = 0; i < processFeatures.length; i++) {
++          const attributes = processFeatures[i].attributes;
++          for (let j = 0; j < this.islemAnalizRows.length; j++) {
++            const row = this.islemAnalizRows[j];
++
++            if (row.isIslemTuru) {
++              if (attributes['islem_turu'] === row.turData.code) {
++                for (let k = 0; k < row.columnData.length; k++) {
++                  const column = row.columnData[k];
++                  // 'DURUMU' parametresi OLAN KOLON DATALARI AYNI ZAMANDA DATALARIN GELEN BİLGİSİNE
++                  // KAYDEDİLMESİNİN KONTROLÜNÜ SAĞLAMAK İÇİN KULLANILMIŞTIR.
++                  // çünkü gelenlere hareket katmanına istek atarken ayrıyeten durumu yeni yazı olanlar da eklenecektir.
++                  // ('Gelen' bilgileri satırın 0,2,4,6,8,10,12. indexlerdeki kolonlarında bulunmaktadır.)
++                  // Böylece işlem analiz interface inde oluşturulan satır ve kolonlardan 'Gelen' indexlerine doğru bilgiler kayıt edilir.
++                  // 'Giden' bilgilerinin kontrolü için de 'durumu' parametresi olmayan kolon dataları içinden seçilecektir.
++                  if (column.ilData.includes(attributes.il) && column.durumu) {
++                    column.count += attributes['islem_turu_count'];
++                  }
++                }
++              }
++            } else {
++              if (attributes['talep_turu'] === row.turData.code) {
++                for (let k = 0; k < row.columnData.length; k++) {
++                  const column = row.columnData[k];
++                  if (column.ilData.includes(attributes.il) && column.durumu) {
++                    column.count += attributes['talep_turu_count'];
++                  }
++                }
++              }
++            }
++          }
++        }
++
++        const toplamRowData = new Array(this.islemAnalizRows[0].columnData.length).fill(0);
++        for (let i = 0; i < this.islemAnalizRows.length; i++) {
++          const row = this.islemAnalizRows[i];
++
++          for (let j = 0; j < row.columnData.length; j++) {
++            const column = row.columnData[j];
++
++            if (column.durumu) {
++              if (j !== row.columnData.length - 2) {
++                row.columnData[row.columnData.length - 2].count += column.count;
++              }
++              toplamRowData[j] += column.count;
++            } else {
++              if (j !== row.columnData.length - 1) {
++                row.columnData[row.columnData.length - 1].count += column.count;
++              }
++              toplamRowData[j] += column.count;
++            }
++          }
++        }
++
++        this.islemAnalizToplamRowData = toplamRowData;
++        this.progressState = false;
++        this.tabData.islem_analiz.isFull = true;
++      });
++
++      this.islemAnalizMovementProcessRecursiveForGiden(0);
++    }
++
++    createPlanPersonelTable() {
++      this.planPersonelProcessRecursive(0).then(result => {
++        // True False Dönücek Büyük İhtimalle
++        console.log('process', result);
++        // Plan Personel sonrasında çalışcak
++        this.planPersonelMovementRecursive(0).then(planPersonelMovementResult => {
++          console.log('movement', planPersonelMovementResult);
++          this.planPersonelMovementRecursiveForGiden(0).then(planPersonelMovementForGidenResult => {
++            // Plan Personel Movement Recursive For Giden Then sonucundan sonra çalışacak
++            console.log('giden', planPersonelMovementForGidenResult);
++            this.degerlendirilenlerQueryFeatures(0, 'plan-personel').then(degerlendirilenlerResult => {
++              console.log('degerlendirilen', degerlendirilenlerResult);
++              this.planDegerlendirmeSuresiQueryFeatures(0, 'plan-personel').then(sureResult => {
++                console.log('sure', sureResult);
++
++                const toplamColData = new PlanColumnData();
++                this.planPersonelFeatures.forEach(planPersonel => {
++                  toplamColData.gelenAdet += planPersonel.gelenAdet;
++                  toplamColData.gidenAdet += planPersonel.gidenAdet;
++                  toplamColData.onaydaAdet += planPersonel.onaydaAdet;
++                  toplamColData.sureAdet += planPersonel.sureAdet;
++                  toplamColData.degerlendirilenAdet += planPersonel.degerlendirilenAdet;
++                  toplamColData.cevaplanmayacakAdet += planPersonel.cevaplanmayacakAdet;
++                });
++                this.planPersonelToplamColData = toplamColData;
++                this.planPersonelTableBodyState = true;
++                this.progressState = false;
++                this.tabData.plan_personel.isFull = true;
++              });
++            });
++          });
++        });
++      });
++    }
++
++    createPlanIlTable() {
++      this.planIlProcess(0).then(process => { // Gelen evraklar, durumu: yeni yazı olanlar hariç
++        this.planIlMovementProcess(0).then(movement => {  // bütün durumlara göre çekilir
++          this.planIlForGiden(0, 'plan-il').then(giden => {  // durumu yeni yazı olmayan tüm gidenler
++            this.degerlendirilenlerQueryFeatures(0, 'plan-il').then(degerlendirilen => {
++              this.planDegerlendirmeSuresiQueryFeatures(0, 'plan-il').then(sure => {
++                const toplamColData = new PlanColumnData();
++                this.planIlRows.forEach(planIl => {
++                  toplamColData.gelenAdet += planIl.cols.gelenAdet;
++                  toplamColData.gidenAdet += planIl.cols.gidenAdet;
++                  toplamColData.onaydaAdet += planIl.cols.onaydaAdet;
++                  toplamColData.sureAdet += planIl.cols.sureAdet;
++                  toplamColData.degerlendirilenAdet += planIl.cols.degerlendirilenAdet;
++                  toplamColData.cevaplanmayacakAdet += planIl.cols.cevaplanmayacakAdet;
++                });
++                this.planIlToplamColData = toplamColData;
++                this.planIlTableBodyState = true;
++                this.progressState = false;
++                this.tabData.plan_il.isFull = true;
++              });
++            });
++          });
++        });
++      });
++    }
++
++    planIlProcess(start: number) {
++      const planIl = new PlanIlRowData();
++      this.planIlRows = JSON.parse(JSON.stringify(rows));
++
++      const processLayerProperties = this.layerOperationsService.planPropertiesOfProcessLayer(start, 'plan-il');
++
++      return this.processLayer.queryFeatures(processLayerProperties).then(response => {
++        const features = response.features;
++        features.forEach(feature => {
++          const ilCode = feature.attributes['il']; // arcgisdeki il attribute ü il kodunu döndürür.
++          // planIlRows'un ilName ve ilCodelarını PlanIlRowData sınıfında initialize ederken rowsdaki indexlere il code unun
++          // 1 eksiği şeklinde kaydedildi.
++          this.planIlRows[(ilCode - 1)].cols.gelenAdet += feature.attributes['il_count'];
++        });
++      });
++    }
++
++    planIlForGiden(start: number, planTuru: string) {
++      const planIlPropertiesOfGiden = this.layerOperationsService.planPropertiesOfGiden(start, 'plan-il');
++
++      return this.movementProcessLayer.queryFeatures(planIlPropertiesOfGiden).then(response => {
++        const features = response.features; // response il ve il_count verecek
++        features.forEach(feature => {
++          const ilCode = feature.attributes['i_il'];
++          this.planIlRows[ilCode - 1].cols.gidenAdet += feature.attributes['il_count'];
++        });
++      });
++    }
++
++    planIlMovementProcess(start: number) {
++      const planIlMovementProcessProperties = this.layerOperationsService.planPropertiesOfMovementLayer(start, 'plan-il');
++
++      return this.movementProcessLayer.queryFeatures(planIlMovementProcessProperties).then(response => {
++        const features = response.features;
++        console.log(features);
++        features.forEach(feature => {
++          const ilCode = feature.attributes['i_il'];
++          const durumu = feature.attributes['h_durumu'];
++          if (durumu === 1) {
++            this.planIlRows[ilCode - 1].cols.onaydaAdet += feature.attributes['durumu_count'];
++          } else if (durumu === 5) {
++            this.planIlRows[ilCode - 1].cols.cevaplanmayacakAdet += feature.attributes['durumu_count'];
++          } else if (durumu === 7) {
++            this.planIlRows[ilCode - 1].cols.gelenAdet += feature.attributes['durumu_count'];
++          }
++        });
++      });
++    }
++
++    planPersonelProcessRecursive(start: number) {
++      // lenghtin 0 olduğu durum ilk kez çağrıldığı durum
++      const processLayerProperties = this.layerOperationsService.planPropertiesOfProcessLayer(start, 'plan-personel');
++
++      return this.processLayer.queryFeatures(processLayerProperties).then(processResponse => {
++        const processFeatures = processResponse.features;
++        this.planPersonelProcessLength = processFeatures.length; // QUERY LENGHT INITIALIZE
++        processFeatures.forEach(processFeature => {
++          // const foundIndex = this.planPersonelFeatures.findIndex(personel => personel.touch_by === processFeature.attributes['touch_by']);
++          // if (foundIndex !== -1) {
++          //   this.planPersonelFeatures[foundIndex].gelenAdet += processFeature.attributes['touchby_count'];
++          // } else {
++          const personelFromProcess = new PlanColumnData();
++          personelFromProcess.touch_by = processFeature.attributes['touch_by'];
++          personelFromProcess.gelenAdet += processFeature.attributes['touchby_count'];
++          this.planPersonelFeatures.push(personelFromProcess);
++          // }
++        });
++        if (this.planPersonelProcessLength === 1000) { // lenght 1000se
++          // başka feature da olabilir diye 2. kez çağrılır fonksiyon bu durumda yukardaki 1000 olana girer ve startı 1000 yapar
++          // 1000-2000 arasını almak için
++          return this.planPersonelProcessRecursive(start + 1000);
++        } else {
++          this.resetQueryLengthPropertyForPlanPersonel('process');
++          return true;
++        }
++      });
++    }
++
++    planPersonelMovementRecursive(start: number) {
++      const movementProcessLayerProperties = this.layerOperationsService.planPropertiesOfMovementLayer(start, 'plan-personel');
++
++      return this.movementLayer.queryFeatures(movementProcessLayerProperties).then(movementResponse => {
++        const movementFeatures = movementResponse.features;
++        this.planPersonelMovementLength = movementFeatures.length; // QUERY LENGHT INITIALIZE
++        movementFeatures.forEach((movementFeature) => {
++          const foundIndex = this.planPersonelFeatures.findIndex(personel => personel.touch_by === movementFeature.attributes['touch_by']);
++          const durumu = movementFeature.attributes['durumu'];
++          if (foundIndex !== -1) { // personel eklenmiş demektir.
++            if (durumu === 1) {
++              this.planPersonelFeatures[foundIndex].onaydaAdet += movementFeature.attributes['durumu_count'];
++            } else if (durumu === 5) {
++              this.planPersonelFeatures[foundIndex].cevaplanmayacakAdet += movementFeature.attributes['durumu_count'];
++            } else if (durumu === 7) {
++              this.planPersonelFeatures[foundIndex].gelenAdet += movementFeature.attributes['durumu_count'];
++            }
++          } else {
++            // yeni personel eklenme kısmı
++            const personelFromMovement = new PlanColumnData();
++            personelFromMovement.touch_by = movementFeature.attributes['touch_by'];
++
++            if (durumu === 1) {
++              personelFromMovement.onaydaAdet += movementFeature.attributes['durumu_count'];
++            } else if (durumu === 5) {
++              personelFromMovement.cevaplanmayacakAdet += movementFeature.attributes['durumu_count'];
++            } else if (durumu === 7) {
++              personelFromMovement.gelenAdet += movementFeature.attributes['durumu_count'];
++            }
++            this.planPersonelFeatures.push(personelFromMovement);
++          }
++        });
++        if (this.planPersonelMovementLength === 1000) { // lenght 1000se
++          // başka feature da olabilir diye 2. kez çağrılır fonksiyon bu durumda yukardaki 1000 olana girer ve startı 1000 yapar
++          // 1000-2000 arasını almak için
++          return this.planPersonelMovementRecursive(start + 1000);
++        } else {
++          this.resetQueryLengthPropertyForPlanPersonel('movement');
++          return true;
++        }
++      });
++    }
++
++    planPersonelMovementRecursiveForGiden(start: number) {
++      const planPropertiesOfGiden = this.layerOperationsService.planPropertiesOfGiden(start, 'plan-personel');
++
++      return this.movementLayer.queryFeatures(planPropertiesOfGiden).then(response => {
++        const gidenFeatures = response.features;
++        this.planPersonelGidenLength = gidenFeatures.length;
++
++        gidenFeatures.forEach(feature => {
++          const foundIndex = this.planPersonelFeatures.findIndex(personel => personel.touch_by === feature.attributes['touch_by']);
++          if (foundIndex !== -1) { // hali hazırda listede var demek
++            this.planPersonelFeatures[foundIndex].gidenAdet += feature.attributes['touchby_count'];
++          } else { // böyle bi kullanıcı yoksa kolon bilgileri initialize edilmiş plan-tabledaki sınıftan bir satır açılır.
++            const personel = new PlanColumnData();
++            personel.touch_by = feature.attributes['touch_by'];
++            personel.gidenAdet += feature.attributes['touchby_count'];
++            this.planPersonelFeatures.push(personel);
++          }
++        });
++        if (this.planPersonelGidenLength === 1000) { // lenght 1000se
++          // başka feature da olabilir diye 2. kez çağrılır fonksiyon bu durumda yukardaki 1000 olana girer ve startı 1000 yapar
++          // 1000-2000 arasını almak için
++          return this.planPersonelMovementRecursiveForGiden(start + 1000);
++        } else {
++          this.resetQueryLengthPropertyForPlanPersonel('giden');
++          return true;
++        }
++      });
++    }
++
++    planDegerlendirmeSuresiQueryFeatures(start: number, planTuru: string) {
++      const properties = this.layerOperationsService.planPropertiesOfDegerlendirmeSuresi(start, planTuru);
++
++      return this.movementProcessLayer.queryFeatures(properties).then(response => {
++        const features = response.features;
++        features.forEach(feature => {
++          if (planTuru === 'plan-personel') {
++            const foundIndex = this.planPersonelFeatures.findIndex(personel => personel.touch_by === feature.attributes['i_touch_by']);
++            if (foundIndex !== -1) {
++              this.planPersonelFeatures[foundIndex].sureAdet = feature.attributes['touchby_count'];
++            } else {
++              const personel = new PlanColumnData();
++              personel.touch_by = feature.attributes['i_touch_by'];
++              personel.sureAdet = feature.attributes['touchby_count'];
++              this.planPersonelFeatures.push(personel);
++            }
++          } else if (planTuru === 'plan-il') {
++            const ilCode = feature.attributes['i_il'];
++            this.planIlRows[ilCode - 1].cols.sureAdet += feature.attributes['il_count'];
++          }
++        });
++      });
++    }
++
++    degerlendirilenlerQueryFeatures(start: number, tur: string) {
++      // değerlendirilenler : hareketleri olmayan işlemler demek. Bu da hareket işlemdeki durumu null olanlar demek.
++      const properties = this.layerOperationsService.planDegerlendirilenlerProperties(start, tur);
++      return this.movementProcessLayer.queryFeatures(properties).then(response => {
++        const features = response.features;
++        this.degerlendirilenLength = features.length;
++        features.forEach(feature => {
++          if (tur === 'plan-personel') {
++            this.planPersonelFeatures.forEach(personel => {
++              if (personel.touch_by === feature.attributes['i_touch_by']) {
++                personel.degerlendirilenAdet += feature.attributes['touchby_count'];
++              }
++            });
++          } else if (tur === 'plan-il') {
++            this.planIlRows.forEach(row => {
++              if (row.ilCode === feature.attributes['i_il']) {
++                row.cols.degerlendirilenAdet += feature.attributes['il_count'];
++              }
++            });
++          }
++        });
++        if (this.degerlendirilenLength === 1000) {
++          this.degerlendirilenlerQueryFeatures((start + 1000), tur);
++        } else {
++          this.degerlendirilenLength = 0;
++        }
++      });
++    }
++
++    resetQueryLengthPropertyForPlanPersonel(layerName: string) {
++      if (layerName === 'process') {
++        this.planPersonelProcessLength = 0;
++      } else if (layerName === 'movement') {
++        this.planPersonelMovementLength = 0;
++      } else if (layerName === 'giden') {
++        this.planPersonelGidenLength = 0;
++      }
++    }
++
++    resetPlanIl() {
++      this.planIlRows = [];
++      this.planIlToplamColData = undefined;
++    }
++
++    resetPlanPersonel() {
++      this.planPersonelFeatures = [];
++      this.planPersonelToplamColData = undefined;
++    }
++
++    resetIslemAnaliz() {
++      this.islemAnalizRows = [];
++      this.islemAnalizToplamRowData = [];
++    }
++
++    // degerlendirmeSuresi(tur: string) {
++    //   const onDortGunOncesi = this.operationsService.daysBeforeFromCurrentDateSecond();
++    //   if (tur === 'plan-personel') {
++    //     const count = 0;
++    //     this.planPersonelDegerlendirilenler.forEach( planPersonel => {
++    //       // if(planPersonel.create_date < onDortGunOncesi )
++    //     });
++    //   } else if (tur === 'plan-il') {
++
++    //   }
++    // }
++
++
++
++  }
+diff --git a/src/app/module-report/module-report-statistics/progress/progress.component.html b/src/app/module-report/module-report-statistics/progress/progress.component.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..daa936dcf5d6ff0fb24043a9b19042685609acbf
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/progress/progress.component.html
+@@ -0,0 +1,7 @@
++<div class="dialog-content">
++    <div class="cover-spin">
++    </div>
++    <div class="message">
++      <p>Lütfen Bekleyiniz</p>
++    </div>  
++  </div>
+\ No newline at end of file
+diff --git a/src/app/module-report/module-report-statistics/progress/progress.component.scss b/src/app/module-report/module-report-statistics/progress/progress.component.scss
+new file mode 100644
+index 0000000000000000000000000000000000000000..6b81b056e023ffb13e371eb7e90fef5f1cccd79b
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/progress/progress.component.scss
+@@ -0,0 +1,57 @@
++.dialog-content {
++  display: flex;
++  position: relative;
++  width: inherit;
++  height: 128px;
++  justify-content: center;
++}
++
++.dialog-content .message {
++    position: absolute;
++    bottom: 0;
++    margin-left: 38px;
++    z-index: 1;
++    background: white;
++}
++
++.cover-spin {
++    position: absolute;
++    z-index: 9999;
++    width: 100px;
++    height: 100px;
++}
++
++.cover-spin::after {
++    content:'';
++    display:block;
++    position:absolute;
++    left:40%;top:35%;
++    width:60px;height:60px;
++    border-radius: 50%;
++    border: 5px solid #3f51b5;
++    border-color: #3f51b5 transparent #3f51b5 transparent;
++    border-width: 4px;
++    border-radius:50%;
++    -webkit-animation: spin .8s linear infinite;
++    animation: spin .8s linear infinite;
++}
++
++@-webkit-keyframes spin {
++    0% {
++      transform: rotate(0deg);
++    }
++  
++    100% {
++      transform: rotate(360deg);
++    }
++  }
++  
++  @keyframes spin {
++    0% {
++      transform: rotate(0deg);
++    }
++  
++    100% {
++      transform: rotate(360deg);
++    }
++  }
+\ No newline at end of file
+diff --git a/src/app/module-report/module-report-statistics/progress/progress.component.spec.ts b/src/app/module-report/module-report-statistics/progress/progress.component.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..aea0b978eaca7e97af4356f51a8e94df52848de8
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/progress/progress.component.spec.ts
+@@ -0,0 +1,25 @@
++import { async, ComponentFixture, TestBed } from '@angular/core/testing';
++
++import { ProgressComponent } from './progress.component';
++
++describe('ProgressComponent', () => {
++  let component: ProgressComponent;
++  let fixture: ComponentFixture<ProgressComponent>;
++
++  beforeEach(async(() => {
++    TestBed.configureTestingModule({
++      declarations: [ ProgressComponent ]
++    })
++    .compileComponents();
++  }));
++
++  beforeEach(() => {
++    fixture = TestBed.createComponent(ProgressComponent);
++    component = fixture.componentInstance;
++    fixture.detectChanges();
++  });
++
++  it('should create', () => {
++    expect(component).toBeTruthy();
++  });
++});
+diff --git a/src/app/module-report/module-report-statistics/progress/progress.component.ts b/src/app/module-report/module-report-statistics/progress/progress.component.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..93168b56e5c07f2393d7111fe512cfd8649a79e5
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/progress/progress.component.ts
+@@ -0,0 +1,15 @@
++import { Component, OnInit } from '@angular/core';
++
++@Component({
++  selector: 'app-progress',
++  templateUrl: './progress.component.html',
++  styleUrls: ['./progress.component.scss']
++})
++export class ProgressComponent implements OnInit {
++
++  constructor() { }
++
++  ngOnInit() {
++  }
++
++}
+diff --git a/src/app/module-report/module-report-statistics/services/layer-operations.service.spec.ts b/src/app/module-report/module-report-statistics/services/layer-operations.service.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8584829e2d6ecefad88632dce68a06282c4f0908
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/services/layer-operations.service.spec.ts
+@@ -0,0 +1,12 @@
++import { TestBed } from '@angular/core/testing';
++
++import { LayerOperationsService } from './layer-operations.service';
++
++describe('LayerOperationsService', () => {
++  beforeEach(() => TestBed.configureTestingModule({}));
++
++  it('should be created', () => {
++    const service: LayerOperationsService = TestBed.get(LayerOperationsService);
++    expect(service).toBeTruthy();
++  });
++});
+diff --git a/src/app/module-report/module-report-statistics/services/layer-operations.service.ts b/src/app/module-report/module-report-statistics/services/layer-operations.service.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..873fd2563316b902f7120df8fce3ef9c076e84e3
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/services/layer-operations.service.ts
+@@ -0,0 +1,230 @@
++import { Injectable } from '@angular/core';
++import { OperationsService } from './operations.service';
++import esri = __esri;
++@Injectable({
++  providedIn: 'root'
++})
++export class LayerOperationsService {
++  talepTurleri = '3,4,5,6,7,8,9';
++  islemTurleri = '1,2,3,4,6,7,8,9,10';
++  talepTuruIslemTuruWhere = `(talep_turu IN(${this.talepTurleri}) OR islem_turu IN(${this.islemTurleri}))`;
++  talepTuruIslemTuruWhereMovementProcess = `(i_talep_turu IN(${this.talepTurleri}) OR i_islem_turu IN(${this.islemTurleri}))`;
++  constructor(private operationsService: OperationsService) { }
++
++  islemAnalizPropertiesOfProcessLayer() {
++    const dateWhere = this.operationsService.getDateWhere(false);
++    const processLayerProperties: esri.QueryProperties = {
++      where: `${dateWhere} AND ${this.talepTuruIslemTuruWhere}`,
++      orderByFields: ['il asc'],
++      groupByFieldsForStatistics: ['il', 'islem_turu', 'talep_turu', 'talep_eden_kurum'],
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: 'talep_turu',
++        outStatisticFieldName: 'talep_turu_count'
++      },
++      {
++        statisticType: 'count',
++        onStatisticField: 'islem_turu',
++        outStatisticFieldName: 'islem_turu_count'
++      }],
++      outFields: ['islem_turu', 'talep_turu', 'il', 'talep_eden_kurum']
++    };
++    return processLayerProperties;
++  }
++
++  islemAnalizPropertiesOfGiden(start: number) {
++    const dateWhere = this.operationsService.getDateWhere(true);
++    const properties: esri.QueryProperties = {
++      where: `${dateWhere} AND h_durumu <> 7 AND ${this.talepTuruIslemTuruWhereMovementProcess}`,
++      orderByFields: ['i_il asc'],
++      groupByFieldsForStatistics: ['i_il', 'i_islem_turu', 'i_talep_turu', 'i_talep_eden_kurum'],
++      start: start,
++      num: 1000,
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: 'i_talep_turu',
++        outStatisticFieldName: 'talep_turu_count'
++      },
++      {
++        statisticType: 'count',
++        onStatisticField: 'i_islem_turu',
++        outStatisticFieldName: 'islem_turu_count'
++      }],
++      outFields: ['i_islem_turu', 'i_talep_turu', 'i_il', 'i_talep_eden_kurum']
++    };
++
++    return properties;
++  }
++
++  planPropertiesOfProcessLayer(start: number, planTuru: string) {
++    let orderByFields = '';
++    let groupByFieldsForStatistics = '';
++    let onStatisticField = '';
++    let outStatisticFieldName = '';
++    const dateWhere = this.operationsService.getDateWhere(false);
++    if (planTuru === 'plan-personel') {
++      orderByFields = 'touch_by asc';
++      groupByFieldsForStatistics = 'touch_by';
++      onStatisticField = 'touch_by';
++      outStatisticFieldName = 'touchby_count';
++    } else if (planTuru === 'plan-il') {
++      orderByFields = 'il asc';
++      groupByFieldsForStatistics = 'il';
++      onStatisticField = 'il';
++      outStatisticFieldName = 'il_count';
++    }
++    const processLayerProperties: esri.QueryProperties = {
++      where: `${dateWhere}`,
++      orderByFields: [orderByFields],
++      groupByFieldsForStatistics: [groupByFieldsForStatistics],
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: onStatisticField,
++        outStatisticFieldName: outStatisticFieldName
++      }],
++      start: start,
++      num: 1000
++    };
++    return processLayerProperties;
++  }
++
++  planPropertiesOfMovementLayer(start: number, planTuru: string) {
++    let orderByFields = '';
++    let groupByFieldsForStatistics = '';
++    let onStatisticField = '';
++    let outStatisticFieldName = '';
++    let durumuWhere = '(h_durumu IN (1,5,7))';
++    let dateWhere = this.operationsService.getDateWhere(true);
++    if (planTuru === 'plan-personel') {
++      dateWhere = this.operationsService.getDateWhere(false);
++      durumuWhere = '(durumu IN (1,5,7))';
++      orderByFields = 'touch_by asc';
++      groupByFieldsForStatistics = 'durumu,touch_by';
++      onStatisticField = 'durumu';
++      outStatisticFieldName = 'durumu_count';
++    } else if (planTuru === 'plan-il') {  // plan ilin movement isteği movement process e atılacağı için bu şekilde olması gerekiyor
++      orderByFields = 'i_il asc';
++      groupByFieldsForStatistics = 'i_il,h_durumu';
++      onStatisticField = 'h_durumu';
++      outStatisticFieldName = 'durumu_count';
++    }
++    const movementLayerProperties: esri.QueryProperties = {
++      where: `${dateWhere} AND ${durumuWhere}`, // 1: onayda, 5: cevaplanmayacak, 7: yeni yazı
++      orderByFields: [orderByFields],
++      start: start,
++      num: 1000,
++      groupByFieldsForStatistics: [groupByFieldsForStatistics],
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: onStatisticField,
++        outStatisticFieldName: outStatisticFieldName
++      }]
++    };
++
++    return movementLayerProperties;
++  }
++
++  planPropertiesOfGiden(start: number, planTuru: string) {
++    let orderByFields = '';
++    let groupByFieldsForStatistics = '';
++    let onStatisticField = '';
++    let outStatisticFieldName = '';
++    let durumu = 'durumu';
++    let dateWhere = this.operationsService.getDateWhere(false);
++
++    if (planTuru === 'plan-personel') {
++      orderByFields = 'touch_by asc';
++      groupByFieldsForStatistics = 'touch_by';
++      onStatisticField = 'touch_by';
++      outStatisticFieldName = 'touchby_count';
++    } else if (planTuru === 'plan-il') {
++      dateWhere = this.operationsService.getDateWhere(true);
++      durumu = this.operationsService.addCharToString(durumu, 'h');
++      orderByFields = 'i_il asc';
++      groupByFieldsForStatistics = 'i_il';
++      onStatisticField = 'i_il';
++      outStatisticFieldName = 'il_count';
++    }
++    const properties: esri.QueryProperties = {
++      where: `${dateWhere} AND ${durumu} <> 7 `,
++      orderByFields: [orderByFields],
++      groupByFieldsForStatistics: [groupByFieldsForStatistics],
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: onStatisticField,
++        outStatisticFieldName: outStatisticFieldName
++      }],
++      start: start
++    };
++    return properties;
++  }
++
++  planPropertiesOfDegerlendirmeSuresi(start: number, planTuru: string) {
++    let orderByFields = '';
++    let groupByFieldsForStatistics = '';
++    let onStatisticField = '';
++    let outStatisticFieldName = '';
++    const onDortGunWhere = this.operationsService.daysBeforeFromCurrentDate(true);
++    const dateWhere = this.operationsService.dateWhereObject.dateForDegerlendirme;
++    if (planTuru === 'plan-personel') {
++      orderByFields = 'i_touch_by asc';
++      groupByFieldsForStatistics = 'i_touch_by';
++      onStatisticField = 'i_touch_by';
++      outStatisticFieldName = 'touchby_count';
++    } else if (planTuru === 'plan-il') {
++      orderByFields = 'i_il asc';
++      groupByFieldsForStatistics = 'i_il';
++      onStatisticField = 'i_il';
++      outStatisticFieldName = 'il_count';
++    }
++    const degerlendirmeWhere = `h_durumu IS NULL`;
++    const properties: esri.QueryProperties = {
++      where: `${dateWhere} AND ${degerlendirmeWhere} AND ${onDortGunWhere}`,
++      start: start,
++      num: 1000,
++      orderByFields: [orderByFields],
++      groupByFieldsForStatistics: [groupByFieldsForStatistics],
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: onStatisticField,
++        outStatisticFieldName: outStatisticFieldName
++      }]
++    };
++
++    return properties;
++  }
++
++  planDegerlendirilenlerProperties(start: number, tur: string) {
++    // h_durumu null olanların hareketi olmayacağı için touch_by için işlemin tocuh_by ı esas alınır.
++    const dateWhere = this.operationsService.dateWhereObject.dateForDegerlendirme;
++    let orderByFields = '';
++    let groupFieldsForStatistics = '';
++    let onStatisticField = '';
++    let outStatisticFieldName = '';
++    if (tur === 'plan-personel') {
++      orderByFields = 'i_touch_by asc';
++      groupFieldsForStatistics = 'i_touch_by';
++      onStatisticField = 'i_touch_by';
++      outStatisticFieldName = 'touchby_count';
++    } else if (tur === 'plan-il') {
++      orderByFields = 'i_il asc';
++      groupFieldsForStatistics = 'i_il';
++      onStatisticField = 'i_il';
++      outStatisticFieldName = 'il_count';
++    }
++    const properties: esri.QueryProperties = {
++      where: `${dateWhere} AND h_durumu IS NULL`,
++      orderByFields: [orderByFields],
++      groupByFieldsForStatistics: [groupFieldsForStatistics],
++      outStatistics: [{
++        statisticType: 'count',
++        onStatisticField: onStatisticField,
++        outStatisticFieldName: outStatisticFieldName
++      }],
++      start: start,
++      num: 1000
++    };
++
++    return properties;
++  }
++}
+diff --git a/src/app/module-report/module-report-statistics/services/operations.service.spec.ts b/src/app/module-report/module-report-statistics/services/operations.service.spec.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7b48a4c446e9fb03a96201d1730e4ae173e82919
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/services/operations.service.spec.ts
+@@ -0,0 +1,12 @@
++import { TestBed } from '@angular/core/testing';
++
++import { OperationsService } from './operations.service';
++
++describe('OperationsService', () => {
++  beforeEach(() => TestBed.configureTestingModule({}));
++
++  it('should be created', () => {
++    const service: OperationsService = TestBed.get(OperationsService);
++    expect(service).toBeTruthy();
++  });
++});
+diff --git a/src/app/module-report/module-report-statistics/services/operations.service.ts b/src/app/module-report/module-report-statistics/services/operations.service.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4d50c7242cfd8d9a7202cde6b5fb3575414b72e1
+--- /dev/null
++++ b/src/app/module-report/module-report-statistics/services/operations.service.ts
+@@ -0,0 +1,255 @@
++import { Injectable } from '@angular/core';
++import { DateObject, DateWhereObject } from '../interfaces/islem-analiz';
++import esri = __esri;
++import { Tabdata } from '../interfaces/tabdata';
++@Injectable({
++  providedIn: 'root'
++})
++export class OperationsService {
++  dateWhereObject: DateWhereObject = { dateMovementProcessLayer: '', dateOther: '', dateForDegerlendirme: '' };
++  firstDate: string;
++  secondDate: string;
++  tabData = new Tabdata();
++  tabState = '';
++  dateName = 'create_date';
++  firstInput: HTMLInputElement;
++  secondInput: HTMLInputElement;
++  constructor() {
++  }
++
++  checkTabData(tabState: string, tabData: Tabdata) {
++    // eğer bir sekmede arama yapıp başka sekmeye geçip sonra tekrar arama yaptığı sekmeye dönerse false dönsün.
++    if (tabData[tabState]['isFull'] === true) {
++      return true;
++    } else {
++      return false;
++    }
++  }
++
++  setFirstDates(firstDateValue: string, secondDateValue: string) {
++    this.firstDate = firstDateValue;
++    this.secondDate = secondDateValue;
++  }
++
++  setInputDateValues() {
++    const previousFirstDate = this.tabData[this.tabState]['previousFirstDate'];
++    const previousSecondDate = this.tabData[this.tabState]['previousSecondDate'];
++
++    this.firstInput.value = previousFirstDate;
++    this.secondInput.value = previousSecondDate;
++  }
++
++  checkIfDateIsBad() {
++    const firstInputName = `${this.tabState}_1`;
++    const secondInputName = `${this.tabState}_2`;
++    const firstInput = document.getElementById(firstInputName) as HTMLInputElement;
++    const secondInput = document.getElementById(secondInputName) as HTMLInputElement;
++
++    this.firstInput = firstInput;
++    this.secondInput = secondInput;
++
++    const firstDateValue = firstInput.value;
++    const secondDateValue = secondInput.value;
++
++    this.setFirstDates(firstDateValue, secondDateValue);
++
++    const checkIfDateNone = this.checkIfDateNone();
++    // date none sa her türlü true döndürerek işlemi durdursun.
++    if (checkIfDateNone) {
++      return true;
++    } else { // date none değilse yılın uzunluğunu kontrol etsin. ona göre işlemi durdurmak için true döndürsün.
++      const checkIfYearIsBad = this.checkIfYearIsBad();
++      if (checkIfYearIsBad) {
++        return true;
++      } else {
++        return false;
++      }
++    }
++  }
++
++  checkIfDateNone() {
++    if (this.firstDate === '' || this.secondDate === '') {
++      return true;
++    } else {
++      return false;
++    }
++  }
++
++  checkIfYearIsBad() {
++    const firstYear = this.firstDate.split('-')[0];
++    const secondYear = this.secondDate.split('-')[0];
++
++    if (firstYear.length > 4 || secondYear.length > 4) { // yılı 5 haneli girerlerse true döndürsün.
++      return true;
++    } else {
++      return false;
++    }
++  }
++
++  setTabData(tabState: string, tabData: Tabdata) {
++    this.tabState = tabState;
++    this.tabData = this.tabData;
++  }
++
++  getTabData() {
++    return this.tabData;
++  }
++
++  checkIfSameDates() {
++    // setdatewhereclause da dateobject setleniyor zaten buraya gelene kadar setlenmiş olacak.
++    const currentFirstDateValue = this.tabData[this.tabState]['currentFirstDate'];
++    const currentSecondDateValue = this.tabData[this.tabState]['currentSecondDate'];
++    const tab = this.tabData[this.tabState];
++    // eğer önceki dateler şimdiki girilenlere eşitse tekrar previous setlemeye gerek yok
++    if (tab['previousFirstDate'] === currentFirstDateValue && tab['previousSecondDate'] === currentSecondDateValue) {
++      return false;
++    } else { // eğer önceki ile şimdikiler eşit değilse öncekileri setlemek gerek
++      this.setPreviousDateValues(currentFirstDateValue, currentSecondDateValue);
++      return true;
++    }
++  }
++
++  setPreviousDateValues(currentFirstDateValue: string, currentSecondDateValue: string) {
++    this.tabData[this.tabState]['previousFirstDate'] = currentFirstDateValue;
++    this.tabData[this.tabState]['previousSecondDate'] = currentSecondDateValue;
++  }
++
++  setDateWhereObject(event: Event) {
++    let firstDateValue = this.firstDate;
++    let secondDateValue = this.secondDate;
++    if (firstDateValue !== '' && secondDateValue !== '') {
++      if (firstDateValue > secondDateValue) { // ilk girilen tarih daha büyükse ilk tarih ile ikinci tarih yer değiştirmeli
++        const dateValuesObject = this.changeDateValues(firstDateValue, secondDateValue);
++        firstDateValue = dateValuesObject.firstDateValue;
++        secondDateValue = dateValuesObject.secondDateValue;
++      }
++      console.log(firstDateValue, secondDateValue);
++      // const dateWhere = `create_date >= '${firstDateValue}' AND create_date <= '${secondDateValue}'`;
++      // const dateWhere = `create_date >= '2018-06-10' AND create_date <= '2019-12-11'`;
++      this.setDateWhereClause(firstDateValue, secondDateValue);
++      // aynı tarihi aramaya çalışınca tekrar istek göndermemesi için
++      const checkIfSameDates = this.checkIfSameDates();
++      if (checkIfSameDates) { // checkIfSameDates den true dönerse tarihlerin aynı olmadığı anlaşılır
++        return true;
++      } else {
++        return false;
++      }
++    } else {
++      return false;
++    }
++  }
++
++  addCharToString(word: string, char: string) {
++    const wordLength = word.length;
++    const newWord = word.padStart((wordLength + 2), `${char}_`);
++    return newWord;
++  }
++
++  setDateWhereClause(firstDate: string, secondDate: string) {
++    this.setDateObject(firstDate, secondDate);
++    // tslint:disable-next-line:max-line-length
++    const dateForOther = `${this.dateName} >= '${this.tabData[this.tabState]['currentFirstDate']}' AND ${this.dateName} <= '${this.tabData[this.tabState]['currentSecondDate']}'`;
++
++    const dateNameForMovementProcess = this.addCharToString(this.dateName, 'h');
++    // tslint:disable-next-line:max-line-length
++    const dateForMovementProcess = `${dateNameForMovementProcess} >= '${this.tabData[this.tabState]['currentFirstDate']}' AND ${dateNameForMovementProcess} <= '${this.tabData[this.tabState]['currentSecondDate']}'`;
++
++    // tslint:disable-next-line:max-line-length
++    const dateForDegerlendirme = `i_create_date >= '${this.tabData[this.tabState]['currentFirstDate']}' AND i_create_date <= '${this.tabData[this.tabState]['currentSecondDate']}'`;
++
++    this.dateWhereObject.dateOther = dateForOther;
++    this.dateWhereObject.dateMovementProcessLayer = dateForMovementProcess;
++    this.dateWhereObject.dateForDegerlendirme = dateForDegerlendirme;
++  }
++
++  setDateObject(firstDate: string, secondDate: string) {
++    this.dateName = 'create_date';
++    this.tabData[this.tabState]['currentFirstDate'] = firstDate;
++    this.tabData[this.tabState]['currentSecondDate'] = secondDate;
++  }
++
++  getDateWhere(isMovementProcessLayer: boolean) {
++    if (isMovementProcessLayer === true) {
++      return this.dateWhereObject.dateMovementProcessLayer;
++    } else if (isMovementProcessLayer === false) {
++      return this.dateWhereObject.dateOther;
++    }
++  }
++
++  changeDateValues(firstDateValue: string, secondDateValue: string) {
++    let tempDateValue = '';
++    tempDateValue = firstDateValue.replace(firstDateValue, secondDateValue);
++    secondDateValue = secondDateValue.replace(secondDateValue, firstDateValue);
++    firstDateValue = tempDateValue;
++
++    const dateValuesObject = { firstDateValue: firstDateValue, secondDateValue: secondDateValue };
++    return dateValuesObject;
++  }
++
++  // convertDateToArcgisDateFormat(date: Date) {
++  //   const year = date.getFullYear();
++  //   let month = date.getMonth().toString();
++  //   let days = date.getDay().toString();
++
++  //   if (month.length === 1) {
++  //     month = `0${month}`;
++  //   }
++  //   if (days.length === 1) {
++  //     days = `0${days}`;
++  //   }
++
++  //   const stringDate = `${year}-${month}-${days}`;
++  //   return stringDate;
++  // }
++
++  convertLocalDateToArcgisDateFormat(date: Date) {
++    const localDateString = date.toLocaleDateString();
++    const splittedDate = localDateString.split('.');
++    const year = splittedDate[2];
++    const month = splittedDate[1];
++    const days = splittedDate[0];
++    const stringDate = `${year}-${month}-${days}`;
++    return stringDate;
++  }
++
++  // daysBeforeFromCurrentDateSecond() {
++  //   const currentDate = new Date().getTime();
++  //   const onDortGun = currentDate - (1000 * 60 * 60 * 24 * 14);
++  //   const daysBefore = new Date(onDortGun); // bugünün 14 gün öncesi
++  //   // create_date bu günden küçükse degerlendirmedekilerin süresi 14 günden fazla olanlar fieldının countı eklenecek
++  //   return daysBefore;
++  // }
++
++  daysBeforeFromCurrentDate(isMovementProcess: boolean) {
++    let createDate = 'create_date';
++    const currentDate = new Date().getTime();
++    const onDortGun = currentDate - (1000 * 60 * 60 * 24 * 14);
++    const daysBefore = new Date(onDortGun); // bugünün 14 gün öncesi
++    // create_date bu günden küçükse degerlendirmedekilerin süresi 14 günden fazla olanlar fieldının countı eklenecek
++    const convertedDate = this.convertLocalDateToArcgisDateFormat(daysBefore);
++    if (isMovementProcess) {
++      createDate = this.addCharToString(createDate, 'i');
++    }
++    const whereOnDortGun = `${createDate} < '${convertedDate}'`;
++    return whereOnDortGun;
++  }
++
++  // countOfMovementLayerQuery() { // ŞİMDİLİK KULLANILMIYOR
++  //   const dateWhere = this.getDateWhere(false);
++  //   const movementReturnCountOnlyProperties: esri.QueryProperties = {
++  //     where: `${dateWhere} AND (durumu IN (1,5,7) OR durumu IS NULL)`, // 1: onayda, 5: cevaplanmayacak, 7: yeni yazı
++  //     orderByFields: ['touch_by asc'],
++  //     groupByFieldsForStatistics: ['durumu,touch_by,create_date'],
++  //   };
++
++  //   let countOfMovementLayerQuery = 0;
++
++  //   // TODO PROCESS E İSTEK ATMAYA GEREK YOK YUKARDAKİ İSTEKTE 1000 GELİRSE OFFSETİ DEĞİŞTİRİP DEĞİŞTİRİP BAKACAKSIN
++
++  //   this.movementLayer.queryFeatureCount(movementReturnCountOnlyProperties).then(response => {
++  //     countOfMovementLayerQuery = response;
++  //   });
++
++  //   return countOfMovementLayerQuery;
++  // }
++}
+diff --git a/src/app/module-report/module-report.component.html b/src/app/module-report/module-report.component.html
+index 746dc2e5b19ffde081c89db20b38f882b6471478..f7125935245390bbbb19e2f18b425e2f138effe6 100644
+--- a/src/app/module-report/module-report.component.html
++++ b/src/app/module-report/module-report.component.html
+@@ -1,10 +1,11 @@
+ <div class="modal-content">
+-  <div>
++  <div style="display: flex; justify-content:space-between">
+     <select (change)="onModuleTypeChange($event)">
+       <option value="-1" selected>İşlem Seçiniz</option>
+       <option *ngFor="let moduleID of allowedModules.ids; let i=index" [value]="moduleID">
+         {{allowedModules.names[i]}}</option>
+     </select>
++    <button class="istatistik-button" (click)="onClickStatistics()"> İstatistikler </button>
+   </div>
+   <div class="module-datatable">
+     <ag-grid-angular #agGrid class="ag-theme-balham ag-grid" (gridReady)="onGridReady()"
+diff --git a/src/app/module-report/module-report.component.scss b/src/app/module-report/module-report.component.scss
+index a17b517109bc7ad0ee1911ba82c72e2a4765fba5..bf69fad81a0b4151744c0925a6c3c2606d8040ec 100644
+--- a/src/app/module-report/module-report.component.scss
++++ b/src/app/module-report/module-report.component.scss
+@@ -21,7 +21,39 @@
+   width: 100%;
+ }
+ 
++.istatistik-button {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 200px;
++  color: white;
++  border-radius: 4px;
++  background-color: $primaryColor;
++  padding: 6px 8px;
++  outline: none;
++  border: none;
++  font-weight: 600;
++  font-size: 16px;
++  transition: background-color .3s ease-out;
++  cursor: pointer;
++  margin-left: 10px;
++
++  &:hover {
++    background-color: lighten($primaryColor, 8);
++  }
++
++  &:active {
++    background-color: lighten($primaryColor, 20);
++  }
+ 
++  &.active {
++    background-color: lighten($primaryColor, 20);
++  }
++
++  &:focus {
++    background-color: lighten($primaryColor, 20);
++  }
++}
+ 
+ .button-container {
+   display: flex;
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index dcaa5084060889e3acb397f3575836ab8a8a5ce6..85130689e52f668c9ec0a015e207e7666c8e99fe 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -18,6 +18,7 @@ import { ProgressInfoComponent } from '../progress-info/progress-info.component'
+ import { environment } from 'src/environments/environment';
+ import { UserPermission } from '../models/Login/user-permission';
+ import { LayerSymbologyComponent } from '../layer-symbology/layer-symbology.component';
++import { ModuleReportStatisticsComponent } from './module-report-statistics/module-report-statistics.component';
+ @Component({
+   selector: 'app-module-report',
+   templateUrl: './module-report.component.html',
+@@ -794,4 +795,10 @@ export class ModuleReportComponent implements OnInit {
+       this.symbologyBuilderDialog = undefined;
+     }
+   }
++
++  onClickStatistics() {
++    const statisticsDialog = this.dialog.open(ModuleReportStatisticsComponent, 'İstatistikler', true,
++      { data: { mapView: this.mapView } }, undefined, 'red-to-light');
++  }
+ }
++
