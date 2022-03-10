@@ -1,0 +1,723 @@
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index 2990e41003bdeb413d2f56630bbf343da9777899..82594ca02eb2102437a22dfc57205a25595f41a1 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -158,8 +158,15 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     } else if (formElement.type === 'number') {
+ 
+       if (formElement.name === 'bina_sayi') {
+-        const count = Number(formElement.value);
+-        this.addOrRemoveDynamicFields(count, formObject);
++        let count: number;
++        if (moduleData.type === 'Tasarım ve Beceri Atölyeleri') {
++          count = Number(formElement.value);
++          this.addOrRemoveDynamicFieldsForAtolye(count, formObject);
++        } else {
++          count = Number(formElement.value);
++          this.addOrRemoveDynamicFields(count, formObject);
++        }
++
+       }
+ 
+     }
+@@ -194,7 +201,120 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     this.checkAndUpdateCalculateFuntions(moduleData, formGroup);
+   }
++  addOrRemoveDynamicFieldsForAtolye(count: number, recentFormValues?: Object) {
++    const atolyeTuruFieldName = 'atolye_turu';
++    const atolyeIslemFieldName = 'atolye_islem';
++
++    let atolyeTuruValue: any;
++    let atolyeIslemValue: any;
++
++    let startIndex = 1;
++    const filteredFormControls = this.moduleFormData
++      .filter(formControl => formControl.name.includes('atolye_turu'));
++
++    const dynamicFieldLength = filteredFormControls.length;
++
++    if (dynamicFieldLength === count) {
++      return;
++    } else if (dynamicFieldLength > count) {
++      const deleteIndex = count + 1;
++      this.removeDynamicFieldsForAtolye(deleteIndex, dynamicFieldLength);
++      startIndex = dynamicFieldLength;
++    } else if (dynamicFieldLength < count) {
++      startIndex = count - (count - dynamicFieldLength) + 1;
++    }
++    for (let i = startIndex; i <= count; i++) {
++      const atolyeTuruField = atolyeTuruFieldName + i;
++      const atolyeIslemField = atolyeIslemFieldName + i;
++
++      const atolyeTuruFormData = <FormData>{
++        alias: `Atolye ${i} Türü`,
++        name: atolyeTuruField,
++        type: 'localDomain',
++        required: true,
++        chosen_values: [],
++        domain_values: this.getAtolyeTuruDomains()
++      }
++      const atolyeIslemFormData = <FormData>{
++        alias: ` Atölye ${i} İşlem`,
++        name: atolyeIslemField,
++        type: 'localDomain',
++        required: true,
++        chosen_values: [],
++        domain_values: this.getAtolyeIslemDomains()
++      }
++      const atolyeTuruFormControlName = atolyeTuruFormData.name;
++      const atolyeIslemFormControlName = atolyeIslemFormData.name;
++      const atolyeTuruFormControlType = atolyeTuruFormData.type;
++      const atolyeIslemFormControlType = atolyeIslemFormData.type;
++      const required = true;
++      if (recentFormValues !== undefined) {
++        atolyeTuruValue = recentFormValues[atolyeTuruFormControlName];
++        atolyeIslemValue = recentFormValues[atolyeIslemFormControlName];
++      }
++      if (this.processState === 0) {
++        const atolyeTuruValueArray = (<string>recentFormValues[atolyeTuruFormControlName]).split(',');
++        const atolyeIslemValueArray = (<string>recentFormValues[atolyeIslemFormControlName]).split(',');
++
++        atolyeTuruValue = atolyeTuruValueArray[i - 1];
++        atolyeIslemValue = atolyeIslemValueArray[i - 1];
++      }
++
++      const atolyeTuruFormControl = this.createFormControl(atolyeTuruFormControlName, atolyeTuruFormControlType
++        , required, atolyeTuruValue);
++
++      this.formGroup.addControl(atolyeTuruFormControlName, atolyeTuruFormControl);
++
++      const atolyeIslemFormControl = this.createFormControl(atolyeIslemFormControlName, atolyeIslemFormControlType, required,
++        atolyeIslemValue);
++      this.formGroup.addControl(atolyeIslemFormControlName, atolyeIslemFormControl);
++
++      if (this.processState === 0) {
++        this.formGroup.controls[atolyeTuruFormControlName].disable();
++        this.formGroup.controls[atolyeIslemFormControlName].disable();
++      }
++
++      this.moduleFormData.push(atolyeTuruFormData);
++      this.moduleFormData.push(atolyeIslemFormData);
++    }
+ 
++  }
++  getAtolyeTuruDomains() {
++    return [{
++      name: 'Hizmet binası',
++      value: 'Hizmet binası',
++    },
++    {
++      name: 'Derslik',
++      value: 'Derslik'
++    },
++    {
++      name: 'Spor Salonu',
++      value: 'Spor Salonu'
++    },
++    {
++      name: 'Konferans Salonu',
++      value: 'Konferans Salonu'
++    },
++    {
++      name: 'Yemekhane',
++      value: 'Yemekhane'
++    }];
++  }
++  getAtolyeIslemDomains() {
++    return [{
++      name:'Tadilat ve Mal Alımı',
++      value: 'Tadilat ve Mal Alımı',
++    },
++    {
++      name:'Sadece Tadilat',
++      value: 'Sadece Tadilat',
++    },
++    {
++      name:'Sadece Mal Alımı',
++      value: 'Sadece Mal Alımı',
++    }];
++  }
+   addOrRemoveDynamicFields(count: number, recentFormValues?: Object) {
+     const karakteristikFieldName = 'karakteristik';
+     const kapasiteFieldName = 'kapasite';
+@@ -247,6 +367,7 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+       const kapasiteFormControlType = kapasiteFormData.type;
+       const required = true;
+ 
++
+       if (recentFormValues !== undefined) {
+         karakteristikValue = recentFormValues[karakteristikFormControlName];
+         kapasiteValue = recentFormValues[kapasiteFormControlName];
+@@ -297,6 +418,25 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     const karakteristikIndex = moduleFormData.findIndex(formData => formData.name === firstKarakteristikField);
+     moduleFormData.length = karakteristikIndex;
+   }
++  removeDynamicFieldsForAtolye(startingIndex: number, dynamicFieldLength: number) {
++    const atolyeTuruFieldName = 'atolye_turu';
++    const atolyeIslemFieldName = 'atolye_islem';
++
++    const moduleFormData = this.moduleFormData;
++
++    for (let i = startingIndex; i <= dynamicFieldLength; i++) {
++      const atolyeTuruField = atolyeTuruFieldName + i;
++      const atolyeIslemField = atolyeIslemFieldName + i;
++
++      this.formGroup.removeControl(atolyeTuruField);
++      this.formGroup.removeControl(atolyeIslemField);
++    }
++
++    const firstAtolyeTuruField = atolyeTuruFieldName + startingIndex;
++
++    const atolyeTuruIndex = moduleFormData.findIndex(formData => formData.name === firstAtolyeTuruField);
++    moduleFormData.length = atolyeTuruIndex;
++  }
+ 
+   checkAndUpdateCalculateFuntions(moduleData: ModuleFormData, formGroup: FormGroup): any {
+     const foundLead = this.recursiveFormLead(moduleData.formData[0], 0);
+@@ -805,7 +945,12 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+     if (foundBinaSayiField !== undefined && recentFormValues !== undefined) {
+       const binaSayiValue = Number(recentFormValues[foundBinaSayiField.name]);
+-      this.addOrRemoveDynamicFields(binaSayiValue, recentFormValues);
++      if( this.moduleData.value === 14) {
++        this.addOrRemoveDynamicFieldsForAtolye(binaSayiValue, recentFormValues);
++      } else {
++        this .addOrRemoveDynamicFields(binaSayiValue, recentFormValues);
++      }
++      
+     }
+   }
+ 
+@@ -1405,3 +1550,462 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }];
+   }
+ }
++
++// {
++//   "type": "Tasarım ve Beceri Atölyeleri Deneme",
++//   "value": 15,
++//   "formData": [
++//     [
++//       {
++//         "alias": "İşlem",
++//         "name": "islem",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "Tadilat ve Mal Alımı",
++//             "name": "Tadilat ve Mal Alımı"
++//           },
++//           {
++//             "value": "Sadece Tadilat",
++//             "name": "Sadece Tadilat"
++//           },
++//           {
++//             "value": "Sadece Mal Alımı",
++//             "name": "Sadece Mal Alımı"
++//           }
++
++//         ],
++//         "chosen_values": [
++//           {
++//             "values": [
++//               "Tadilat ve Mal Alımı"
++//             ],
++//             "lead": 1
++//           },
++//           {
++//             "values": [
++//               "Sadece Mal Alımı"
++//             ],
++//             "lead": 2
++//           },
++//           {
++//             "values": [
++//               "Sadece Tadilat"
++//             ],
++//             "lead": 3
++//           }
++//         ]
++//       }
++     
++//     ],
++//     [
++//       {
++//         "alias": "İşlem",
++//         "name": "islem",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "Tadilat ve Mal Alımı",
++//             "name": "Tadilat ve Mal Alımı"
++//           },
++//           {
++//             "value": "Sadece Tadilat",
++//             "name": "Sadece Tadilat"
++//           },
++//           {
++//             "value": "Sadece Mal Alımı",
++//             "name": "Sadece Mal Alımı"
++//           }
++
++//         ],
++//         "chosen_values": [
++//           {
++//             "values": [
++//               "Tadilat ve Mal Alımı"
++//             ],
++//             "lead": 1
++//           },
++//           {
++//             "values": [
++//               "Sadece Tadilat"
++//             ],
++//             "lead": 2
++//           },
++//           {
++//             "values": [
++//               "Sadece Mal Alımı"
++//             ],
++//             "lead": 3
++//           }
++//         ]
++//       },
++//       {
++//         "alias": "Atölye Sayısı",
++//         "name": "bina_sayi",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values": []
++//       },
++//       {
++//         "alias": "Bağlı Olduğu Genel Müdürlük",
++//         "name": "",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "TEGM",
++//             "name": "TEGM"
++//           },
++//           {
++//             "value": "OGM",
++//             "name": "OGM"
++//           },
++//           {
++//             "value": "DÖGM",
++//             "name": "DÖGM"
++//           },
++//           {
++//             "value": "MTEGM",
++//             "name": "MTEGM"
++//           }
++//         ],
++//         "chosen_values":[]
++//       },
++//       {
++//         "alias": "Okul Türü",
++//         "name": "",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "OO",
++//             "name": "OO"
++//           },
++//           {
++//             "value": "AL",
++//             "name": "AL"
++//           }
++//         ],
++//         "chosen_values":[]
++//       },
++//       {
++//           "alias": "Finans Kaynağı",
++//           "name": "",
++//           "type": "localDomain",
++//           "required": true,
++//           "domain_values":[
++//             {
++//               "value": "Proje Kapsamında",
++//               "name": "Proje Kapsamında"
++//             },
++//             {
++//               "value": "Genel Bütçe",
++//               "name": "Genel Bütçe"
++//             },
++//             {
++//               "value": "Bağışçı",
++//               "name": "Bağışçı"
++//             },
++//             {
++//               "value": "Yok",
++//               "name": "Yok"
++//             }
++
++//           ],
++//           "chosen_values":[]
++//       },
++//       {
++//         "alias":"Toplam Maliyet",
++//         "name":"",
++//         "type": "number",
++//         "required":true,
++//         "domain_values": [],
++//         "chosen_values":[],
++//         "calculateFunction": "tadilat+mal"
++//       },
++//       {
++//         "alias": "Tadilat Ortalama Maliyet",
++//         "name": "tadilat",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values":[]
++//       },
++//       {
++//         "alias": "Mal Alımı Ortalama Maliyet",
++//         "name": "mal",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values":[]
++//       }
++//     ],
++//     [
++//       {
++//         "alias": "İşlem",
++//         "name": "islem",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "Tadilat ve Mal Alımı",
++//             "name": "Tadilat ve Mal Alımı"
++//           },
++//           {
++//             "value": "Sadece Tadilat",
++//             "name": "Sadece Tadilat"
++//           },
++//           {
++//             "value": "Sadece Mal Alımı",
++//             "name": "Sadece Mal Alımı"
++//           }
++
++//         ],
++//         "chosen_values": [
++//           {
++//             "values": [
++//               "Tadilat ve Mal Alımı"
++//             ],
++//             "lead": 1
++//           },
++//           {
++//             "values": [
++//               "Sadece Tadilat"
++//             ],
++//             "lead": 2
++//           },
++//           {
++//             "values": [
++//               "Sadece Mal Alımı"
++//             ],
++//             "lead": 3
++//           }
++//         ]
++//       },
++//       {
++//         "alias": "Atölye Sayısı",
++//         "name": "bina_sayi",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values": []
++//       },
++//       {
++//         "alias": "Bağlı Olduğu Genel Müdürlük",
++//         "name": "",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "TEGM",
++//             "name": "TEGM"
++//           },
++//           {
++//             "value": "OGM",
++//             "name": "OGM"
++//           },
++//           {
++//             "value": "DÖGM",
++//             "name": "DÖGM"
++//           },
++//           {
++//             "value": "MTEGM",
++//             "name": "MTEGM"
++//           }
++//         ],
++//         "chosen_values":[]
++//       },
++//       {
++//         "alias": "Okul Türü",
++//         "name": "",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "OO",
++//             "name": "OO"
++//           },
++//           {
++//             "value": "AL",
++//             "name": "AL"
++//           }
++          
++//         ],
++//         "chosen_values":[]
++//       },
++//       {
++//           "alias": "Finans Kaynağı",
++//           "name": "",
++//           "type": "localDomain",
++//           "required": true,
++//           "domain_values":[
++//             {
++//               "value": "Proje Kapsamında",
++//               "name": "Proje Kapsamında"
++//             },
++//             {
++//               "value": "Genel Bütçe",
++//               "name": "Genel Bütçe"
++//             },
++//             {
++//               "value": "Bağışçı",
++//               "name": "Bağışçı"
++//             },
++//             {
++//               "value": "Yok",
++//               "name": "Yok"
++//             }
++
++//           ],
++//           "chosen_values":[]
++//       },
++//       {
++//         "alias":"Toplam Maliyet",
++//         "name":"",
++//         "type": "number",
++//         "required":true,
++//         "domain_values": [],
++//         "chosen_values":[],
++//         "calculateFunction": "tadilat+mal"
++//       },
++//       {
++//         "alias": "Mal Alımı Ortalama Maliyet",
++//         "name": "mal",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values":[]
++//       }
++//     ],
++//     [
++//       {
++//         "alias": "İşlem",
++//         "name": "islem",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "Tadilat ve Mal Alımı",
++//             "name": "Tadilat ve Mal Alımı"
++//           },
++//           {
++//             "value": "Sadece Tadilat",
++//             "name": "Sadece Tadilat"
++//           },
++//           {
++//             "value": "Sadece Mal Alımı",
++//             "name": "Sadece Mal Alımı"
++//           }
++
++//         ],
++//         "chosen_values": [
++//           {
++//             "values": [
++//               "Tadilat ve Mal Alımı"
++//             ],
++//             "lead": 1
++//           },
++//           {
++//             "values": [
++//               "Sadece Tadilat"
++//             ],
++//             "lead": 2
++//           },
++//           {
++//             "values": [
++//               "Sadece Mal Alımı"
++//             ],
++//             "lead": 3
++//           }
++//         ]
++//       },
++//       {
++//         "alias": "Atölye Sayısı",
++//         "name": "bina_sayi",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values": []
++//       },
++//       {
++//         "alias": "Bağlı Olduğu Genel Müdürlük",
++//         "name": "",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "TEGM",
++//             "name": "TEGM"
++//           },
++//           {
++//             "value": "OGM",
++//             "name": "OGM"
++//           },
++//           {
++//             "value": "DÖGM",
++//             "name": "DÖGM"
++//           },
++//           {
++//             "value": "MTEGM",
++//             "name": "MTEGM"
++//           }
++//         ],
++//         "chosen_values":[]
++//       },
++//       {
++//         "alias": "Okul Türü",
++//         "name": "",
++//         "type": "localDomain",
++//         "required": true,
++//         "domain_values": [{
++//             "value": "OO",
++//             "name": "OO"
++//           },
++//           {
++//             "value": "AL",
++//             "name": "AL"
++//           }
++//         ],
++//         "chosen_values":[]
++//       },
++//       {
++//           "alias": "Finans Kaynağı",
++//           "name": "",
++//           "type": "localDomain",
++//           "required": true,
++//           "domain_values":[
++//             {
++//               "value": "Proje Kapsamında",
++//               "name": "Proje Kapsamında"
++//             },
++//             {
++//               "value": "Genel Bütçe",
++//               "name": "Genel Bütçe"
++//             },
++//             {
++//               "value": "Bağışçı",
++//               "name": "Bağışçı"
++//             },
++//             {
++//               "value": "Yok",
++//               "name": "Yok"
++//             }
++
++//           ],
++//           "chosen_values":[]
++//       },
++//       {
++//         "alias":"Toplam Maliyet",
++//         "name":"",
++//         "type": "number",
++//         "required":true,
++//         "domain_values": [],
++//         "chosen_values":[],
++//         "calculateFunction": "tadilat+mal"
++//       },
++//       {
++//         "alias": "Tadilat Ortalama Maliyet",
++//         "name": "tadilat",
++//         "type": "number",
++//         "required": true,
++//         "domain_values": [],
++//         "chosen_values":[]
++//       }
++//     ]
++//   ]
++
++// },
+\ No newline at end of file
+diff --git a/src/assets/Modules.json b/src/assets/Modules.json
+index 4f564e5dd4f440a34c36b65c78545a0643477bb6..ee9317ab72d300a8971d557d0e23841e1df28379 100644
+--- a/src/assets/Modules.json
++++ b/src/assets/Modules.json
+@@ -31,6 +31,11 @@
+       "item": 12,
+       "islem_turu": 13,
+       "title": "Bina Değişiklik"
++    },
++    {
++      "item": 13, 
++      "islem_turu": 14,
++      "title": "Tasarım ve Beceri Atölyeleri"
+     }
+   ]
+ }, {
+diff --git a/src/assets/TypeData.json b/src/assets/TypeData.json
+index 89540897b5fb65b4f67adeb6d0f0dd6767f5ba6b..2ecb89a57093ffc7e12866debc39dc77b27f0b53 100644
+--- a/src/assets/TypeData.json
++++ b/src/assets/TypeData.json
+@@ -1,11 +1,45 @@
+-[{
++[
++  {
++    "type": "Tasarım ve Beceri Atölyeleri",
++    "value": 14,
++    "formData": [
++      [
++        {
++          "alias": "Atölye Sayısı",
++          "name": "bina_sayi",
++          "type": "number",
++          "required": true,
++          "domain_values": [],
++          "chosen_values": []
++        },
++        {
++          "alias": "Bağlı Olduğu Genel Müdürlük",
++          "name": "",
++          "type": "localDomain",
++          "required": true,
++          "domain_values": [{
++              "value": "TEGM",
++              "name": "TEGM"
++            },
++            {
++              "value": "OGM",
++              "name": "OGM"
++            }
++          ],
++          "chosen_values":[]
++        }
++      ]
++    ]
++  },
++
++  {
+     "type": "İrtifak",
+     "value": 2,
+     "formData": [
+       [{
+           "alias": "Tarih",
+           "name": "islem_tarihi",
+-          "type": "date",
++          "type": "",
+           "required": true,
+           "domain_values": [],
+           "chosen_values": []
