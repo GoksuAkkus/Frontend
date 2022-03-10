@@ -1,0 +1,64 @@
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index abc32073f2f16c42c5097fd49a188f401b40c2c8..22a5f5324d19bdf0db1af11538d17f807fd781d9 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -259,10 +259,16 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+               if (this.emitObject !== undefined && this.emitObject.fromReports && !isFilter) {
+                 const selectedRowIndex = objectModel.findIndex(feature => feature['objectid'] === Number(this.emitObject.objectId));
+ 
+-                const firstPart = objectModel[selectedRowIndex];
+-                objectModel.splice(selectedRowIndex, 1);
+-
+-                objectModel = [].concat(firstPart, objectModel);
++                // Satırı Sarı Olan İşlem Silinince (Yani En Üstteki Satır) Silindiği Zaman Burada selectedRowIndex Bulamaz.
++                // Bu yüzden bulamadığı durumda emitObjecti undefined yaparak olmayan satırı sarı yapmaya çalışması engellendi.
++                if (selectedRowIndex !== -1) {
++                  const firstPart = objectModel[selectedRowIndex];
++                  objectModel.splice(selectedRowIndex, 1);
++
++                  objectModel = [].concat(firstPart, objectModel);
++                } else {
++                  this.emitObject = undefined;
++                }
+               }
+ 
+               this.allRows.push(...objectModel);
+@@ -286,8 +292,14 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       let selectedRow: HTMLElement;
+       for (let i = 0; i < rows.length; i++) {
+         const clientWidth = rows[i].clientWidth;
+-        const noFocusClass = rows[i].classList.contains('ag-row-no-focus');
+-        if (clientWidth !== 0 && noFocusClass) {
++        // Burada her zaman 6 tane row buluyor. Ancak 2 tanesinin widthi 0dan farklı. Bu ikisinin sonuncusu
++        // Her zaman doğru seçilmiş rowu veriyor sanırım! HATA İLE KARŞILAŞILMADI AMA KONTROL EDİLECEK.
++        // widthi 0 olmayan diğer row ise asıl rowun gölgesi gibi.
++        // No focus olanı aldığımız zaman ilk satırdaki rowun bilgisini açınca sarılık gidiyor, diğer rowların bilgisini açınca ise
++        // sarılık geliyor. Bu yüzden buna göre kontrol yapılmamalı artık. Ama Tekrar Bakılacak.
++        // const noFocusClass = rows[i].classList.contains('ag-row-no-focus');
++        // if (clientWidth !== 0 && noFocusClass) {
++        if (clientWidth !== 0) {
+           selectedRow = rows[i] as HTMLElement;
+         }
+       }
+@@ -471,9 +483,10 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       }
+     }, false, 'light');
+ 
++    // Bu Kod
++    // MovementListRef Kapatılınca Hareket Eklenmişse Diye ModuleListteki Son Hareket Kolonunun Güncellenmesi İçin Oluşturuldu.
+     this.movementListRef.afterClosed.subscribe(res => {
+       this.initializeLastMovement(this.whereField, this.layerWhereField, this.lastMovFeatureData);
+-
+       setTimeout(() => {
+         const whereValue = this.requiredFields.getAttribute(this.layerWhereField);
+         this.setDataSourceOfGrid(this.whereField, whereValue);
+@@ -648,7 +661,8 @@ export class ModuleListComponent implements OnInit, OnDestroy {
+       this.moduleCreateRef = undefined;
+     }
+     if (this.movementListRef !== undefined) {
+-      this.movementListRef.close();
++      // Buradan this.movementListRef.close(); kaldırılmak zorundaydı çünkü her defasında her dialogref oluşturulduğunda
++      // OpenMovementDetaildeki afterClosed a girerek arcgise gereksiz istek atılarak data setliyordu.
+       this.movementListRef = undefined;
+     }
+   }
