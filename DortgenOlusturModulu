@@ -1,0 +1,620 @@
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.html b/src/app/drawing-tools/create-quad/create-quad.component.html
+index 3b20326f40ea6b752c0308bb849776b5bc23613d..9635206428429d3ef880d624b7985ddb0c942cf7 100644
+--- a/src/app/drawing-tools/create-quad/create-quad.component.html
++++ b/src/app/drawing-tools/create-quad/create-quad.component.html
+@@ -1,7 +1,9 @@
+ <div class="container">
+         <div class="content">
+-            <div class="label"><label>En Giriniz: </label>
+-                <label>Boy Giriniz: </label></div>
++            <div class="label">
++                <label>En Giriniz (metre): </label>
++                <label>Boy Giriniz (metre): </label>
++              </div>
+               <div class="input">
+                 <input type="number" name="en" id="en">
+                 <input type="number" name="boy" id="boy">
+@@ -12,4 +14,3 @@
+             <button (click)="addToMebDetay()">MEB Detay'a Ekle</button>
+         </div>
+ </div>
+-<div id="deneme" style="width: 1000px height: 1000px; position: absolute"> deneme </div>
+diff --git a/src/app/drawing-tools/create-quad/create-quad.component.ts b/src/app/drawing-tools/create-quad/create-quad.component.ts
+index a37dd295432e00123b6f758b5db9da7d6d3a8e21..b6bac323eacd9f823c6362fb6d7c45c87378c133 100644
+--- a/src/app/drawing-tools/create-quad/create-quad.component.ts
++++ b/src/app/drawing-tools/create-quad/create-quad.component.ts
+@@ -4,7 +4,6 @@ import { DialogConfig } from 'src/app/dialog/dialog-config';
+ import { loadModules } from 'esri-loader';
+ import { MapService } from 'src/app/mapUtils/map.service';
+ import { DialogRef } from 'src/app/dialog/dialog-ref';
+-
+ @Component({
+   selector: 'app-create-quad',
+   templateUrl: './create-quad.component.html',
+@@ -13,10 +12,12 @@ import { DialogRef } from 'src/app/dialog/dialog-ref';
+ export class CreateQuadComponent implements OnInit, OnDestroy {
+   mapView: esri.MapView;
+   polygonModule: esri.PolygonConstructor;
++  polylineModule: esri.PolylineConstructor;
+   graphicModule: esri.GraphicConstructor;
+   graphicsLayerModule: esri.GraphicsLayerConstructor;
+   spinStatus: -1 | 1;
+   geometryEngine: esri.geometryEngine;
++  webMercatorUtils: esri.webMercatorUtils;
+   feature: esri.Graphic;
+   en: number;
+   boy: number;
+@@ -25,20 +26,23 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+   dragRotateStatus = false;
+   previousMapPoint: esri.Point;
+   previousScreenPoint: esri.ScreenPoint;
++  earthRadius = 6371;
+   constructor(private dialogConfig: DialogConfig, private dialogRef: DialogRef, private mapService: MapService) {
+   }
+ 
+   ngOnInit() {
+     const data = this.dialogConfig.data;
+     this.mapView = data.view;
+-    loadModules(['esri/geometry/Polygon', 'esri/Graphic', 'esri/layers/GraphicsLayer', 'esri/geometry/geometryEngine'])
+-      .then(([Polygon, Graphic, GraphicsLayer, GeometryEngine]) => {
++    loadModules(['esri/geometry/Polygon', 'esri/Graphic', 'esri/layers/GraphicsLayer', 'esri/geometry/geometryEngine',
++      'esri/geometry/Polyline', 'esri/geometry/support/webMercatorUtils'])
++      .then(([Polygon, Graphic, GraphicsLayer, GeometryEngine, Polyline, WebMercatorUtils]) => {
+         this.polygonModule = Polygon;
+         this.graphicModule = Graphic;
+         this.graphicsLayerModule = GraphicsLayer;
+         this.geometryEngine = GeometryEngine;
++        this.polylineModule = Polyline;
++        this.webMercatorUtils = WebMercatorUtils;
+       });
+-
+   }
+ 
+   ngOnDestroy() {
+@@ -55,10 +59,11 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+     const inputClassElement = contentElement.lastElementChild as HTMLDivElement;
+     const enInputElement = inputClassElement.firstChild as HTMLInputElement;
+     const boyInputElement = inputClassElement.lastChild as HTMLInputElement;
+-    this.en = enInputElement.valueAsNumber;
+-    this.boy = boyInputElement.valueAsNumber;
+-    const { x, y } = this.mapView.center;
+-    this.vertices = [[x, y], [this.en + x, y], [this.en + x, -this.boy + y], [x, -this.boy + y]];
++    // polygon point oluşturma formülünde distance km cinsinden isteniyor. Girilen değer metre cinsinden olduğu için 1000e bölünüyor.
++    this.en = enInputElement.valueAsNumber / 1000;
++    this.boy = boyInputElement.valueAsNumber / 1000;
++    const { latitude, longitude } = this.mapView.center;
++    this.vertices = this.createPolygonPoints(latitude, longitude);
+     this.addPolygonGraphic(this.vertices);
+ 
+     this.mapView.on('pointer-move', (pointerMoveEvent) => {
+@@ -108,23 +113,18 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+         this.moveGraphic(xDifference, yDifference);
+         this.previousMapPoint = currentMapPoint;
+       } else if (dragEvent.action === 'update' && this.dragRotateStatus === true) {
+-        // const differenceXScreenPoint = dragEvent.x - this.previousScreenPoint.x;
+-        // const differenceYScreenPoint = dragEvent.y - this.previousScreenPoint.y;
+         const centerPoint = (<esri.Polygon>this.feature.geometry).centroid;
+         const centerXY = this.mapView.toScreen(centerPoint);
+ 
+         const currentScreenPoint = <esri.ScreenPoint>{ x: dragEvent.x, y: dragEvent.y };
+         const currentPrevObject = { current: currentScreenPoint, other: this.previousScreenPoint };
+         const currentCenterObject = { current: currentScreenPoint, other: centerXY };
+-        // previous screen ile current screen pointler arasındaki uzaklık;
+         const prevAndCurrentDistance = this.differenceBetweenTwoPoint(currentPrevObject);
+         const currentAndCenterDistance = this.differenceBetweenTwoPoint(currentCenterObject, true);
+         this.setRotation(currentScreenPoint, this.previousScreenPoint, centerXY);
+-        // center ile current screen pointler arasındaki uzaklık
+         const angleResult = this.findArcTan(prevAndCurrentDistance, currentAndCenterDistance);
+         const rotatedGeometry = this.geometryEngine.rotate(this.feature.geometry, this.spinStatus * angleResult);
+         this.feature.geometry = rotatedGeometry;
+-
+         this.previousScreenPoint = { x: dragEvent.x, y: dragEvent.y };
+       } else if (dragEvent.action === 'end') {
+         this.dragRotateStatus = false;
+@@ -133,6 +133,29 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+     });
+   }
+ 
++  createPolygonPoints(lat: number, lon: number) {
++    const firstPoint = this.createGeodesicCoordinatePoint(lat, lon, this.en, 1.5707963268);
++    const secondPoint = this.createGeodesicCoordinatePoint(firstPoint.lat, firstPoint.lon, this.boy, 3.1415926536);
++    const thirdPoint = this.createGeodesicCoordinatePoint(secondPoint.lat, secondPoint.lon, this.en, 4.7123889804);
++
++    const polygonPoints = [[lon, lat], [firstPoint.lon, firstPoint.lat], [secondPoint.lon, secondPoint.lat],
++    [thirdPoint.lon, thirdPoint.lat]];
++
++    return polygonPoints;
++  }
++
++  createGeodesicCoordinatePoint(firstLat, firstLon, distance, brng) {
++    firstLat = firstLat * (Math.PI / 180);
++    firstLon = firstLon * (Math.PI / 180);
++    const distanceRate = distance / this.earthRadius;
++    const secondLat = Math.asin(Math.sin(firstLat) * Math.cos(distanceRate) +
++      Math.cos(firstLat) * Math.sin(distanceRate) * Math.cos(brng));
++    const secondLon = firstLon + Math.atan2(Math.sin(brng) * Math.sin(distanceRate) * Math.cos(firstLat),
++      Math.cos(distanceRate) - Math.sin(firstLat) * Math.sin(secondLat));
++    const secondLatLonObj = { lat: secondLat * 180 / Math.PI, lon: secondLon * 180 / Math.PI };
++    return secondLatLonObj;
++  }
++
+   findArcTan(currentPrev: number, currentCenter: number) {
+     const angle = Math.atan2(currentCenter, currentPrev);
+     return angle;
+@@ -193,7 +216,8 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+ 
+   addPolygonGraphic(vertices: Array<Array<number>>) {
+     const mapView: esri.MapView = this.mapView;
+-    const polygon: esri.Polygon = this.createPolygon(vertices);
++    let polygon: esri.Polygon = this.createPolygon(vertices);
++    polygon = this.webMercatorUtils.geographicToWebMercator(polygon) as esri.Polygon;
+ 
+     const symbolProperties = <esri.SimpleFillSymbol>{
+       type: 'simple-fill',
+@@ -216,7 +240,7 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+ 
+     const graphicProperties: esri.GraphicProperties = {
+       geometry: polygon,
+-      symbol: symbolProperties,
++      symbol: symbolProperties
+     };
+ 
+     const graphic: esri.Graphic = new this.graphicModule(graphicProperties);
+@@ -227,10 +251,8 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+ 
+   createPolygon(vertices: Array<Array<number>>): esri.Polygon {
+     const polygonProperties: esri.PolygonProperties = {
+-      rings: [vertices],
+-      spatialReference: this.mapView.spatialReference
++      rings: [vertices]
+     };
+-
+     const polygon: esri.Polygon = new this.polygonModule(polygonProperties);
+     return polygon;
+   }
+@@ -246,5 +268,4 @@ export class CreateQuadComponent implements OnInit, OnDestroy {
+       this.dialogRef.close();
+     }
+   }
+-
+ }
+diff --git a/src/app/esri-map/esri-map.component.ts b/src/app/esri-map/esri-map.component.ts
+index ecc4c71d9040e1cdf128b3a9e98275838a2b40b1..0d81b9c797340759adcf1ddc795687180b2de2db 100644
+--- a/src/app/esri-map/esri-map.component.ts
++++ b/src/app/esri-map/esri-map.component.ts
+@@ -573,31 +573,49 @@ export class EsriMapComponent implements OnInit {
+   }
+ 
+   createMapIstanbulLayers(map: esri.Map) {
+-    loadModules(['esri/layers/TileLayer']).then(([TileLayer]) => {
+-      const TileLayerConstructor = <esri.TileLayerConstructor>TileLayer;
++    loadModules(['esri/layers/MapImageLayer']).then(([MapImageLayer]) => {
++      const MapImageLayerConstructor = <esri.TileLayerConstructor>MapImageLayer;
+ 
+-      const tadilat2BProperties = <esri.TileLayerProperties>{
++      const tadilat2BProperties = <esri.MapImageLayerProperties>{
+         title: '2-B Tadilat 1/1000',
+         url: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Tadilat/MapServer',
+-        visible: false
++        visible: false,
++        sublayers: [
++          {
++            id: 0,
++            definitionExpression: 'MERIYET=1'
++          }
++        ]
+       };
+-      const tadilat2B = new TileLayerConstructor(tadilat2BProperties);
++      const tadilat2B = new MapImageLayerConstructor(tadilat2BProperties);
+       tadilat2B.set('MAPISTANBUL', true);
+ 
+-      const mapIstanbul3BProperties = <esri.TileLayerProperties>{
++      const mapIstanbul3BProperties = <esri.MapImageLayerProperties>{
+         title: '3-B 1/1000',
+         url: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan1000Sayisal/MapServer',
+-        visible: false
++        visible: false,
++        sublayers: [
++          {
++            id: 0,
++            definitionExpression: 'MERIYET=1'
++          }
++        ]
+       };
+-      const mapIstanbul3B = new TileLayerConstructor(mapIstanbul3BProperties);
++      const mapIstanbul3B = new MapImageLayerConstructor(mapIstanbul3BProperties);
+       mapIstanbul3B.set('MAPISTANBUL', true);
+ 
+-      const mapIstanbul4BProperties = <esri.TileLayerProperties>{
++      const mapIstanbul4BProperties = <esri.MapImageLayerProperties>{
+         title: '4-B 1/5000',
+         url: 'https://mapistanbul.ibb.gov.tr/arcgis/rest/services/Plan5000Sayisal/MapServer',
+-        visible: false
++        visible: false,
++        sublayers: [
++          {
++            id: 0,
++            definitionExpression: 'MERIYET=1'
++          }
++        ]
+       };
+-      const mapIstanbul4B = new TileLayerConstructor(mapIstanbul4BProperties);
++      const mapIstanbul4B = new MapImageLayerConstructor(mapIstanbul4BProperties);
+       mapIstanbul4B.set('MAPISTANBUL', true);
+ 
+ 
+diff --git a/src/app/layer/layer.component.ts b/src/app/layer/layer.component.ts
+index 313177bdf1c6c5ab98553b4332d8bc369c4524f2..e99ae62f2cf0c62acde6eeeb24bebf6ea0145cae 100644
+--- a/src/app/layer/layer.component.ts
++++ b/src/app/layer/layer.component.ts
+@@ -1,3 +1,4 @@
++import { AuthService } from './../services/auth.service';
+ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+ import { LayerUtilsService } from '../mapUtils/layer-utils.service';
+ import { LayerGroup, Layer } from '../models/ArcgisService/layer-design';
+@@ -22,7 +23,7 @@ export class LayerComponent implements OnInit {
+     return this._mapView;
+   }
+ 
+-  constructor(private layerService: LayerUtilsService) {
++  constructor(private layerService: LayerUtilsService, private auth: AuthService) {
+     this.layerModel = this.layerService._layerDesign;
+   }
+ 
+@@ -96,47 +97,53 @@ export class LayerComponent implements OnInit {
+     }
+ 
+     this.mapViewChanged.emit();
++
+   }
+ 
+   subLayerChange(layer: Layer, category: LayerGroup, parent?: LayerGroup) {
+-    layer.visible = !layer.visible;
+-    layer.featureLayer.visible = layer.visible;
+-    if (category.hasDefaultLayer) {
+-      const defaultLayer: Layer = <Layer>category.layers[0];
+-      if (layer.layerName !== defaultLayer.layerName) {
+-        if (layer.visible) {
+-          defaultLayer.visible = false;
+-          defaultLayer.featureLayer.visible = false;
+-          category.visible = false;
+-        }
+-      } else {
+-        if (layer.visible) {
+-          category.layers.forEach((layerObject: Layer, index) => {
+-            if (index !== 0) {
+-              layerObject.visible = false;
+-              layerObject.featureLayer.visible = false;
+-            }
+-          });
++    const rasterAuth = this.auth.userPerm.flattenPermGUI[2].items.includes(14);
++    if (rasterAuth === true) {
++      layer.visible = !layer.visible;
++      layer.featureLayer.visible = layer.visible;
++      if (category.hasDefaultLayer) {
++        const defaultLayer: Layer = <Layer>category.layers[0];
++        if (layer.layerName !== defaultLayer.layerName) {
++          if (layer.visible) {
++            defaultLayer.visible = false;
++            defaultLayer.featureLayer.visible = false;
++            category.visible = false;
++          }
++        } else {
++          if (layer.visible) {
++            category.layers.forEach((layerObject: Layer, index) => {
++              if (index !== 0) {
++                layerObject.visible = false;
++                layerObject.featureLayer.visible = false;
++              }
++            });
++          }
++          category.visible = layer.visible;
+         }
+-        category.visible = layer.visible;
+-      }
+-    } else {
+-      if (this.getAuthorizedLayerCount(category) === category.layers.filter((subLayer) =>
+-        (subLayer.visible === true && subLayer.authorized)).length) {
+-        category.visible = true;
+       } else {
+-        category.visible = false;
+-      }
+-      if (parent !== undefined) {
+         if (this.getAuthorizedLayerCount(category) === category.layers.filter((subLayer) =>
+           (subLayer.visible === true && subLayer.authorized)).length) {
+-          parent.visible = true;
++          category.visible = true;
+         } else {
+-          parent.visible = false;
++          category.visible = false;
++        }
++        if (parent !== undefined) {
++          if (this.getAuthorizedLayerCount(category) === category.layers.filter((subLayer) =>
++            (subLayer.visible === true && subLayer.authorized)).length) {
++            parent.visible = true;
++          } else {
++            parent.visible = false;
++          }
+         }
+       }
++      this.mapViewChanged.emit();
++    } else {
++      category.visible = false;
+     }
+-    this.mapViewChanged.emit();
+   }
+ 
+   changeLayerOpacity(layer: Layer, event: Event) {
+diff --git a/src/app/mapUtils/map.service.ts b/src/app/mapUtils/map.service.ts
+index 1beab654158afced28dd0ff2714718aae8bfaf05..690b2f1bdf17143395560218df8e033993b6a2c9 100644
+--- a/src/app/mapUtils/map.service.ts
++++ b/src/app/mapUtils/map.service.ts
+@@ -106,8 +106,8 @@ export class MapService {
+   }
+ 
+   clearSelectedGraphics(propertyName: string, value: any) {
+-    const selectedGraphic = this.mapView.graphics.filter(graphic => graphic.get(propertyName) === value);
+-    if (selectedGraphic.length > 0) {
++    const selectedGraphic = this.mapView.graphics.filter(graphic => graphic.get(propertyName) === value && !graphic.get('drawBox'));
++    if (selectedGraphic.length > 0 ) {
+       this.mapView.graphics.removeMany(selectedGraphic);
+     }
+   }
+diff --git a/src/app/mapUtils/measure.service.ts b/src/app/mapUtils/measure.service.ts
+index 1e9acb11c90d2dcfa69842181716e5515b8d2001..dd36cf25194d8fe8d1ad61cf48ead42e714e64fc 100644
+--- a/src/app/mapUtils/measure.service.ts
++++ b/src/app/mapUtils/measure.service.ts
+@@ -307,7 +307,10 @@ export class MeasureService {
+   changeLengthType(unitObject: object) {
+     this.lengthUnit = unitObject['code'];
+     this.lengthText = unitObject['text'];
+-    this.drawModule.view.graphics.removeAll();
++    const filteredGraphics = this.drawModule.view.graphics.filter(graphic =>  !graphic.get('drawBox'));
++    if (filteredGraphics.length > 0 ) {
++      this.drawModule.view.graphics.removeMany(filteredGraphics);
++    }
+     this.vertexAdded(this.drawAction);
+     this.labelLines(this.drawAction);
+     this.calculateLength(this.drawAction);
+diff --git a/src/app/models/AGGrid/query-constructor.ts b/src/app/models/AGGrid/query-constructor.ts
+index 87e9465a82ab883782d735e7e8ddc0a5609d763c..fe268c21fc34c95c712eac42ac5fc5c90d5551e9 100644
+--- a/src/app/models/AGGrid/query-constructor.ts
++++ b/src/app/models/AGGrid/query-constructor.ts
+@@ -20,7 +20,9 @@ export class QueryConverter {
+                 endsWith: `LOWER(${this.fieldName}) LIKE '${this.fieldValue}%'`,
+                 startsWith: `LOWER(${this.fieldName}) LIKE '%${this.fieldValue}'`,
+                 contains: `LOWER(${this.fieldName}) LIKE '%${this.fieldValue}%'`,
+-                notContains: `NOT ${this.fieldName} LIKE '%${this.fieldValue}%'`
++                notContains: `NOT ${this.fieldName} LIKE '%${this.fieldValue}%'`,
++                isNull: `${this.fieldName} IS NULL`,
++                isNotNull: `${this.fieldName} IS NOT NULL`
+             };
+         } else if (filterType === 'number') {
+             this.numberLiterals = {
+@@ -31,6 +33,8 @@ export class QueryConverter {
+                 greaterThan: `CAST(${this.fieldName} as FLOAT) > ${this.fieldValue} `,
+                 greaterThanOrEqual: `CAST(${this.fieldName} as FLOAT) >= ${this.fieldValue} `,
+                 inRange: `CAST(${this.fieldName} as FLOAT) > ${this.fieldValue} AND CAST(${this.fieldName} as FLOAT) <${this.fieldValueTo}`,
++                isNull: `${this.fieldName} IS NULL`,
++                isNotNull: `${this.fieldName} IS NOT NULL`
+             };
+         } else if (filterType === 'date') {
+             this.dateLiterals = {
+@@ -41,6 +45,8 @@ export class QueryConverter {
+                 greaterThan: `${this.fieldName} > '${this.fieldValue}' `,
+                 greaterThanOrEqual: `${this.fieldName} >= '${this.fieldValue}' `,
+                 inRange: `${this.fieldName} > '${this.fieldValue}' AND ${this.fieldName} <'${this.fieldValueTo}'`,
++                isNull: `${this.fieldName} IS NULL`,
++                isNotNull: `${this.fieldName} IS NOT NULL`
+             };
+         } else {
+             console.error('Another Filter Type');
+@@ -142,6 +148,8 @@ export class DomainConverter {
+                 startsWith: `${this.fieldName} IN(${this.domainLiterals.contains(codedValueDomain, fieldValue).toString()})`,
+                 contains: `${this.fieldName} IN(${this.domainLiterals.contains(codedValueDomain, fieldValue).toString()})`,
+                 notContains: `${this.fieldName} NOT IN(${this.domainLiterals.contains(codedValueDomain, fieldValue).toString()})`,
++                isNull: `${this.fieldName} IS NULL`,
++                isNotNull: `${this.fieldName} IS NOT NULL`
+             };
+         } else if (domain.type === 'codedValue') {
+             const codedValueDomain = <esri.CodedValueDomain>domain;
+@@ -153,6 +161,8 @@ export class DomainConverter {
+                 startsWith: `${this.fieldName} IN(${this.domainLiterals.contains(codedValueDomain, fieldValue).toString()})`,
+                 contains: `${this.fieldName} IN(${this.domainLiterals.contains(codedValueDomain, fieldValue).toString()})`,
+                 notContains: `${this.fieldName} NOT IN(${this.domainLiterals.contains(codedValueDomain, fieldValue).toString()})`,
++                isNull: `${this.fieldName} IS NULL`,
++                isNotNull: `${this.fieldName} IS NOT NULL`
+             };
+         } else {
+             console.error('Unused Domain Type');
+@@ -170,6 +180,8 @@ export interface StringLiteral {
+     startsWith: string;
+     contains: string;
+     notContains: string;
++    isNull: string;
++    isNotNull: string;
+ }
+ 
+ export interface NumberLiteral {
+@@ -180,6 +192,8 @@ export interface NumberLiteral {
+     greaterThan: string;
+     greaterThanOrEqual: string;
+     inRange: string;
++    isNull: string;
++    isNotNull: string;
+ }
+ export type DomainFunction = (codedValueDomain: esri.CodedValueDomain, value: string) => Array<string | number>;
+ 
+diff --git a/src/app/module-report/module-report.component.ts b/src/app/module-report/module-report.component.ts
+index 2d8a63089163f3d4b308d0392665a2ec80ee9a55..957ddcec7ed906e13b940e54ceaa20ac6f7ba657 100644
+--- a/src/app/module-report/module-report.component.ts
++++ b/src/app/module-report/module-report.component.ts
+@@ -235,7 +235,26 @@ export class ModuleReportComponent implements OnInit {
+           textFormatter: function (gridValue: string) {
+             const lowerCasedValue = gridValue.toLocaleLowerCase();
+             return lowerCasedValue;
+-          }
++          },
++          filterOptions: [
++            'equals', 'notEqual', 'contains', 'notContains', 'startsWith', 'endsWith',
++            {
++              displayKey: 'isNull',
++              displayName: 'Boş Olanlar',
++              hideFilterInput: true,
++              test: (filterValue, cellValue) => {
++                return cellValue === null;
++              },
++            },
++            {
++              displayKey: 'isNotNull',
++              displayName: 'Boş Olmayanlar',
++              hideFilterInput: true,
++              test: (filterValue, cellValue) => {
++                return cellValue !== null;
++              },
++            }
++          ]
+         };
+       }
+       colDefs.push(colDef);
+@@ -542,11 +561,11 @@ export class ModuleReportComponent implements OnInit {
+ 
+       if (moduleValue === 2 || moduleValue === 5 || moduleValue === 7 || moduleValue === 8 ||
+         moduleValue === 9 || moduleValue === 10) {
+-          searchFields.unshift('i_parsel_id');
+-          fieldAliases.unshift('Taşınmaz ID');
++        searchFields.unshift('i_parsel_id');
++        fieldAliases.unshift('Taşınmaz ID');
+       }
+ 
+-      if (moduleValue === 4 || moduleValue ===  13 || moduleValue === 14 ) {
++      if (moduleValue === 4 || moduleValue === 13 || moduleValue === 14) {
+         searchFields.unshift('i_bina_id');
+         fieldAliases.unshift('Bina Sıra No');
+       }
+diff --git a/src/app/modules/create-module/create-module.component.html b/src/app/modules/create-module/create-module.component.html
+index f48457c143d7d98918722171f06547858e63fa44..f85ac029e934d9cfef257a13024f782031308e1c 100644
+--- a/src/app/modules/create-module/create-module.component.html
++++ b/src/app/modules/create-module/create-module.component.html
+@@ -17,8 +17,7 @@
+           (input)="onChangeFormControl($event)">
+         <textarea
+           *ngIf="!(formData.type === 'domain' || formData.type === 'localDomain' || formData.type === 'malik') && formData.name === 'aciklama'"
+-          [name]="formData.name" [formControlName]="formData.name"
+-          (input)="onChangeFormControl($event)"></textarea>
++          [name]="formData.name" [formControlName]="formData.name" (input)="onChangeFormControl($event)"></textarea>
+       </ng-template>
+       <select *ngIf="formData.type === 'domain' || formData.type === 'localDomain'" [name]="formData.name"
+         [formControlName]="formData.name" (change)="onChangeFormControl($event)">
+@@ -46,4 +45,4 @@
+         (click)="onDeleteProcess()">
+     </div>
+   </form>
+-</div>
+\ No newline at end of file
++</div>
+diff --git a/src/app/modules/create-module/create-module.component.ts b/src/app/modules/create-module/create-module.component.ts
+index da167e699c1f730b2ce6f8d4f7023e170af94ae1..4cf6c9f854bb39878b7a6259cb4a516702714766 100644
+--- a/src/app/modules/create-module/create-module.component.ts
++++ b/src/app/modules/create-module/create-module.component.ts
+@@ -15,6 +15,7 @@ import { AcceptDialogComponent } from 'src/app/accept-dialog/accept-dialog.compo
+ import { AgGridNg2 } from 'ag-grid-angular';
+ import { ColDef } from 'ag-grid-community';
+ import esri = __esri;
++import { KeyValue } from '../interfaces/keyvalue.modules';
+ 
+ interface AddFeatureResult {
+   addResults: {
+@@ -1234,6 +1235,28 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+     }).pipe(map(response => response['fields']));
+   }
+ 
++  dotToCommaMethod(feature: esri.Graphic) {
++    const attributes = feature.attributes;
++    const keyValueArray: Array<KeyValue> = [];
++    const keyArray = Object.keys(attributes);
++    const valueArray = Object.values(attributes);
++
++    for (let i = 0; i < keyArray.length; i++) {
++      const keyValueElement = new KeyValue();
++      keyValueElement.key = keyArray[i];
++      keyValueElement.value = valueArray[i];
++      keyValueArray.push(keyValueElement);
++    }
++
++    keyValueArray.forEach(keyVal => {
++      if (String(keyVal.value).includes('.')) {
++        keyVal.value = String(keyVal.value).replace('.', ',');
++        feature.attributes[keyVal.key] = keyVal.value;
++      }
++    });
++    return feature;
++  }
++
+   addModule(): Observable<Object> {
+     const formData = this.formGroup.value;
+ 
+@@ -1282,15 +1305,17 @@ export class CreateModuleComponent implements OnInit, OnDestroy {
+ 
+       formData['sayi'] = toplamMaliyetStringData;
+     }
+-    const feature = <esri.Graphic>{
++    let feature = <esri.Graphic>{
+       attributes: formData,
+     };
+     const features = <Array<esri.Graphic>>[];
+ 
++    feature = this.dotToCommaMethod(feature);
+     features.push(feature);
+     this.addFeatureBoundData(features);
+ 
+     const postFormData = new FormData();
++
+     postFormData.append('features', JSON.stringify(features));
+     postFormData.append('f', 'json');
+     postFormData.append('rollbackOnFailure', 'true');
+diff --git a/src/app/modules/interfaces/keyvalue.modules.ts b/src/app/modules/interfaces/keyvalue.modules.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0734032572702c27a5250d3d76ad32e6861dce5a
+--- /dev/null
++++ b/src/app/modules/interfaces/keyvalue.modules.ts
+@@ -0,0 +1,4 @@
++export class KeyValue {
++    key: string;
++    value: any;
++}
+diff --git a/src/app/modules/module-list/module-list.component.ts b/src/app/modules/module-list/module-list.component.ts
+index 9a5a7e2db197ff4437e0db923dce8ed16ac6e9b5..eeb853ef081911488e96a453a51590e440f98c61 100644
+--- a/src/app/modules/module-list/module-list.component.ts
++++ b/src/app/modules/module-list/module-list.component.ts
+@@ -17,7 +17,7 @@ import { QueryConstructor } from 'src/app/models/AGGrid/query-constructor';
+ import { MovementListComponent } from 'src/app/movements/movement-list/movement-list.component';
+ import esri = __esri;
+ import { ProgressInfoComponent } from 'src/app/progress-info/progress-info.component';
+-  @Component({
++@Component({
+   selector: 'app-module-list',
+   templateUrl: './module-list.component.html',
+   styleUrls: ['./module-list.component.scss']
+diff --git a/src/app/other-layer/other-layer.component.ts b/src/app/other-layer/other-layer.component.ts
+index 7081c12cf69a78c019f260a2be1a1bf23cdbe8f5..d203e8be94de82927fee476fded84f3040ab12a6 100644
+--- a/src/app/other-layer/other-layer.component.ts
++++ b/src/app/other-layer/other-layer.component.ts
+@@ -20,7 +20,7 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+   tkgmLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
+   maksLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
+   tucbsLayers: { title: string, visible: boolean, layers: Array<{ title: string, url: string, visible: boolean } | esri.Layer> };
+-  mapIstanbulLayers: { title: string, visible: boolean, layers: Array<esri.TileLayer> };
++  mapIstanbulLayers: { title: string, visible: boolean, layers: Array<esri.MapImageLayer> };
+   METSLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
+   sitAlanLayers: { title: string, visible: boolean, layers: Array<esri.Layer> };
+   originalTUCBSLayers: Array<{ title: string, url: string, visible: boolean } | esri.Layer> = [];
+@@ -53,7 +53,7 @@ export class OtherLayerComponent implements OnInit, OnDestroy {
+     const tucbsLayers = layers.filter(layer => layer.get('TUCBS') === true).toArray();
+     this.tucbsLayers = { layers: [], title: 'TUCBS', visible: false };
+ 
+-    const mapIstanbulLayers = <Array<esri.TileLayer>>layers.filter(layer => layer.get('MAPISTANBUL') === true).toArray();
++    const mapIstanbulLayers = <Array<esri.MapImageLayer>>layers.filter(layer => layer.get('MAPISTANBUL') === true).toArray();
+     this.mapIstanbulLayers = { layers: mapIstanbulLayers, title: 'Map Istanbul', visible: false };
+ 
+     const METSLayers = layers.filter(layer => layer.get('METS') === true).toArray();
